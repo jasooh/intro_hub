@@ -10,7 +10,7 @@ export default function LoginPage(props: PageProps<"/login">) {
         <div className="text-4xl">🏐</div>
         <div>
           <h1 className="text-xl font-semibold">Sign in to Intro Hub</h1>
-          <p className="mt-1 text-sm text-stone-500">Sign up for sessions, see who&apos;s coming, and manage your spot.</p>
+          <p className="mt-1 text-sm text-stone-400">Sign up for sessions, see who&apos;s coming, and manage your spot.</p>
         </div>
         <Suspense>
           <LoginForm searchParams={props.searchParams} />
@@ -27,7 +27,7 @@ async function LoginForm({ searchParams }: { searchParams: PageProps<"/login">["
   return (
     <form action={signInWithGoogle} className="space-y-3">
       <input type="hidden" name="next" value={next} />
-      {error && <p className="rounded-lg bg-red-50 p-2 text-sm text-red-700">{error}</p>}
+      {error && <p className="rounded-lg bg-red-950/50 p-2 text-sm text-red-300">{error}</p>}
       <SubmitButton variant="secondary" className="w-full">
         <GoogleIcon /> Continue with Google
       </SubmitButton>

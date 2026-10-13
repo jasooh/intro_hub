@@ -26,10 +26,10 @@ async function ProfileForm({ searchParams }: { searchParams: PageProps<"/onboard
           <Avatar name={name || profile.email} src={profile.avatar_url} size={48} />
           <div>
             <h1 className="text-xl font-semibold">{profile.onboarded_at ? "Your profile" : "Welcome! 👋"}</h1>
-            <p className="text-sm text-stone-500">{profile.email}</p>
+            <p className="text-sm text-stone-400">{profile.email}</p>
           </div>
         </div>
-        {error && <p className="rounded-lg bg-red-50 p-2 text-sm text-red-700">{error}</p>}
+        {error && <p className="rounded-lg bg-red-950/50 p-2 text-sm text-red-300">{error}</p>}
         <form action={saveProfile} className="space-y-4">
           <input type="hidden" name="next" value={next} />
           <Field label="Display name" hint="Shown to other players on the attendee list.">

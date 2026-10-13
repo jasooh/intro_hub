@@ -40,7 +40,7 @@ async function SessionView({
   return (
     <div className="space-y-5">
       <LiveRefresh sessionId={id} />
-      <Link href="/" className="text-sm text-stone-500 hover:text-stone-800">
+      <Link href="/sessions" className="text-sm text-stone-400 hover:text-stone-100">
         ← All sessions
       </Link>
 
@@ -48,26 +48,26 @@ async function SessionView({
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <h1 className="text-2xl font-semibold">{session.title}</h1>
-            <p className="text-stone-700">
+            <p className="text-stone-300">
               {formatDateTime(session.starts_at)} – {formatTime(session.ends_at)}
             </p>
-            <p className="text-stone-600">{session.location}</p>
+            <p className="text-stone-400">{session.location}</p>
           </div>
           <p className="text-xl font-semibold">{formatMoney(session.price_cents)}</p>
         </div>
-        {session.notes && <p className="whitespace-pre-line text-sm text-stone-600">{session.notes}</p>}
+        {session.notes && <p className="whitespace-pre-line text-sm text-stone-400">{session.notes}</p>}
         <CountsBar session={session} counts={sessionCounts} />
       </Card>
 
-      {typeof error === "string" && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+      {typeof error === "string" && <p className="rounded-lg bg-red-950/50 p-3 text-sm text-red-300">{error}</p>}
 
       {session.status === "cancelled" ? (
-        <Card className="border-red-200 bg-red-50 text-red-800">This session has been cancelled.</Card>
+        <Card className="border-red-900 bg-red-950/50 text-red-300">This session has been cancelled.</Card>
       ) : profile ? (
         <MySpot session={session} profile={profile} counts={sessionCounts} />
       ) : (
         <Card className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-stone-700">Sign in to grab a spot and see who&apos;s coming.</p>
+          <p className="text-stone-300">Sign in to grab a spot and see who&apos;s coming.</p>
           <Link href={`/login?next=/s/${id}`} className={buttonClass()}>
             Sign in with Google
           </Link>
@@ -85,11 +85,11 @@ function CountsBar({ session, counts }: { session: Session; counts?: SessionCoun
   const pct = (n: number) => `${Math.min((n / session.capacity) * 100, 100)}%`;
   return (
     <div className="space-y-1">
-      <div className="flex h-2 overflow-hidden rounded-full bg-stone-200">
+      <div className="flex h-2 overflow-hidden rounded-full bg-stone-800">
         <div className="bg-green-500" style={{ width: pct(confirmed) }} />
         <div className="bg-amber-400" style={{ width: pct(holding) }} />
       </div>
-      <p className="text-sm text-stone-600">
+      <p className="text-sm text-stone-400">
         {confirmed} confirmed · {holding} holding · {spotsLeft(session, counts)} open of {session.capacity}
         {(counts?.waitlisted ?? 0) > 0 && ` · ${counts?.waitlisted} on waitlist`}
       </p>
@@ -103,11 +103,11 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
 
   if (!reg) {
     if (started) {
-      return <Card className="text-stone-600">This session has started.</Card>;
+      return <Card className="text-stone-400">This session has started.</Card>;
     }
     if (notOpenYet) {
       return (
-        <Card className="text-stone-700">
+        <Card className="text-stone-300">
           Sign-ups open <b>{formatDateTime(session.opens_at)}</b>. Come back then!
         </Card>
       );
@@ -115,7 +115,7 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
     const full = spotsLeft(session, counts) === 0 || (counts?.waitlisted ?? 0) > 0;
     return (
       <Card className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-stone-700">
+        <p className="text-stone-300">
           {full
             ? "This session is full. Join the waitlist and we'll email you if a spot opens."
             : `${spotsLeft(session, counts)} spots left. Your spot is held while you send payment.`}
@@ -135,9 +135,9 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
       </div>
 
       {reg.status === "pending_payment" && <PaymentInstructions session={session} registration={reg} />}
-      {reg.status === "confirmed" && <p className="text-stone-700">You&apos;re in. See you there! 🏐</p>}
+      {reg.status === "confirmed" && <p className="text-stone-300">You&apos;re in. See you there! 🏐</p>}
       {reg.status === "waitlisted" && (
-        <p className="text-stone-700">
+        <p className="text-stone-300">
           You&apos;re on the waitlist. We&apos;ll email you payment instructions as soon as a spot opens. Please
           don&apos;t send money yet.
         </p>
@@ -157,7 +157,7 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
             {reg.status === "waitlisted" ? "Leave waitlist" : "Cancel my spot"}
           </SubmitButton>
           {reg.status === "confirmed" && (
-            <span className="text-xs text-stone-500">
+            <span className="text-xs text-stone-400">
               {beforeCutoff
                 ? `Cancel before ${formatDateTime(session.cancel_cutoff)} for a refund.`
                 : "Past the refund cutoff. Cancelling still frees the spot for someone else."}
@@ -183,14 +183,14 @@ async function AttendeeList({ sessionId }: { sessionId: string }) {
       <Card>
         <h2 className="mb-3 font-semibold">Who&apos;s coming ({going.length})</h2>
         {going.length === 0 ? (
-          <p className="text-sm text-stone-500">Nobody yet. Be the first!</p>
+          <p className="text-sm text-stone-400">Nobody yet. Be the first!</p>
         ) : (
           <ul className="space-y-2">
             {going.map((a) => (
               <li key={a.registration_id} className="flex items-center gap-2">
                 <Avatar name={a.display_name} src={a.avatar_url} />
                 <span className={a.is_me ? "font-semibold" : ""}>{a.display_name}</span>
-                {a.status === "pending_payment" && <Badge className="bg-amber-100 text-amber-800">holding</Badge>}
+                {a.status === "pending_payment" && <Badge className="bg-amber-950 text-amber-300">holding</Badge>}
               </li>
             ))}
           </ul>
@@ -199,12 +199,12 @@ async function AttendeeList({ sessionId }: { sessionId: string }) {
       <Card>
         <h2 className="mb-3 font-semibold">Waitlist ({waiting.length})</h2>
         {waiting.length === 0 ? (
-          <p className="text-sm text-stone-500">No one waiting.</p>
+          <p className="text-sm text-stone-400">No one waiting.</p>
         ) : (
           <ol className="space-y-2">
             {waiting.map((a) => (
               <li key={a.registration_id} className="flex items-center gap-2">
-                <span className="w-5 text-right text-sm text-stone-500">{a.waitlist_position}.</span>
+                <span className="w-5 text-right text-sm text-stone-400">{a.waitlist_position}.</span>
                 <Avatar name={a.display_name} src={a.avatar_url} />
                 <span className={a.is_me ? "font-semibold" : ""}>{a.display_name}</span>
               </li>

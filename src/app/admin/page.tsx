@@ -47,10 +47,10 @@ async function Dashboard() {
       </div>
 
       <section className="space-y-3">
-        <h2 className="font-semibold text-stone-700">Upcoming sessions</h2>
+        <h2 className="font-semibold text-stone-300">Upcoming sessions</h2>
         {sessions.length === 0 ? (
           <EmptyState>
-            No sessions yet. <Link href="/admin/templates" className="text-orange-700 underline">Set up a weekly schedule</Link>{" "}
+            No sessions yet. <Link href="/admin/templates" className="text-orange-400 underline">Set up a weekly schedule</Link>{" "}
             or create a one-off session.
           </EmptyState>
         ) : (
@@ -66,8 +66,8 @@ async function Dashboard() {
 function StatCard({ href, label, value }: { href: string; label: string; value: number }) {
   return (
     <Link href={href}>
-      <Card className={value > 0 ? "border-amber-300 bg-amber-50" : ""}>
-        <p className="text-sm text-stone-600">{label}</p>
+      <Card className={value > 0 ? "border-amber-800 bg-amber-950/40" : ""}>
+        <p className="text-sm text-stone-400">{label}</p>
         <p className="text-3xl font-semibold">{value}</p>
       </Card>
     </Link>

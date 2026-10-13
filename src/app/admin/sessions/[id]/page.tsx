@@ -61,13 +61,13 @@ async function AdminSession({
       <LiveRefresh sessionId={id} />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <Link href="/admin" className="text-sm text-stone-500 hover:text-stone-800">
+          <Link href="/admin" className="text-sm text-stone-400 hover:text-stone-100">
             ← Dashboard
           </Link>
           <h1 className="text-2xl font-semibold">{session.title}</h1>
-          <p className="text-stone-600">
+          <p className="text-stone-400">
             {formatDateTime(session.starts_at)} · {session.location}
-            {session.status === "cancelled" && <span className="ml-2 font-semibold text-red-700">CANCELLED</span>}
+            {session.status === "cancelled" && <span className="ml-2 font-semibold text-red-300">CANCELLED</span>}
           </p>
         </div>
         <div className="flex gap-2">
@@ -80,7 +80,7 @@ async function AdminSession({
         </div>
       </div>
 
-      {typeof error === "string" && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+      {typeof error === "string" && <p className="rounded-lg bg-red-950/50 p-3 text-sm text-red-300">{error}</p>}
 
       <div className="grid gap-3 sm:grid-cols-4">
         <Stat label="Confirmed" value={`${going.filter((r) => r.status === "confirmed").length}/${session.capacity}`} />
@@ -91,8 +91,8 @@ async function AdminSession({
 
       <Card className="space-y-3">
         <h2 className="font-semibold">Roster</h2>
-        {going.length === 0 && <p className="text-sm text-stone-500">No sign-ups yet.</p>}
-        <ul className="divide-y divide-stone-100">
+        {going.length === 0 && <p className="text-sm text-stone-400">No sign-ups yet.</p>}
+        <ul className="divide-y divide-stone-800">
           {going.map((r) => (
             <PlayerRow key={r.id} reg={r} sessionId={id}>
               {r.status === "pending_payment" && (
@@ -112,8 +112,8 @@ async function AdminSession({
 
       <Card className="space-y-3">
         <h2 className="font-semibold">Waitlist</h2>
-        {waiting.length === 0 && <p className="text-sm text-stone-500">Nobody waiting.</p>}
-        <ol className="divide-y divide-stone-100">
+        {waiting.length === 0 && <p className="text-sm text-stone-400">Nobody waiting.</p>}
+        <ol className="divide-y divide-stone-800">
           {waiting.map((r, i) => (
             <PlayerRow key={r.id} reg={r} sessionId={id} prefix={`${i + 1}.`}>
               <form action={moveWaitlist.bind(null, r.id, -1, id)}>
@@ -136,9 +136,9 @@ async function AdminSession({
       </Card>
 
       {inactive.length > 0 && (
-        <details className="rounded-xl border border-stone-200 bg-white p-5">
+        <details className="rounded-xl border border-stone-800 bg-stone-900 p-5">
           <summary className="cursor-pointer font-semibold">Cancelled / expired ({inactive.length})</summary>
-          <ul className="mt-3 divide-y divide-stone-100">
+          <ul className="mt-3 divide-y divide-stone-800">
             {inactive.map((r) => (
               <PlayerRow key={r.id} reg={r} sessionId={id}>
                 {r.status === "expired" && (
@@ -160,8 +160,8 @@ async function AdminSession({
       </Card>
 
       {session.status === "scheduled" && (
-        <Card className="flex flex-wrap items-center justify-between gap-3 border-red-200">
-          <p className="text-sm text-stone-600">
+        <Card className="flex flex-wrap items-center justify-between gap-3 border-red-900">
+          <p className="text-sm text-stone-400">
             Cancelling emails everyone and adds paid players to the refunds list.
           </p>
           <form action={cancelSession.bind(null, id)}>
@@ -182,7 +182,7 @@ function name(r: Row) {
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
     <Card className="p-4">
-      <p className="text-xs text-stone-500">{label}</p>
+      <p className="text-xs text-stone-400">{label}</p>
       <p className="text-xl font-semibold">{value}</p>
     </Card>
   );
@@ -201,11 +201,11 @@ function PlayerRow({
   const payment = reg.payments[0];
   return (
     <li className="flex flex-wrap items-center gap-3 py-2">
-      {prefix && <span className="w-5 text-right text-sm text-stone-500">{prefix}</span>}
+      {prefix && <span className="w-5 text-right text-sm text-stone-400">{prefix}</span>}
       <Avatar name={name(reg)} src={reg.profile.avatar_url} />
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium">{name(reg)}</p>
-        <p className="truncate text-xs text-stone-500">
+        <p className="truncate text-xs text-stone-400">
           {reg.profile.email} · <span className="font-mono">{reg.ref_code}</span>
           {reg.status === "pending_payment" && reg.hold_expires_at && ` · hold until ${formatDateTime(reg.hold_expires_at)}`}
           {payment &&

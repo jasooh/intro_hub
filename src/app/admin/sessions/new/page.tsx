@@ -19,11 +19,11 @@ async function NewSession({ searchParams }: { searchParams: PageProps<"/admin/se
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-semibold">New one-off session</h1>
-      <p className="text-sm text-stone-600">
+      <p className="text-sm text-stone-400">
         For the regular weekly game, use the <Link href="/admin/templates" className="underline">weekly schedule</Link> instead
         and sessions are created automatically.
       </p>
-      {typeof error === "string" && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+      {typeof error === "string" && <p className="rounded-lg bg-red-950/50 p-3 text-sm text-red-300">{error}</p>}
       <Card>
         <SessionForm action={createSession} submitLabel="Create session" />
       </Card>

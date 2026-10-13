@@ -7,9 +7,9 @@ export function cn(...classes: (string | false | null | undefined)[]) {
 
 const buttonVariants = {
   primary: "bg-orange-600 text-white hover:bg-orange-700",
-  secondary: "border border-stone-300 bg-white text-stone-800 hover:bg-stone-100",
-  danger: "border border-red-200 bg-white text-red-700 hover:bg-red-50",
-  ghost: "text-stone-600 hover:bg-stone-100",
+  secondary: "border border-stone-700 bg-stone-900 text-stone-200 hover:bg-stone-800",
+  danger: "border border-red-900 bg-stone-900 text-red-300 hover:bg-red-950/50",
+  ghost: "text-stone-400 hover:bg-stone-800",
 };
 
 export type ButtonVariant = keyof typeof buttonVariants;
@@ -23,15 +23,15 @@ export function buttonClass(variant: ButtonVariant = "primary", size: "sm" | "md
 }
 
 export function Card({ className, ...props }: ComponentProps<"div">) {
-  return <div className={cn("rounded-xl border border-stone-200 bg-white p-5 shadow-sm", className)} {...props} />;
+  return <div className={cn("rounded-xl border border-stone-800 bg-stone-900 p-5 shadow-sm", className)} {...props} />;
 }
 
 const statusStyles: Record<RegistrationStatus, [string, string]> = {
-  confirmed: ["Confirmed", "bg-green-100 text-green-800"],
-  pending_payment: ["Awaiting payment", "bg-amber-100 text-amber-800"],
-  waitlisted: ["Waitlisted", "bg-sky-100 text-sky-800"],
-  expired: ["Expired", "bg-stone-200 text-stone-700"],
-  cancelled: ["Cancelled", "bg-stone-200 text-stone-700"],
+  confirmed: ["Confirmed", "bg-green-950 text-green-300"],
+  pending_payment: ["Awaiting payment", "bg-amber-950 text-amber-300"],
+  waitlisted: ["Waitlisted", "bg-sky-950 text-sky-300"],
+  expired: ["Expired", "bg-stone-800 text-stone-300"],
+  cancelled: ["Cancelled", "bg-stone-800 text-stone-300"],
 };
 
 export function StatusBadge({ status }: { status: RegistrationStatus }) {
@@ -63,12 +63,12 @@ export function Avatar({ name, src, size = 32 }: { name: string; src: string | n
       width={size}
       height={size}
       referrerPolicy="no-referrer"
-      className="shrink-0 rounded-full bg-stone-200"
+      className="shrink-0 rounded-full bg-stone-800"
       style={{ width: size, height: size }}
     />
   ) : (
     <span
-      className="inline-flex shrink-0 items-center justify-center rounded-full bg-orange-100 text-xs font-semibold text-orange-800"
+      className="inline-flex shrink-0 items-center justify-center rounded-full bg-orange-950 text-xs font-semibold text-orange-300"
       style={{ width: size, height: size }}
     >
       {initials}
@@ -79,24 +79,24 @@ export function Avatar({ name, src, size = 32 }: { name: string; src: string | n
 export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
     <label className="block space-y-1">
-      <span className="text-sm font-medium text-stone-700">{label}</span>
+      <span className="text-sm font-medium text-stone-300">{label}</span>
       {children}
-      {hint && <span className="block text-xs text-stone-500">{hint}</span>}
+      {hint && <span className="block text-xs text-stone-400">{hint}</span>}
     </label>
   );
 }
 
 export const inputClass =
-  "block w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-stone-900 shadow-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-200";
+  "block w-full rounded-lg border border-stone-700 bg-stone-900 px-3 py-2 text-stone-100 shadow-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/30";
 
 export function PageSpinner() {
   return (
     <div className="flex justify-center py-16" aria-label="Loading">
-      <div className="h-6 w-6 animate-spin rounded-full border-2 border-stone-300 border-t-orange-600" />
+      <div className="h-6 w-6 animate-spin rounded-full border-2 border-stone-700 border-t-orange-600" />
     </div>
   );
 }
 
 export function EmptyState({ children }: { children: ReactNode }) {
-  return <p className="rounded-xl border border-dashed border-stone-300 p-6 text-center text-stone-500">{children}</p>;
+  return <p className="rounded-xl border border-dashed border-stone-700 p-6 text-center text-stone-400">{children}</p>;
 }

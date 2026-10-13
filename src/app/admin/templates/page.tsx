@@ -29,18 +29,18 @@ async function Templates({ searchParams }: { searchParams: PageProps<"/admin/tem
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Weekly schedule</h1>
-        <p className="text-sm text-stone-600">
+        <p className="text-sm text-stone-400">
           Each active template creates its next session automatically, about a week ahead. Times are in{" "}
           {env.timezone()}. Changes apply to sessions created from now on; edit existing sessions from the dashboard.
         </p>
       </div>
-      {typeof error === "string" && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+      {typeof error === "string" && <p className="rounded-lg bg-red-950/50 p-3 text-sm text-red-300">{error}</p>}
 
       {templates.map((t) => (
         <Card key={t.id} className="space-y-3">
           <h2 className="font-semibold">
             {t.title}: {WEEKDAYS[t.weekday]}s at {t.start_time.slice(0, 5)} · {formatMoney(t.price_cents)}{" "}
-            {!t.active && <span className="text-sm font-normal text-stone-500">(paused)</span>}
+            {!t.active && <span className="text-sm font-normal text-stone-400">(paused)</span>}
           </h2>
           <TemplateForm template={t} />
         </Card>

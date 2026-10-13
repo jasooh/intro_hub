@@ -16,7 +16,7 @@ export default function AdminLayout({ children }: LayoutProps<"/admin">) {
           <Link
             key={l.href}
             href={l.href}
-            className="whitespace-nowrap rounded-full border border-stone-200 bg-white px-3 py-1 text-stone-700 hover:bg-stone-100"
+            className="whitespace-nowrap rounded-full border border-stone-800 bg-stone-900 px-3 py-1 text-stone-300 hover:bg-stone-800"
           >
             {l.label}
           </Link>

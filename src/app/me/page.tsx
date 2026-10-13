@@ -30,13 +30,13 @@ async function MyRegistrations({ searchParams }: { searchParams: PageProps<"/me"
           Edit profile
         </Link>
       </div>
-      {typeof error === "string" && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+      {typeof error === "string" && <p className="rounded-lg bg-red-950/50 p-3 text-sm text-red-300">{error}</p>}
 
       <section className="space-y-3">
-        <h2 className="font-semibold text-stone-700">Upcoming</h2>
+        <h2 className="font-semibold text-stone-300">Upcoming</h2>
         {upcoming.length === 0 ? (
           <EmptyState>
-            Nothing yet. <Link href="/" className="text-orange-700 underline">Find a session</Link>
+            Nothing yet. <Link href="/sessions" className="text-orange-400 underline">Find a session</Link>
           </EmptyState>
         ) : (
           upcoming.map((r) => <RegistrationCard key={r.id} reg={r} />)
@@ -45,8 +45,8 @@ async function MyRegistrations({ searchParams }: { searchParams: PageProps<"/me"
 
       {past.length > 0 && (
         <section className="space-y-2">
-          <h2 className="font-semibold text-stone-700">Past</h2>
-          <ul className="divide-y divide-stone-200 rounded-xl border border-stone-200 bg-white">
+          <h2 className="font-semibold text-stone-300">Past</h2>
+          <ul className="divide-y divide-stone-800 rounded-xl border border-stone-800 bg-stone-900">
             {past.map((r) => (
               <li key={r.id} className="flex items-center justify-between px-4 py-2 text-sm">
                 <span>
@@ -71,7 +71,7 @@ function RegistrationCard({ reg }: { reg: Registration & { session: Session } })
           <Link href={`/s/${reg.session_id}`} className="font-semibold hover:underline">
             {reg.session.title}
           </Link>
-          <p className="text-sm text-stone-600">
+          <p className="text-sm text-stone-400">
             {formatDateTime(reg.session.starts_at)} · {reg.session.location} · {formatMoney(reg.session.price_cents)}
           </p>
         </div>
@@ -79,7 +79,7 @@ function RegistrationCard({ reg }: { reg: Registration & { session: Session } })
       </div>
       {reg.status === "pending_payment" && <PaymentInstructions session={reg.session} registration={reg} />}
       {reg.refund_owed && (
-        <p className="text-sm text-stone-600">
+        <p className="text-sm text-stone-400">
           {reg.refunded_at ? "Refunded." : "Refund owed. The host will e-Transfer it back."}
         </p>
       )}

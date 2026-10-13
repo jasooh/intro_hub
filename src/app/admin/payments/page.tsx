@@ -52,15 +52,15 @@ async function Payments({ searchParams }: { searchParams: PageProps<"/admin/paym
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Payments</h1>
-        <p className="text-sm text-stone-600">
+        <p className="text-sm text-stone-400">
           e-Transfers are matched automatically by ref code, or by sender name + exact amount. Anything that
           couldn&apos;t be matched lands here.
         </p>
       </div>
-      {typeof error === "string" && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+      {typeof error === "string" && <p className="rounded-lg bg-red-950/50 p-3 text-sm text-red-300">{error}</p>}
 
       <section className="space-y-3">
-        <h2 className="font-semibold text-stone-700">Needs attention ({unmatched?.length ?? 0})</h2>
+        <h2 className="font-semibold text-stone-300">Needs attention ({unmatched?.length ?? 0})</h2>
         {!unmatched?.length && <EmptyState>All caught up 🎉</EmptyState>}
         {(unmatched as Payment[] | null)?.map((p) => (
           <Card key={p.id} className="space-y-3">
@@ -69,11 +69,11 @@ async function Payments({ searchParams }: { searchParams: PageProps<"/admin/paym
                 <p className="font-semibold">
                   {formatMoney(p.amount_cents)} from {p.sender_name ?? "unknown sender"}
                 </p>
-                <p className="text-sm text-stone-600">
+                <p className="text-sm text-stone-400">
                   {formatDateTime(p.received_at)}
                   {p.memo && <> · message: &ldquo;{p.memo}&rdquo;</>}
                 </p>
-                {p.note && <p className="mt-1 text-sm text-amber-800">{p.note}</p>}
+                {p.note && <p className="mt-1 text-sm text-amber-300">{p.note}</p>}
               </div>
               <form action={setPaymentDismissed.bind(null, p.id, true)}>
                 <SubmitButton size="sm" variant="ghost">Not volleyball – dismiss</SubmitButton>
@@ -98,20 +98,20 @@ async function Payments({ searchParams }: { searchParams: PageProps<"/admin/paym
       </section>
 
       <section className="space-y-2">
-        <h2 className="font-semibold text-stone-700">Recently matched</h2>
-        <ul className="divide-y divide-stone-200 rounded-xl border border-stone-200 bg-white text-sm">
+        <h2 className="font-semibold text-stone-300">Recently matched</h2>
+        <ul className="divide-y divide-stone-800 rounded-xl border border-stone-800 bg-stone-900 text-sm">
           {(recent as MatchedPayment[] | null)?.map((p) => (
             <li key={p.id} className="flex flex-wrap justify-between gap-2 px-4 py-2">
               <span>
                 {formatMoney(p.amount_cents)} · {p.sender_name} → {p.registration?.profile.display_name ?? p.registration?.profile.full_name}
               </span>
-              <span className="text-stone-500">
+              <span className="text-stone-400">
                 {p.matched_by === "ref" ? "ref code" : p.matched_by === "name_amount" ? "name + amount" : "manual"} ·{" "}
                 {formatDateTime(p.received_at)}
               </span>
             </li>
           ))}
-          {!recent?.length && <li className="px-4 py-2 text-stone-500">No payments yet.</li>}
+          {!recent?.length && <li className="px-4 py-2 text-stone-400">No payments yet.</li>}
         </ul>
       </section>
     </div>

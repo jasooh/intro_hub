@@ -25,11 +25,11 @@ async function Players({ searchParams }: { searchParams: PageProps<"/admin/playe
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-semibold">Players ({players.length})</h1>
-        <p className="text-sm text-stone-600">
+        <p className="text-sm text-stone-400">
           Everyone who has signed in. Add the names their e-Transfers come from to improve auto-matching.
         </p>
       </div>
-      {typeof error === "string" && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+      {typeof error === "string" && <p className="rounded-lg bg-red-950/50 p-3 text-sm text-red-300">{error}</p>}
       <div className="space-y-2">
         {players.map((p) => {
           const name = p.display_name ?? p.full_name ?? p.email;
@@ -39,9 +39,9 @@ async function Players({ searchParams }: { searchParams: PageProps<"/admin/playe
                 <Avatar name={name} src={p.avatar_url} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">
-                    {name} {p.role === "admin" && <Badge className="bg-orange-100 text-orange-800">host</Badge>}
+                    {name} {p.role === "admin" && <Badge className="bg-orange-950 text-orange-300">host</Badge>}
                   </p>
-                  <p className="truncate text-xs text-stone-500">{p.email}</p>
+                  <p className="truncate text-xs text-stone-400">{p.email}</p>
                 </div>
                 {p.id !== me.id && (
                   <form action={setRole.bind(null, p.id, p.role === "admin" ? "player" : "admin")}>

@@ -34,13 +34,13 @@ async function Refunds() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Refunds</h1>
-        <p className="text-sm text-stone-600">
+        <p className="text-sm text-stone-400">
           Paid players who cancelled before the cutoff, were removed, or whose session was cancelled.
         </p>
       </div>
 
       <section className="space-y-3">
-        <h2 className="font-semibold text-stone-700">To refund ({owed.length})</h2>
+        <h2 className="font-semibold text-stone-300">To refund ({owed.length})</h2>
         {owed.length === 0 && <EmptyState>Nothing owed.</EmptyState>}
         {owed.map((r) => (
           <Card key={r.id} className="flex flex-wrap items-center justify-between gap-3">
@@ -48,7 +48,7 @@ async function Refunds() {
               <p className="font-semibold">
                 {formatMoney(r.session.price_cents)} to {r.profile.display_name ?? r.profile.full_name}
               </p>
-              <p className="text-sm text-stone-600">
+              <p className="text-sm text-stone-400">
                 {r.profile.email} · {r.session.title} {formatDateTime(r.session.starts_at)}
               </p>
             </div>
@@ -68,8 +68,8 @@ async function Refunds() {
 
       {done.length > 0 && (
         <section className="space-y-2">
-          <h2 className="font-semibold text-stone-700">Refunded</h2>
-          <ul className="divide-y divide-stone-200 rounded-xl border border-stone-200 bg-white text-sm">
+          <h2 className="font-semibold text-stone-300">Refunded</h2>
+          <ul className="divide-y divide-stone-800 rounded-xl border border-stone-800 bg-stone-900 text-sm">
             {done.map((r) => (
               <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2">
                 <span>
