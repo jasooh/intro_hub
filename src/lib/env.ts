@@ -6,7 +6,7 @@ function required(name: string): string {
 
 export const env = {
   supabaseUrl: () => required("NEXT_PUBLIC_SUPABASE_URL"),
-  supabaseAnonKey: () => required("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
+  supabasePublishableKey: () => required("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"),
   supabaseServiceRoleKey: () => required("SUPABASE_SERVICE_ROLE_KEY"),
   appUrl: () => (process.env.APP_URL ?? "http://localhost:3000").replace(/\/$/, ""),
   timezone: () => process.env.APP_TIMEZONE ?? "America/Toronto",
