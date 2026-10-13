@@ -1,36 +1,119 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Intro Hub 🏐
 
-## Getting Started
+Sign-ups, waitlist, e-Transfer confirmation and emails for a weekly volleyball group. It replaces two Google Forms, checking e-Transfers by hand, and emailing every player by hand. It costs $0/month to run.
 
-First, run the development server:
+## How it works
 
+1. **Players sign in with Google** and tap **Sign up** on the session page.
+   - If there's room, the player gets a spot held for _N_ hours and a ref code like `VB-7K3Q`.
+   - If the session is full, they join the waitlist.
+   - Everyone signed in can see who's coming.
+2. **Players e-Transfer the host** with the ref code in the message.
+3. **A Google Apps Script** in the host's Gmail forwards each Interac notification to the app every 5 minutes. The app matches it to a sign-up:
+   - by ref code, or
+   - by sender name + exact amount.
+   
+   A match confirms the player and emails them.
+4. **Every minute**, a Supabase cron job:
+   - releases holds that weren't paid in time
+   - promotes the next person on the waitlist (and emails them)
+   - sends day-before reminders
+   - creates next week's session from the weekly schedule
+5. **The host's dashboard** (`/admin`) shows:
+   - the roster and waitlist
+   - payments it couldn't match, so the host can assign them in one click
+   - a manual **Mark paid** button
+   - refunds owed
+   - CSV export
+   - player and host management
+
+### Stack
+
+| Part | Choice | Free tier |
+|---|---|---|
+| App | Next.js 16 (App Router, Server Actions) | Vercel Hobby |
+| DB, auth, realtime, cron | Supabase (Postgres, Google OAuth, Realtime, `pg_cron` + `pg_net`) | Supabase Free |
+| Email | Gmail SMTP (nodemailer) or Resend | 500/day (Gmail) or 100/day (Resend) |
+| Payment ingest | Google Apps Script in the host's Gmail | Free |
+
+### Where the logic lives
+
+| Path | What |
+|---|---|
+| `supabase/migrations/…_init.sql` | Schema, RLS, and **all registration state changes** as Postgres functions. Each one locks the session row, so 50 people clicking at once can't overbook |
+| `src/lib/registrations.ts` | Turns the events those functions return (`signed_up`, `promoted`, `confirmed`, …) into emails, deduped via `email_log` |
+| `src/lib/matcher.ts` | Decides which sign-up an e-Transfer belongs to |
+| `src/app/api/payments/ingest` | HMAC-signed webhook the Apps Script posts to |
+| `src/app/api/cron/tick` | Endpoint pg_cron calls every minute |
+| `scripts/gmail-ingest.gs` | The Apps Script the host pastes into script.google.com |
+| `src/proxy.ts` | Session refresh + optimistic route gating (Next 16's renamed middleware) |
+
+**Registration lifecycle:**
+- `waitlisted` → `pending_payment` (promoted) → `confirmed`
+- `pending_payment` → `expired` (hold ran out), and the next waitlister is promoted
+- any active status → `cancelled`. Cancelling a confirmed spot before the cutoff puts it on the refunds list.
+- Free sessions skip straight to `confirmed`.
+
+---
+
+## Setup
+
+### 1. Supabase
+1. Create a free project at [supabase.com](https://supabase.com).
+2. In **SQL Editor**, run `supabase/migrations/20261012000000_init.sql`. Alternatively, run `npx supabase link` and then `npx supabase db push`.
+3. **Authentication → Providers → Google**: enable it, then paste a Google OAuth client ID and secret.
+   - Create the client in [Google Cloud Console](https://console.cloud.google.com/apis/credentials) under **OAuth client ID → Web application**.
+   - Set its authorized redirect URI to `https://<project-ref>.supabase.co/auth/v1/callback`.
+4. **Authentication → URL Configuration**:
+   - Set **Site URL** to your app URL.
+   - Add `http://localhost:3000/**` and `https://YOUR-APP.vercel.app/**` to the redirect URLs.
+
+### 2. Environment
+Copy `.env.example` to `.env.local` and fill it in:
+- Supabase keys are under **Project Settings → API**.
+- `ADMIN_EMAILS` is the host's Google address. That account becomes a host the first time it signs in, and more hosts can be added later from **Admin → Players**.
+- `CRON_SECRET` and `INGEST_SECRET` are random strings. Generate each with `openssl rand -hex 32`.
+- **Email**: the simplest free option is Gmail SMTP from the host's account.
+  1. Turn on 2-Step Verification.
+  2. Create an [App Password](https://myaccount.google.com/apppasswords).
+  3. Set `GMAIL_USER` and `GMAIL_APP_PASSWORD`.
+  
+  Resend also works, but it needs a domain you own before it can email anyone other than you.
+
+### 3. Run locally
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev        # http://localhost:3000
+npm test           # 49 tests: DB functions + RLS (in-memory Postgres), matcher, parser, emails, ingest route
 ```
+With no email settings configured, emails are printed to the terminal instead of sent.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 4. Deploy to Vercel
+1. Push the repo to GitHub and import it in Vercel.
+2. Add every variable from `.env.local`, with `APP_URL` set to the Vercel URL.
+3. Deploy, then sign in once with the host's Google account.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 5. Turn on the every-minute job
+Edit the two placeholders in `supabase/setup/cron.sql` (app URL and `CRON_SECRET`), then run it in the SQL editor.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 6. Payment auto-matching (Apps Script)
+1. While signed in to the **host's** Google account, open [script.google.com](https://script.google.com) and create a new project. Paste in `scripts/gmail-ingest.gs`.
+2. **Project Settings → Script properties**: add `APP_URL` and `INGEST_SECRET`, using the same values as the app.
+3. Run `testParseRecent` and check the log. It shows what the parser extracts from your recent Interac emails. Banks word these emails slightly differently, so adjust the regexes in `parseInteracEmail` if something comes out `null`.
+4. Run `setup` once and approve the permissions. The script then checks Gmail every 5 minutes.
 
-## Learn More
+Keep **Autodeposit** on for the host's email so money lands without anyone answering security questions. Anything the matcher can't place shows up under **Admin → Payments**.
 
-To learn more about Next.js, take a look at the following resources:
+### 7. Set the weekly schedule
+In **Admin → Weekly schedule**, add e.g. "Saturdays 18:00, 12 spots, $10, sign-ups open 120h before". The next session is created right away, and every week after that.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Notes & limits
+- **Interac has no API** for personal accounts. Auto-matching works by parsing the notification emails, so if Interac changes its email wording, payments land in the "needs attention" inbox until the regexes are updated. Nothing gets lost.
+- **Late payments**: if someone pays after their hold expired, the payment shows as unmatched. Use **Paid late? Re-add** on the session page, or assign the payment from the Payments page.
+- **Free-tier limits**:
+  - Supabase pauses a free project after 7 days without activity, but the per-minute cron job keeps it awake.
+  - Gmail SMTP allows about 500 emails a day, far more than a weekly game needs.
+  - Vercel Hobby is for non-commercial use, which fits a friends' group.
+- `npm test` runs the real migration in PGlite (Postgres compiled to WASM) with a small stand-in for Supabase's `auth` schema. Real concurrency is guaranteed by the `SELECT … FOR UPDATE` session lock, but PGlite runs on a single connection. So the 50-sign-up "burst" test checks the counting logic, not true parallelism.

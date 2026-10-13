@@ -1,0 +1,72 @@
+import "server-only";
+import { connection } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import type { Registration, Session, SessionCounts } from "@/lib/types";
+
+export async function getCounts(sessionIds: string[]): Promise<Map<string, SessionCounts>> {
+  if (sessionIds.length === 0) return new Map();
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("get_session_counts", { p_session_ids: sessionIds });
+  return new Map(((data ?? []) as SessionCounts[]).map((c) => [c.session_id, c]));
+}
+
+export async function getUpcomingSessions(limit = 10): Promise<Session[]> {
+  await connection(); // "now" must be read per request, not at prerender time
+  const supabase = await createClient();
+  const since = new Date(Date.now() - 3 * 3600 * 1000).toISOString();
+  const { data } = await supabase
+    .from("sessions")
+    .select("*")
+    .gte("starts_at", since)
+    .order("starts_at")
+    .limit(limit);
+  return (data ?? []) as Session[];
+}
+
+export function spotsLeft(session: Session, counts?: SessionCounts) {
+  const taken = (counts?.confirmed ?? 0) + (counts?.holding ?? 0);
+  return Math.max(session.capacity - taken, 0);
+}
+
+/** The user's live registration for a session, plus time-based flags for the UI. */
+export async function getMySpot(session: Session, profileId: string) {
+  await connection();
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("registrations")
+    .select("*")
+    .eq("session_id", session.id)
+    .eq("profile_id", profileId)
+    .in("status", ["pending_payment", "confirmed", "waitlisted"])
+    .maybeSingle<Registration>();
+  const now = Date.now();
+  return {
+    reg: data,
+    started: now >= new Date(session.starts_at).getTime(),
+    notOpenYet: now < new Date(session.opens_at).getTime(),
+    beforeCutoff: now < new Date(session.cancel_cutoff).getTime(),
+  };
+}
+
+export async function getMyRegistrations(profileId: string) {
+  await connection();
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("registrations")
+    .select("*, session:sessions(*)")
+    .eq("profile_id", profileId)
+    .order("created_at", { ascending: false })
+    .limit(30);
+  const regs = (data ?? []) as (Registration & { session: Session })[];
+  const cutoff = Date.now() - 3 * 3600 * 1000;
+  return {
+    upcoming: regs.filter((r) => new Date(r.session.starts_at).getTime() > cutoff),
+    past: regs.filter((r) => new Date(r.session.starts_at).getTime() <= cutoff),
+  };
+}
+
+/** Start of the window used for payment matching and assignment (one week back). */
+export async function paymentWindowStart() {
+  await connection();
+  return new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+}
