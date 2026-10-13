@@ -2,10 +2,13 @@ import "server-only";
 import { createServerClient } from "@supabase/ssr";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
+import { connection } from "next/server";
 import { env } from "@/lib/env";
 
 /** Supabase client acting as the signed-in user (RLS applies). */
 export async function createClient() {
+  // Supabase checks token expiry against Date.now(), which must run per request.
+  await connection();
   const cookieStore = await cookies();
   return createServerClient(env.supabaseUrl(), env.supabasePublishableKey(), {
     cookies: {
