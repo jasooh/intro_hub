@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useFormStatus } from "react-dom";
 import {
   AlertDialog,
@@ -18,30 +18,87 @@ import { buttonClass, type ButtonVariant } from "@/components/ui";
 /** A confirmation step before submitting. A plain string is used as the title. */
 export type Confirm = string | { title: string; description?: ReactNode; action?: string };
 
+/** The form's current values, for comparing against what it loaded with. */
+function snapshot(form: HTMLFormElement) {
+  return JSON.stringify([...new FormData(form).entries()].map(([k, v]) => [k, typeof v === "string" ? v : v.name]));
+}
+
+/**
+ * Whether the button's form differs from its last saved state. Re-baselines
+ * after each save (and after React resets the form), so it greys out again.
+ */
+function useFormChanged(buttonRef: RefObject<HTMLButtonElement | null>, enabled: boolean, pending: boolean) {
+  const [changed, setChanged] = useState(false);
+  const baseline = useRef<string | null>(null);
+
+  useEffect(() => {
+    const form = buttonRef.current?.form;
+    if (!enabled || !form) return;
+    baseline.current = snapshot(form);
+    const check = () => setChanged(snapshot(form) !== baseline.current);
+    const rebase = () =>
+      requestAnimationFrame(() => {
+        baseline.current = snapshot(form);
+        setChanged(false);
+      });
+    form.addEventListener("input", check);
+    form.addEventListener("change", check);
+    form.addEventListener("reset", rebase);
+    return () => {
+      form.removeEventListener("input", check);
+      form.removeEventListener("change", check);
+      form.removeEventListener("reset", rebase);
+    };
+  }, [buttonRef, enabled]);
+
+  // A finished save becomes the new baseline.
+  const wasPending = useRef(false);
+  useEffect(() => {
+    const form = buttonRef.current?.form;
+    if (enabled && form && wasPending.current && !pending) {
+      requestAnimationFrame(() => {
+        baseline.current = snapshot(form);
+        setChanged(false);
+      });
+    }
+    wasPending.current = pending;
+  }, [buttonRef, enabled, pending]);
+
+  return !enabled || changed;
+}
+
 export function SubmitButton({
   children,
   variant = "primary",
   size = "md",
   confirm,
+  requireChange = false,
+  bare = false,
   className,
 }: {
   children: ReactNode;
   variant?: ButtonVariant;
   size?: "sm" | "md";
   confirm?: Confirm;
+  /** Disabled until a field in the form changes (for "Save" on edit forms). */
+  requireChange?: boolean;
+  /** Skip the standard button styles (style it entirely with className). */
+  bare?: boolean;
   className?: string;
 }) {
   const { pending } = useFormStatus();
   useFlashOnSettle();
   const [open, setOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const changed = useFormChanged(buttonRef, requireChange, pending);
 
   const button = (
     <button
       ref={buttonRef}
       type={confirm ? "button" : "submit"}
-      disabled={pending}
-      className={`${buttonClass(variant, size)} ${className ?? ""}`}
+      disabled={pending || !changed}
+      title={changed ? undefined : "No changes to save"}
+      className={`${bare ? "disabled:pointer-events-none disabled:opacity-40" : buttonClass(variant, size)} ${className ?? ""}`}
       onClick={confirm ? () => setOpen(true) : undefined}
     >
       {pending ? "Working…" : children}

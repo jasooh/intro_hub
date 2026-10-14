@@ -20,6 +20,7 @@ export function ProfileForm({
   returnTo,
   submitLabel,
   submitClassName,
+  requireChange = false,
 }: {
   profile: Profile;
   /** Where to go after saving. */
@@ -28,6 +29,8 @@ export function ProfileForm({
   returnTo: string;
   submitLabel: string;
   submitClassName?: string;
+  /** Editing a saved profile: Save stays disabled until something changes. */
+  requireChange?: boolean;
 }) {
   const guess = splitFullName(profile.full_name);
   const first = profile.first_name ?? guess.first;
@@ -161,7 +164,9 @@ export function ProfileForm({
         </div>
       </Group>
 
-      <SubmitButton className={submitClassName}>{submitLabel}</SubmitButton>
+      <SubmitButton className={submitClassName} requireChange={requireChange}>
+        {submitLabel}
+      </SubmitButton>
     </form>
   );
 }

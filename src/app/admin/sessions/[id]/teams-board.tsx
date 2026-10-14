@@ -1,5 +1,4 @@
 import { makeTeams, moveToTeam, removeTeams, renameTeam, setTeamsPublished } from "@/app/admin/actions";
-import { FlashOnSettle } from "@/components/flash-toaster";
 import { TeamBlocks } from "@/components/team-blocks";
 import { SubmitButton } from "@/components/submit-button";
 import { TeamSelect } from "@/components/team-select";
@@ -168,7 +167,7 @@ function TeamMember({ reg, sessionId, teams }: { reg: TeamRow; sessionId: string
   );
 }
 
-/** Team name, editable in the card's dark header. Saves on Enter or the check. */
+/** Team name, editable in the block's dark header. Save lights up once the name changes. */
 function RenameTeam({ team, sessionId }: { team: Team; sessionId: string }) {
   return (
     <form action={renameTeam.bind(null, team.id, sessionId)} className="flex items-center gap-2">
@@ -179,14 +178,13 @@ function RenameTeam({ team, sessionId }: { team: Team; sessionId: string }) {
         aria-label="Team name"
         className="w-full min-w-0 border-0 border-b border-maple/30 bg-transparent p-0 font-display text-xl leading-tight font-black text-maple uppercase focus:border-line focus:ring-0 focus:outline-none"
       />
-      <button
-        type="submit"
-        aria-label="Save team name"
+      <SubmitButton
+        bare
+        requireChange
         className="shrink-0 font-display text-sm font-bold tracking-wide text-led uppercase hover:text-maple"
       >
         Save
-      </button>
-      <FlashOnSettle />
+      </SubmitButton>
     </form>
   );
 }

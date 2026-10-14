@@ -32,6 +32,7 @@ Next.js 16 App Router (Cache Components + partial prefetching), React 19, Tailwi
 - Page files can only export the page; put reusable/previewable pieces in components.
 - **Mobile overflow:** a `grid` with only `sm:grid-cols-*` gets an `auto` track on phones that stretches to its widest child; always add `grid-cols-1`. Inputs/selects in flex rows need `min-w-0` (`inputClass` has it). Long user text (emails, team names) gets `[overflow-wrap:anywhere]`. `html, body { overflow-x: clip }` is only a safety net. Check at 320px and 360px.
 - **Toasts:** server actions call `flash("success", msg)` (`src/lib/flash.ts`, a one-shot cookie); failures keep redirecting with `?error=`. `FlashToaster` (in the root layout) shows both and cleans up. Forms without a `SubmitButton` need `<FlashOnSettle />` inside the form. Don't add inline success/error notices.
+- **Edit forms:** give the Save `SubmitButton` `requireChange` so it stays disabled until a field changes (re-baselines after each save). Not for create forms or one-shot actions.
 - `SubmitButton` (`src/components/submit-button.tsx`) takes `confirm` to show the shadcn confirmation modal; never use `window.confirm`.
 
 ## Frontend theme: "Gym-floor scoreboard"

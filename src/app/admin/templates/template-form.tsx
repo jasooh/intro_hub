@@ -139,7 +139,7 @@ export function TemplateForm({
           <input type="checkbox" name="active" defaultChecked={t?.active ?? true} className="size-5 accent-[var(--line)]" />
           Active (creates sessions automatically)
         </label>
-        <SubmitButton>{submitLabel}</SubmitButton>
+        <SubmitButton requireChange={Boolean(template)}>{submitLabel}</SubmitButton>
       </div>
     </form>
   );

@@ -33,7 +33,7 @@ export function PlayerRow({
             className={`${inputClass} text-base`}
           />
         </label>
-        <SubmitButton size="sm" variant="secondary">
+        <SubmitButton size="sm" variant="secondary" requireChange>
           Save
         </SubmitButton>
       </form>

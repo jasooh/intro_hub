@@ -44,7 +44,7 @@ async function Account() {
 
       <Sheet label="Profile" className="reveal max-w-xl" style={reveal(1)}>
         <div className="space-y-5">
-          <ProfileForm profile={profile} next="/me" returnTo="/me" submitLabel="Save changes" />
+          <ProfileForm profile={profile} next="/me" returnTo="/me" submitLabel="Save changes" requireChange />
         </div>
       </Sheet>
 

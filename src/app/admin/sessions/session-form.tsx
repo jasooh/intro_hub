@@ -103,7 +103,7 @@ export function SessionForm({
         </Field>
       </div>
       <div className="sm:col-span-2">
-        <SubmitButton>{submitLabel}</SubmitButton>
+        <SubmitButton requireChange={Boolean(session)}>{submitLabel}</SubmitButton>
       </div>
     </form>
   );
