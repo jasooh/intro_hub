@@ -5,8 +5,9 @@ import type { CSSProperties } from "react";
 import { buttonClass, PageTitle, reveal, Sheet } from "@/components/ui";
 
 export const metadata: Metadata = {
-  title: "About · Intro Hub",
-  description: "Intro 2 Volleyball: a beginner-friendly volleyball drop-in at Aaniin Community Centre in Markham.",
+  title: "About",
+  description:
+    "Intro 2 Volleyball started with one guy who wanted to spread the love of volleyball. A beginner-friendly drop-in at Aaniin Community Centre in Markham.",
 };
 
 // To add a photo: put the file in public/about/ and set its src, e.g. "/about/group.jpg".

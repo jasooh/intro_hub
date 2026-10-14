@@ -1,9 +1,14 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { createSession } from "@/app/admin/actions";
 import { BackLink, Notice, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { SessionForm } from "../session-form";
+
+export const metadata: Metadata = {
+  title: "New session",
+};
 
 export default function NewSessionPage(props: PageProps<"/admin/sessions/new">) {
   return (

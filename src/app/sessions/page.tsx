@@ -1,8 +1,14 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { LiveRefresh } from "@/components/live-refresh";
 import { SessionCard } from "@/components/session-card";
 import { EmptyState, PageSpinner, reveal, Sheet } from "@/components/ui";
 import { getCounts, getUpcomingSessions } from "@/lib/queries";
+
+export const metadata: Metadata = {
+  title: "Sessions",
+  description: "Upcoming Intro 2 Volleyball drop-ins at Aaniin Community Centre. Grab a spot, pay by e-Transfer, and you're in.",
+};
 
 export default function SessionsPage() {
   return (

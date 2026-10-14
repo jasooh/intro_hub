@@ -1,9 +1,11 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Atkinson_Hyperlegible_Next, Big_Shoulders, Doto } from "next/font/google";
 import Link from "next/link";
 import { Suspense } from "react";
 import { AsciiBall } from "@/components/ascii-ball";
 import { UserMenu } from "@/components/user-menu";
+import { env } from "@/lib/env";
+import { SITE } from "@/lib/site";
 import "./globals.css";
 
 const display = Big_Shoulders({ variable: "--font-big-shoulders", subsets: ["latin"], adjustFontFallback: false });
@@ -11,8 +13,20 @@ const score = Doto({ variable: "--font-doto", subsets: ["latin"], weight: ["700"
 const body = Atkinson_Hyperlegible_Next({ variable: "--font-atkinson", subsets: ["latin"], adjustFontFallback: false });
 
 export const metadata: Metadata = {
-  title: "Intro Hub",
-  description: "Sign up for volleyball sessions, pay by e-Transfer, and join the waitlist.",
+  metadataBase: new URL(env.appUrl()),
+  title: { default: `${SITE.name} · ${SITE.club}`, template: `%s · ${SITE.name}` },
+  description: SITE.description,
+  applicationName: SITE.name,
+  openGraph: {
+    type: "website",
+    siteName: `${SITE.name} · ${SITE.club}`,
+    locale: "en_CA",
+  },
+  twitter: { card: "summary_large_image" },
+};
+
+export const viewport: Viewport = {
+  themeColor: SITE.colors.maple,
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

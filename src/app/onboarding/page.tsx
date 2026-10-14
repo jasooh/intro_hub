@@ -1,7 +1,13 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ProfileForm } from "@/components/profile-form";
 import { Avatar, Notice, PageSpinner, reveal } from "@/components/ui";
 import { requireProfile } from "@/lib/auth";
+
+export const metadata: Metadata = {
+  title: "Your profile",
+  robots: { index: false },
+};
 
 export default function OnboardingPage(props: PageProps<"/onboarding">) {
   return (

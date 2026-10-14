@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { MapLink } from "@/components/map-link";
 import { notFound } from "next/navigation";
@@ -31,6 +32,22 @@ import { createClient } from "@/lib/supabase/server";
 import type { Attendee, Profile, Session, SessionCounts, Team } from "@/lib/types";
 
 const pad = (n: number) => String(n).padStart(2, "0");
+
+export async function generateMetadata({ params }: PageProps<"/s/[id]">): Promise<Metadata> {
+  const { id } = await params;
+  const supabase = await createClient();
+  const { data: session } = await supabase
+    .from("sessions")
+    .select("title, starts_at, location, price_cents, status")
+    .eq("id", id)
+    .maybeSingle<Pick<Session, "title" | "starts_at" | "location" | "price_cents" | "status">>();
+  if (!session) return { title: "Session not found" };
+
+  const when = formatDateTime(session.starts_at);
+  const title = `${session.status === "cancelled" ? "Cancelled: " : ""}${session.title} · ${when}`;
+  const description = `${when} at ${session.location}. ${formatMoney(session.price_cents)} drop-in, beginners welcome.`;
+  return { title, description, openGraph: { title, description } };
+}
 
 export default function SessionPage(props: PageProps<"/s/[id]">) {
   return (

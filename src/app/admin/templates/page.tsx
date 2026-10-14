@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { deleteTemplate, setTemplateActive } from "@/app/admin/actions";
@@ -14,6 +15,10 @@ const SAVED: Record<string, string> = {
   created: "Weekly session created. Its next session has been added.",
   updated: "Weekly session saved. Changes apply to sessions created from now on.",
   deleted: "Weekly session deleted. Sessions it already created are unchanged.",
+};
+
+export const metadata: Metadata = {
+  title: "Weekly schedule",
 };
 
 export default function TemplatesPage(props: PageProps<"/admin/templates">) {

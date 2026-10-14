@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -34,6 +35,10 @@ import { SessionForm } from "../session-form";
 import { TeamsBoard, type TeamRow } from "./teams-board";
 
 type Row = Registration & { profile: Profile; payments: Pick<Payment, "matched_by" | "sender_name" | "amount_cents">[] };
+
+export const metadata: Metadata = {
+  title: "Session",
+};
 
 export default function AdminSessionPage(props: PageProps<"/admin/sessions/[id]">) {
   return (

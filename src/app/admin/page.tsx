@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { SessionCard } from "@/components/session-card";
@@ -12,6 +13,10 @@ const VIEWS: { key: AdminSessionView; label: string }[] = [
   { key: "past", label: "Past" },
   { key: "cancelled", label: "Cancelled" },
 ];
+
+export const metadata: Metadata = {
+  title: "Dashboard",
+};
 
 export default function AdminDashboard(props: PageProps<"/admin">) {
   return (

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { cancelRegistration } from "@/app/actions";
@@ -10,6 +11,11 @@ import { requireProfile } from "@/lib/auth";
 import { formatDateTime, formatMoney, formatTime } from "@/lib/format";
 import { getMyRegistrations } from "@/lib/queries";
 import type { Registration, Session } from "@/lib/types";
+
+export const metadata: Metadata = {
+  title: "Account",
+  robots: { index: false },
+};
 
 export default function MePage(props: PageProps<"/me">) {
   return (

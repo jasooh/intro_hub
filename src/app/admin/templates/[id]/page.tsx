@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { deleteTemplate, saveTemplate } from "@/app/admin/actions";
@@ -7,6 +8,10 @@ import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type { SessionTemplate } from "@/lib/types";
 import { TemplateForm, WEEKDAYS } from "../template-form";
+
+export const metadata: Metadata = {
+  title: "Edit weekly session",
+};
 
 export default function EditTemplatePage(props: PageProps<"/admin/templates/[id]">) {
   return (

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ListFilters } from "@/components/list-filters";
 import { EmptyState, Notice, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
@@ -21,6 +22,10 @@ const METHOD_CHIPS: { key: PaymentMethod | "any"; label: string }[] = [
   { key: "assigned", label: METHOD_LABELS.assigned },
   { key: "manual", label: METHOD_LABELS.manual },
 ];
+
+export const metadata: Metadata = {
+  title: "Payments",
+};
 
 export default function PaymentsPage(props: PageProps<"/admin/payments">) {
   return (

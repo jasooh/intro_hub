@@ -1,7 +1,13 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { signInWithGoogle } from "@/app/auth/actions";
 import { SubmitButton } from "@/components/submit-button";
 import { Notice, reveal } from "@/components/ui";
+
+export const metadata: Metadata = {
+  title: "Sign in",
+  description: "Sign in with Google to sign up for Intro 2 Volleyball sessions.",
+};
 
 export default function LoginPage(props: PageProps<"/login">) {
   return (

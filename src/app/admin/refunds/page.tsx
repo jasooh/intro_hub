@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ListFilters } from "@/components/list-filters";
 import { EmptyState, Notice, PageSpinner, PageTitle, reveal, Scoreboard, Sheet } from "@/components/ui";
@@ -26,6 +27,10 @@ const REASON_CHIPS: { key: RefundReason | "any"; label: string }[] = [
   { key: "session_cancelled", label: REFUND_REASON_LABELS.session_cancelled },
   { key: "spot_cancelled", label: REFUND_REASON_LABELS.spot_cancelled },
 ];
+
+export const metadata: Metadata = {
+  title: "Refunds",
+};
 
 export default function RefundsPage(props: PageProps<"/admin/refunds">) {
   return (

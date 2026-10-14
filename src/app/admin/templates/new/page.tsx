@@ -1,8 +1,13 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { saveTemplate } from "@/app/admin/actions";
 import { BackLink, Notice, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { TemplateForm } from "../template-form";
+
+export const metadata: Metadata = {
+  title: "New weekly session",
+};
 
 export default function NewTemplatePage(props: PageProps<"/admin/templates/new">) {
   return (

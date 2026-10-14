@@ -101,7 +101,7 @@ function Playlist() {
           <div className="space-y-3">
             <p className="led animate-flicker font-score text-xl font-black tracking-widest">● ON AIR</p>
             <h3 className="font-display text-4xl leading-[0.85] font-black text-[#f2e3c6] uppercase">
-              Warm-up
+              Community
               <br />
               play<span className="text-line">list</span>
             </h3>

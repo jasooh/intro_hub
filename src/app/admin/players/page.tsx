@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ListFilters } from "@/components/list-filters";
 import { EmptyState, Notice, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
@@ -25,6 +26,10 @@ const SORTS: { key: Sort; label: string }[] = [
 
 const shortDate = (iso: string) =>
   new Intl.DateTimeFormat("en-CA", { month: "short", day: "numeric", year: "numeric" }).format(new Date(iso));
+
+export const metadata: Metadata = {
+  title: "Players",
+};
 
 export default function PlayersPage(props: PageProps<"/admin/players">) {
   return (
