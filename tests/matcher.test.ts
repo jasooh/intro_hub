@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import { extractRefCode, matchPayment, type Candidate } from "@/lib/matcher";
 
 const candidates: Candidate[] = [
-  { registrationId: "r1", refCode: "VB-7K3Q", status: "pending_payment", priceCents: 1000, names: ["Jane Doe"] },
-  { registrationId: "r2", refCode: "VB-AB23", status: "pending_payment", priceCents: 1000, names: ["José Álvarez", "Joe A"] },
-  { registrationId: "r3", refCode: "VB-ZZ99", status: "waitlisted", priceCents: 1000, names: ["Sam Lee"] },
-  { registrationId: "r4", refCode: "VB-QQ44", status: "pending_payment", priceCents: 1000, names: ["Sam Lee"] },
+  { registrationId: "r1", refCode: "VB-7K3Q", status: "pending_payment", owedCents: 1000, names: ["Jane Doe"] },
+  { registrationId: "r2", refCode: "VB-AB23", status: "pending_payment", owedCents: 1000, names: ["José Álvarez", "Joe A"] },
+  { registrationId: "r3", refCode: "VB-ZZ99", status: "waitlisted", owedCents: 1000, names: ["Sam Lee"] },
+  { registrationId: "r4", refCode: "VB-QQ44", status: "pending_payment", owedCents: 1000, names: ["Sam Lee"] },
 ];
 
 describe("extractRefCode", () => {
@@ -66,5 +66,19 @@ describe("matchPayment", () => {
 
   it("refuses name matches with the wrong amount", () => {
     expect(matchPayment({ senderName: "Jane Doe", amountCents: 2000, memo: null }, candidates).kind).toBe("unmatched");
+  });
+
+  it("uses each sign-up's own amount (instructional-only owes less)", () => {
+    const mixed: Candidate[] = [
+      { registrationId: "full", refCode: "VB-FFFF", status: "pending_payment", owedCents: 1500, names: ["Kim Park"] },
+      { registrationId: "instr", refCode: "VB-IIII", status: "pending_payment", owedCents: 1000, names: ["Lee Chan"] },
+    ];
+    expect(matchPayment({ senderName: "Lee Chan", amountCents: 1000, memo: null }, mixed)).toEqual({
+      kind: "match",
+      registrationId: "instr",
+      by: "name_amount",
+    });
+    expect(matchPayment({ senderName: "Kim Park", amountCents: 1000, memo: null }, mixed).kind).toBe("unmatched");
+    expect(matchPayment({ senderName: "x", amountCents: 1000, memo: "VB-FFFF" }, mixed).kind).toBe("unmatched");
   });
 });

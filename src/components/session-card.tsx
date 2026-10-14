@@ -22,6 +22,7 @@ export function SessionCard({ session, counts, href }: { session: Session; count
   const confirmed = counts?.confirmed ?? 0;
   const holding = counts?.holding ?? 0;
   const waitlisted = counts?.waitlisted ?? 0;
+  const instructional = counts?.instructional ?? 0;
   const cancelled = session.status === "cancelled";
 
   return (
@@ -55,6 +56,11 @@ export function SessionCard({ session, counts, href }: { session: Session; count
             ) : (
               <Mark tone="mat" glyph="○">
                 Full · {waitlisted} waiting
+              </Mark>
+            )}
+            {instructional > 0 && (
+              <Mark tone="mat" glyph="◇">
+                +{instructional} instr.
               </Mark>
             )}
           </div>

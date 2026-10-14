@@ -15,7 +15,8 @@ export type Candidate = {
   registrationId: string;
   refCode: string;
   status: RegistrationStatus;
-  priceCents: number;
+  /** What this sign-up owes ($10 instructional-only or the full price). */
+  owedCents: number;
   names: string[]; // e-Transfer names, display name, Google name
 };
 
@@ -53,8 +54,8 @@ export function matchPayment(payment: IncomingPayment, candidates: Candidate[]):
     if (byRef.status !== "pending_payment") {
       return { kind: "unmatched", reason: `Ref code ${ref} belongs to a ${byRef.status.replace("_", " ")} registration` };
     }
-    if (payment.amountCents < byRef.priceCents) {
-      return { kind: "unmatched", reason: `Ref code ${ref} matched, but the amount is less than the session price` };
+    if (payment.amountCents < byRef.owedCents) {
+      return { kind: "unmatched", reason: `Ref code ${ref} matched, but the amount is less than what this sign-up owes` };
     }
     return { kind: "match", registrationId: byRef.registrationId, by: "ref" };
   }
@@ -64,7 +65,7 @@ export function matchPayment(payment: IncomingPayment, candidates: Candidate[]):
   const byName = candidates.filter(
     (c) =>
       c.status === "pending_payment" &&
-      c.priceCents === payment.amountCents &&
+      c.owedCents === payment.amountCents &&
       c.names.some((n) => normalizeName(n) === sender),
   );
 

@@ -19,6 +19,22 @@ export function formatTime(iso: string, timeZone = env.timezone()) {
   return new Intl.DateTimeFormat("en-CA", { timeZone, hour: "numeric", minute: "2-digit" }).format(new Date(iso));
 }
 
+/**
+ * Time ranges for a session's parts. `instructional`/`dropin` are null when the
+ * host hasn't set the split times.
+ */
+export function sessionTimes(
+  s: { starts_at: string; ends_at: string; instructional_ends_at: string | null; dropin_starts_at: string | null },
+  timeZone = env.timezone(),
+) {
+  const t = (iso: string) => formatTime(iso, timeZone);
+  return {
+    full: `${t(s.starts_at)} – ${t(s.ends_at)}`,
+    instructional: s.instructional_ends_at ? `${t(s.starts_at)} – ${t(s.instructional_ends_at)}` : null,
+    dropin: s.dropin_starts_at ? `${t(s.dropin_starts_at)} – ${t(s.ends_at)}` : null,
+  };
+}
+
 /** Calendar parts for a date block: { weekday: "SAT", day: "18", month: "OCT" }. */
 export function dateParts(iso: string, timeZone = env.timezone()) {
   const parts = new Intl.DateTimeFormat("en-CA", { timeZone, weekday: "short", day: "numeric", month: "short" }).formatToParts(

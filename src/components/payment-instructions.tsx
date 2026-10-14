@@ -1,15 +1,15 @@
 import { env } from "@/lib/env";
 import { formatDateTime, formatMoney } from "@/lib/format";
-import type { Registration, Session } from "@/lib/types";
+import type { Registration } from "@/lib/types";
 
-export function PaymentInstructions({ session, registration }: { session: Session; registration: Registration }) {
+export function PaymentInstructions({ registration }: { registration: Registration }) {
   return (
     <div className="space-y-4">
       <ol className="space-y-2 text-ink">
         <li className="flex gap-3">
           <span className="font-score font-black text-line">01</span>
           <span>
-            Send <b>{formatMoney(session.price_cents)}</b> by Interac e-Transfer to <b>{env.etransferEmail()}</b>
+            Send <b>{formatMoney(registration.amount_cents)}</b> by Interac e-Transfer to <b>{env.etransferEmail()}</b>
           </span>
         </li>
         <li className="flex gap-3">

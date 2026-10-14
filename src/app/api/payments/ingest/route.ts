@@ -33,8 +33,14 @@ type CandidateRow = {
   id: string;
   ref_code: string;
   status: RegistrationStatus;
-  session: { price_cents: number };
-  profile: { display_name: string | null; full_name: string | null; etransfer_names: string[] };
+  amount_cents: number;
+  profile: {
+    display_name: string | null;
+    full_name: string | null;
+    first_name: string | null;
+    last_name: string | null;
+    etransfer_names: string[];
+  };
 };
 
 export async function POST(request: Request) {
@@ -70,7 +76,7 @@ export async function POST(request: Request) {
   const { data: rows, error: candError } = await admin
     .from("registrations")
     .select(
-      "id, ref_code, status, session:sessions!inner(price_cents, starts_at), profile:profiles(display_name, full_name, etransfer_names)",
+      "id, ref_code, status, amount_cents, session:sessions!inner(starts_at), profile:profiles(display_name, full_name, first_name, last_name, etransfer_names)",
     )
     .gte("session.starts_at", since);
   if (candError) return NextResponse.json({ error: candError.message }, { status: 500 });
@@ -79,10 +85,13 @@ export async function POST(request: Request) {
     registrationId: r.id,
     refCode: r.ref_code,
     status: r.status,
-    priceCents: r.session.price_cents,
-    names: [...r.profile.etransfer_names, r.profile.display_name, r.profile.full_name].filter(
-      (n): n is string => !!n,
-    ),
+    owedCents: r.amount_cents,
+    names: [
+      ...r.profile.etransfer_names,
+      r.profile.display_name,
+      r.profile.full_name,
+      r.profile.first_name && r.profile.last_name ? `${r.profile.first_name} ${r.profile.last_name}` : null,
+    ].filter((n): n is string => !!n),
   }));
 
   const messages = new Map(parsed.data.messages.map((m) => [m.id, m]));

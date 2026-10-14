@@ -66,10 +66,10 @@ async function sendForEvent(event: RegistrationEvent, reg: Loaded) {
   const appUrl = env.appUrl();
   const { subject, element } = buildEmail(event.event, {
     playerName: reg.profile.display_name ?? reg.profile.full_name ?? "there",
-    sessionTitle: reg.session.title,
+    sessionTitle: reg.option === "instructional" ? `${reg.session.title} (Instructional only)` : reg.session.title,
     when: formatDateTime(reg.session.starts_at),
     location: reg.session.location,
-    price: formatMoney(reg.session.price_cents),
+    price: formatMoney(reg.amount_cents),
     refCode: reg.ref_code,
     holdUntil: reg.hold_expires_at ? formatDateTime(reg.hold_expires_at) : null,
     waitlistPosition,

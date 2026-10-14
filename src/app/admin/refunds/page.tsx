@@ -43,7 +43,7 @@ async function Refunds() {
           <div key={r.id} className="flex flex-wrap items-center justify-between gap-3 py-4">
             <div>
               <p className="text-lg">
-                <span className="font-score font-black text-line">{formatMoney(r.session.price_cents)}</span> to{" "}
+                <span className="font-score font-black text-line">{formatMoney(r.amount_cents)}</span> to{" "}
                 <b>{r.profile.display_name ?? r.profile.full_name}</b>
               </p>
               <p className="text-sm text-ink-soft">
@@ -74,7 +74,7 @@ async function Refunds() {
             {done.map((r) => (
               <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-ink-soft">
                 <span>
-                  {r.profile.display_name ?? r.profile.full_name} · {formatMoney(r.session.price_cents)} ·{" "}
+                  {r.profile.display_name ?? r.profile.full_name} · {formatMoney(r.amount_cents)} ·{" "}
                   {formatDateTime(r.refunded_at!)}
                 </span>
                 <form action={setRefunded.bind(null, r.id, false)}>

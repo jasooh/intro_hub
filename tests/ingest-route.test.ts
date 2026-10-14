@@ -14,8 +14,8 @@ const state = vi.hoisted(() => ({
       id: "reg-1",
       ref_code: "VB-7K3Q",
       status: "pending_payment",
-      session: { price_cents: 1000 },
-      profile: { display_name: "Jane", full_name: "Jane Doe", etransfer_names: ["JANE DOE"] },
+      amount_cents: 1000,
+      profile: { display_name: "Jane", full_name: "Jane Doe", first_name: "Jane", last_name: "Doe", etransfer_names: ["JANE DOE"] },
     },
   ],
 }));

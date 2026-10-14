@@ -5,7 +5,7 @@ import { PaymentInstructions } from "@/components/payment-instructions";
 import { ProfileForm } from "@/components/profile-form";
 import { DateBlock } from "@/components/session-card";
 import { SubmitButton } from "@/components/submit-button";
-import { Avatar, EmptyState, Notice, PageSpinner, reveal, Sheet, StatusMark } from "@/components/ui";
+import { Avatar, EmptyState, Mark, Notice, PageSpinner, reveal, Sheet, StatusMark } from "@/components/ui";
 import { requireProfile } from "@/lib/auth";
 import { formatDateTime, formatMoney, formatTime } from "@/lib/format";
 import { getMyRegistrations } from "@/lib/queries";
@@ -94,15 +94,22 @@ function RegistrationRow({ reg }: { reg: Registration & { session: Session } }) 
             >
               {reg.session.title}
             </Link>
-            <StatusMark status={reg.status} />
+            <span className="flex flex-wrap items-center gap-x-4">
+              {reg.option === "instructional" && (
+                <Mark tone="mat" glyph="◇">
+                  Instructional only
+                </Mark>
+              )}
+              <StatusMark status={reg.status} />
+            </span>
           </div>
           <p className="text-ink-soft">
             {formatTime(reg.session.starts_at)} · {reg.session.location} ·{" "}
-            <span className="font-score font-black text-ink">{formatMoney(reg.session.price_cents)}</span>
+            <span className="font-score font-black text-ink">{formatMoney(reg.amount_cents)}</span>
           </p>
         </div>
       </div>
-      {reg.status === "pending_payment" && <PaymentInstructions session={reg.session} registration={reg} />}
+      {reg.status === "pending_payment" && <PaymentInstructions registration={reg} />}
       {reg.refund_owed && (
         <p className="text-sm text-ink-soft">
           {reg.refunded_at ? "Refunded." : "Refund owed. The host will e-Transfer it back."}
