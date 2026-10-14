@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { SessionCard } from "@/components/session-card";
-import { buttonClass, Card, EmptyState, PageSpinner } from "@/components/ui";
+import { buttonClass, EmptyState, PageSpinner, PageTitle, reveal, Scoreboard, Sheet } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { getCounts, getUpcomingSessions } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
@@ -31,45 +31,43 @@ async function Dashboard() {
       .is("refunded_at", null),
   ]);
   const counts = await getCounts(sessions.map((s) => s.id));
+  const pad = (n: number) => String(n).padStart(2, "0");
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-semibold">Host dashboard</h1>
+    <div className="space-y-12">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <PageTitle>Dashboard</PageTitle>
         <Link href="/admin/sessions/new" className={buttonClass()}>
           + New session
         </Link>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <StatCard href="/admin/payments" label="Unmatched payments" value={unmatched.count ?? 0} />
-        <StatCard href="/admin/refunds" label="Refunds owed" value={refunds.count ?? 0} />
+      <div className="reveal flex flex-wrap gap-6" style={reveal(1)}>
+        <Link href="/admin/payments" className="transition-transform hover:-translate-y-0.5">
+          <Scoreboard value={pad(unmatched.count ?? 0)} label="Unmatched payments" />
+        </Link>
+        <Link href="/admin/refunds" className="transition-transform hover:-translate-y-0.5">
+          <Scoreboard value={pad(refunds.count ?? 0)} label="Refunds owed" />
+        </Link>
       </div>
 
-      <section className="space-y-3">
-        <h2 className="font-semibold text-stone-300">Upcoming sessions</h2>
+      <Sheet label="Upcoming sessions" className="reveal" style={reveal(2)}>
         {sessions.length === 0 ? (
           <EmptyState>
-            No sessions yet. <Link href="/admin/templates" className="text-orange-400 underline">Set up a weekly schedule</Link>{" "}
+            No sessions yet.{" "}
+            <Link href="/admin/templates" className="text-line underline decoration-2 underline-offset-4">
+              Set up a weekly schedule
+            </Link>{" "}
             or create a one-off session.
           </EmptyState>
         ) : (
-          sessions.map((s) => (
-            <SessionCard key={s.id} session={s} counts={counts.get(s.id)} href={`/admin/sessions/${s.id}`} />
-          ))
+          <div className="divide-y divide-ink/25">
+            {sessions.map((s) => (
+              <SessionCard key={s.id} session={s} counts={counts.get(s.id)} href={`/admin/sessions/${s.id}`} />
+            ))}
+          </div>
         )}
-      </section>
+      </Sheet>
     </div>
-  );
-}
-
-function StatCard({ href, label, value }: { href: string; label: string; value: number }) {
-  return (
-    <Link href={href}>
-      <Card className={value > 0 ? "border-amber-800 bg-amber-950/40" : ""}>
-        <p className="text-sm text-stone-400">{label}</p>
-        <p className="text-3xl font-semibold">{value}</p>
-      </Card>
-    </Link>
   );
 }

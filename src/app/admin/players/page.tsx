@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { setRole, updateEtransferNames } from "@/app/admin/actions";
 import { SubmitButton } from "@/components/submit-button";
-import { Avatar, Badge, Card, inputClass, PageSpinner } from "@/components/ui";
+import { Avatar, inputClass, Mark, Notice, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type { Profile } from "@/lib/types";
@@ -22,26 +22,29 @@ async function Players({ searchParams }: { searchParams: PageProps<"/admin/playe
   const players = (data ?? []) as Profile[];
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold">Players ({players.length})</h1>
-        <p className="text-sm text-stone-400">
-          Everyone who has signed in. Add the names their e-Transfers come from to improve auto-matching.
-        </p>
-      </div>
-      {typeof error === "string" && <p className="rounded-lg bg-red-950/50 p-3 text-sm text-red-300">{error}</p>}
-      <div className="space-y-2">
+    <div className="space-y-12">
+      <PageTitle sub="Everyone who has signed in. Add the names their e-Transfers come from to improve auto-matching.">
+        Players
+      </PageTitle>
+      {typeof error === "string" && <Notice tone="bad">{error}</Notice>}
+      <Sheet label={`Roster · ${players.length}`} className="reveal" style={reveal(1)}>
+      <div className="divide-y divide-ink/25">
         {players.map((p) => {
           const name = p.display_name ?? p.full_name ?? p.email;
           return (
-            <Card key={p.id} className="space-y-3 p-4">
+            <div key={p.id} className="space-y-3 py-4">
               <div className="flex flex-wrap items-center gap-3">
                 <Avatar name={name} src={p.avatar_url} />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium">
-                    {name} {p.role === "admin" && <Badge className="bg-orange-950 text-orange-300">host</Badge>}
+                  <p className="flex flex-wrap items-center gap-x-3 font-display text-xl font-extrabold uppercase">
+                    <span className="truncate">{name}</span>
+                    {p.role === "admin" && (
+                      <Mark tone="line" glyph="★">
+                        Host
+                      </Mark>
+                    )}
                   </p>
-                  <p className="truncate text-xs text-stone-400">{p.email}</p>
+                  <p className="truncate text-sm text-ink-soft">{p.email}</p>
                 </div>
                 {p.id !== me.id && (
                   <form action={setRole.bind(null, p.id, p.role === "admin" ? "player" : "admin")}>
@@ -62,19 +65,20 @@ async function Players({ searchParams }: { searchParams: PageProps<"/admin/playe
                   </form>
                 )}
               </div>
-              <form action={updateEtransferNames.bind(null, p.id)} className="flex gap-2">
+              <form action={updateEtransferNames.bind(null, p.id)} className="flex items-end gap-4">
                 <input
                   name="etransfer_names"
                   defaultValue={p.etransfer_names.join(", ")}
                   placeholder="e-Transfer sender names, comma separated"
-                  className={`${inputClass} py-1 text-sm`}
+                  className={`${inputClass} py-1 text-base`}
                 />
                 <SubmitButton size="sm" variant="secondary">Save</SubmitButton>
               </form>
-            </Card>
+            </div>
           );
         })}
       </div>
+      </Sheet>
     </div>
   );
 }

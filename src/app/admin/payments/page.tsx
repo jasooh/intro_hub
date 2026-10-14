@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { assignPayment, setPaymentDismissed } from "@/app/admin/actions";
 import { SubmitButton } from "@/components/submit-button";
-import { Card, EmptyState, inputClass, PageSpinner } from "@/components/ui";
+import { EmptyState, inputClass, Mark, Notice, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { paymentWindowStart } from "@/lib/queries";
@@ -49,37 +49,38 @@ async function Payments({ searchParams }: { searchParams: PageProps<"/admin/paym
   ]);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Payments</h1>
-        <p className="text-sm text-stone-400">
-          e-Transfers are matched automatically by ref code, or by sender name + exact amount. Anything that
-          couldn&apos;t be matched lands here.
-        </p>
-      </div>
-      {typeof error === "string" && <p className="rounded-lg bg-red-950/50 p-3 text-sm text-red-300">{error}</p>}
+    <div className="space-y-12">
+      <PageTitle sub="e-Transfers are matched automatically by ref code, or by sender name + exact amount. Anything that couldn't be matched lands here.">
+        Payments
+      </PageTitle>
+      {typeof error === "string" && <Notice tone="bad">{error}</Notice>}
 
-      <section className="space-y-3">
-        <h2 className="font-semibold text-stone-300">Needs attention ({unmatched?.length ?? 0})</h2>
-        {!unmatched?.length && <EmptyState>All caught up 🎉</EmptyState>}
+      <Sheet label={`Needs attention · ${unmatched?.length ?? 0}`} className="reveal" style={reveal(1)}>
+        {!unmatched?.length && <EmptyState>All caught up</EmptyState>}
+        <div className="divide-y divide-ink/25">
         {(unmatched as Payment[] | null)?.map((p) => (
-          <Card key={p.id} className="space-y-3">
+          <div key={p.id} className="space-y-3 py-4">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
-                <p className="font-semibold">
-                  {formatMoney(p.amount_cents)} from {p.sender_name ?? "unknown sender"}
+                <p className="text-lg">
+                  <span className="font-score font-black">{formatMoney(p.amount_cents)}</span> from{" "}
+                  <b>{p.sender_name ?? "unknown sender"}</b>
                 </p>
-                <p className="text-sm text-stone-400">
+                <p className="text-sm text-ink-soft">
                   {formatDateTime(p.received_at)}
                   {p.memo && <> · message: &ldquo;{p.memo}&rdquo;</>}
                 </p>
-                {p.note && <p className="mt-1 text-sm text-amber-300">{p.note}</p>}
+                {p.note && (
+                  <Mark tone="warn" glyph="!" className="mt-1 whitespace-normal">
+                    {p.note}
+                  </Mark>
+                )}
               </div>
               <form action={setPaymentDismissed.bind(null, p.id, true)}>
-                <SubmitButton size="sm" variant="ghost">Not volleyball – dismiss</SubmitButton>
+                <SubmitButton size="sm" variant="ghost">Not volleyball · dismiss</SubmitButton>
               </form>
             </div>
-            <form action={assignPayment.bind(null, p.id)} className="flex flex-wrap gap-2">
+            <form action={assignPayment.bind(null, p.id)} className="flex flex-wrap items-end gap-4">
               <select name="registration_id" required defaultValue="" className={`${inputClass} flex-1`}>
                 <option value="" disabled>
                   Assign to…
@@ -93,27 +94,27 @@ async function Payments({ searchParams }: { searchParams: PageProps<"/admin/paym
               </select>
               <SubmitButton size="sm">Confirm player</SubmitButton>
             </form>
-          </Card>
+          </div>
         ))}
-      </section>
+        </div>
+      </Sheet>
 
-      <section className="space-y-2">
-        <h2 className="font-semibold text-stone-300">Recently matched</h2>
-        <ul className="divide-y divide-stone-800 rounded-xl border border-stone-800 bg-stone-900 text-sm">
+      <Sheet label="Recently matched" className="reveal" style={reveal(2)}>
+        <ul className="divide-y divide-ink/20">
           {(recent as MatchedPayment[] | null)?.map((p) => (
-            <li key={p.id} className="flex flex-wrap justify-between gap-2 px-4 py-2">
+            <li key={p.id} className="flex flex-wrap justify-between gap-2 py-2">
               <span>
-                {formatMoney(p.amount_cents)} · {p.sender_name} → {p.registration?.profile.display_name ?? p.registration?.profile.full_name}
+                <span className="font-score font-black">{formatMoney(p.amount_cents)}</span> · {p.sender_name} → {p.registration?.profile.display_name ?? p.registration?.profile.full_name}
               </span>
-              <span className="text-stone-400">
+              <span className="text-sm text-ink-soft">
                 {p.matched_by === "ref" ? "ref code" : p.matched_by === "name_amount" ? "name + amount" : "manual"} ·{" "}
                 {formatDateTime(p.received_at)}
               </span>
             </li>
           ))}
-          {!recent?.length && <li className="px-4 py-2 text-stone-400">No payments yet.</li>}
+          {!recent?.length && <li className="py-2 text-ink-soft">No payments yet.</li>}
         </ul>
-      </section>
+      </Sheet>
     </div>
   );
 }

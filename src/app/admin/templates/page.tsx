@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { saveTemplate } from "@/app/admin/actions";
 import { SubmitButton } from "@/components/submit-button";
-import { Card, Field, inputClass, PageSpinner } from "@/components/ui";
+import { Field, inputClass, Mark, Notice, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { env } from "@/lib/env";
 import { formatMoney } from "@/lib/format";
@@ -26,37 +26,50 @@ async function Templates({ searchParams }: { searchParams: PageProps<"/admin/tem
   const templates = (data ?? []) as SessionTemplate[];
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Weekly schedule</h1>
-        <p className="text-sm text-stone-400">
-          Each active template creates its next session automatically, about a week ahead. Times are in{" "}
-          {env.timezone()}. Changes apply to sessions created from now on; edit existing sessions from the dashboard.
-        </p>
-      </div>
-      {typeof error === "string" && <p className="rounded-lg bg-red-950/50 p-3 text-sm text-red-300">{error}</p>}
+    <div className="space-y-12">
+      <PageTitle
+        sub={`Each active template creates its next session automatically, about a week ahead. Times are in ${env.timezone()}. Changes apply to sessions created from now on; edit existing sessions from the dashboard.`}
+      >
+        Weekly schedule
+      </PageTitle>
+      {typeof error === "string" && <Notice tone="bad">{error}</Notice>}
 
-      {templates.map((t) => (
-        <Card key={t.id} className="space-y-3">
-          <h2 className="font-semibold">
-            {t.title}: {WEEKDAYS[t.weekday]}s at {t.start_time.slice(0, 5)} · {formatMoney(t.price_cents)}{" "}
-            {!t.active && <span className="text-sm font-normal text-stone-400">(paused)</span>}
-          </h2>
+      {templates.map((t, i) => (
+        <Sheet
+          key={t.id}
+          className="reveal"
+          style={reveal(i + 1)}
+          label={`${t.title} · ${WEEKDAYS[t.weekday]}s ${t.start_time.slice(0, 5)} · ${formatMoney(t.price_cents)}`}
+          action={
+            t.active ? (
+              <Mark tone="ok" glyph="●">
+                Active
+              </Mark>
+            ) : (
+              <Mark tone="muted" glyph="‖">
+                Paused
+              </Mark>
+            )
+          }
+        >
           <TemplateForm template={t} />
-        </Card>
+        </Sheet>
       ))}
 
-      <Card className="space-y-3">
-        <h2 className="font-semibold">{templates.length ? "Add another weekly session" : "Set up your weekly session"}</h2>
+      <Sheet
+        label={templates.length ? "Add another weekly session" : "Set up your weekly session"}
+        className="reveal"
+        style={reveal(templates.length + 1)}
+      >
         <TemplateForm />
-      </Card>
+      </Sheet>
     </div>
   );
 }
 
 function TemplateForm({ template }: { template?: SessionTemplate }) {
   return (
-    <form action={saveTemplate.bind(null, template?.id ?? null)} className="grid gap-4 sm:grid-cols-3">
+    <form action={saveTemplate.bind(null, template?.id ?? null)} className="grid gap-x-6 gap-y-5 sm:grid-cols-3">
       <Field label="Title">
         <input name="title" defaultValue={template?.title ?? "Intro 2 Volleyball"} required className={inputClass} />
       </Field>
@@ -101,8 +114,8 @@ function TemplateForm({ template }: { template?: SessionTemplate }) {
       <Field label="Refund cutoff (hours before)">
         <input type="number" name="cancel_cutoff_hours" defaultValue={template?.cancel_cutoff_hours ?? 24} min={0} required className={inputClass} />
       </Field>
-      <label className="flex items-center gap-2 self-end pb-2 text-sm">
-        <input type="checkbox" name="active" defaultChecked={template?.active ?? true} className="h-4 w-4 accent-orange-600" />
+      <label className="flex items-center gap-2 self-end pb-2 font-display text-sm font-bold tracking-[0.15em] uppercase">
+        <input type="checkbox" name="active" defaultChecked={template?.active ?? true} className="size-5 accent-[var(--line)]" />
         Active
       </label>
       <div className="self-end">

@@ -1,27 +1,12 @@
-import Link from "next/link";
-
-const links = [
-  { href: "/admin", label: "Dashboard" },
-  { href: "/admin/payments", label: "Payments" },
-  { href: "/admin/refunds", label: "Refunds" },
-  { href: "/admin/players", label: "Players" },
-  { href: "/admin/templates", label: "Weekly schedule" },
-] as const;
+import { AdminNav } from "./admin-nav";
 
 export default function AdminLayout({ children }: LayoutProps<"/admin">) {
   return (
-    <div className="space-y-5">
-      <nav className="-mx-4 flex gap-1 overflow-x-auto px-4 pb-1 text-sm">
-        {links.map((l) => (
-          <Link
-            key={l.href}
-            href={l.href}
-            className="whitespace-nowrap rounded-full border border-stone-800 bg-stone-900 px-3 py-1 text-stone-300 hover:bg-stone-800"
-          >
-            {l.label}
-          </Link>
-        ))}
-      </nav>
+    <div className="space-y-10">
+      <div className="space-y-1">
+        <p className="font-display text-sm font-bold tracking-[0.3em] text-mat uppercase">Host bench</p>
+        <AdminNav />
+      </div>
       {children}
     </div>
   );

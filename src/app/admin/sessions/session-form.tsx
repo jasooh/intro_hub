@@ -20,7 +20,7 @@ export function SessionForm({
     : 24;
 
   return (
-    <form action={action} className="grid gap-4 sm:grid-cols-2">
+    <form action={action} className="grid gap-x-8 gap-y-5 sm:grid-cols-2">
       <Field label="Title">
         <input name="title" defaultValue={session?.title ?? "Intro 2 Volleyball"} required className={inputClass} />
       </Field>

@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { setRefunded, waiveRefund } from "@/app/admin/actions";
 import { SubmitButton } from "@/components/submit-button";
-import { Card, EmptyState, PageSpinner } from "@/components/ui";
+import { EmptyState, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
@@ -31,28 +31,26 @@ async function Refunds() {
   const done = rows.filter((r) => r.refunded_at);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Refunds</h1>
-        <p className="text-sm text-stone-400">
-          Paid players who cancelled before the cutoff, were removed, or whose session was cancelled.
-        </p>
-      </div>
+    <div className="space-y-12">
+      <PageTitle sub="Paid players who cancelled before the cutoff, were removed, or whose session was cancelled.">
+        Refunds
+      </PageTitle>
 
-      <section className="space-y-3">
-        <h2 className="font-semibold text-stone-300">To refund ({owed.length})</h2>
+      <Sheet label={`To refund · ${owed.length}`} className="reveal" style={reveal(1)}>
         {owed.length === 0 && <EmptyState>Nothing owed.</EmptyState>}
+        <div className="divide-y divide-ink/25">
         {owed.map((r) => (
-          <Card key={r.id} className="flex flex-wrap items-center justify-between gap-3">
+          <div key={r.id} className="flex flex-wrap items-center justify-between gap-3 py-4">
             <div>
-              <p className="font-semibold">
-                {formatMoney(r.session.price_cents)} to {r.profile.display_name ?? r.profile.full_name}
+              <p className="text-lg">
+                <span className="font-score font-black text-line">{formatMoney(r.session.price_cents)}</span> to{" "}
+                <b>{r.profile.display_name ?? r.profile.full_name}</b>
               </p>
-              <p className="text-sm text-stone-400">
+              <p className="text-sm text-ink-soft">
                 {r.profile.email} · {r.session.title} {formatDateTime(r.session.starts_at)}
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-4">
               <form action={waiveRefund.bind(null, r.id)}>
                 <SubmitButton size="sm" variant="ghost" confirm={{
                     title: "Skip this refund?",
@@ -65,16 +63,16 @@ async function Refunds() {
                 <SubmitButton size="sm">Mark refunded</SubmitButton>
               </form>
             </div>
-          </Card>
+          </div>
         ))}
-      </section>
+        </div>
+      </Sheet>
 
       {done.length > 0 && (
-        <section className="space-y-2">
-          <h2 className="font-semibold text-stone-300">Refunded</h2>
-          <ul className="divide-y divide-stone-800 rounded-xl border border-stone-800 bg-stone-900 text-sm">
+        <Sheet label="Refunded" className="reveal" style={reveal(2)}>
+          <ul className="divide-y divide-ink/20">
             {done.map((r) => (
-              <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2">
+              <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-ink-soft">
                 <span>
                   {r.profile.display_name ?? r.profile.full_name} · {formatMoney(r.session.price_cents)} ·{" "}
                   {formatDateTime(r.refunded_at!)}
@@ -85,7 +83,7 @@ async function Refunds() {
               </li>
             ))}
           </ul>
-        </section>
+        </Sheet>
       )}
     </div>
   );

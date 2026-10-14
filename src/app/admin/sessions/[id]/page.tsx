@@ -4,10 +4,11 @@ import { Suspense } from "react";
 import { cancelSession, markPaid, moveWaitlist, removeRegistration, updateSession } from "@/app/admin/actions";
 import { LiveRefresh } from "@/components/live-refresh";
 import { SubmitButton } from "@/components/submit-button";
-import { Avatar, BackLink, buttonClass, Card, PageSpinner, StatusBadge } from "@/components/ui";
+import { Avatar, BackLink, buttonClass, Mark, Notice, PageSpinner, reveal, Scoreboard, Sheet, SpotDots, StatusMark } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
-import { formatDateTime, formatMoney } from "@/lib/format";
+import { formatDateTime, formatMoney, formatTime } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
+import { DateBlock } from "@/components/session-card";
 import type { Payment, Profile, Registration, Session } from "@/lib/types";
 import { SessionForm } from "../session-form";
 
@@ -55,20 +56,33 @@ async function AdminSession({
     .flatMap((r) => r.payments)
     .filter((p) => p.matched_by !== "admin")
     .reduce((sum, p) => sum + p.amount_cents, 0);
+  const confirmedCount = going.filter((r) => r.status === "confirmed").length;
+  const holdingCount = going.length - confirmedCount;
+  const cancelled = session.status === "cancelled";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-12">
       <LiveRefresh sessionId={id} />
-      <BackLink href="/admin">Dashboard</BackLink>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">{session.title}</h1>
-          <p className="text-stone-400">
-            {formatDateTime(session.starts_at)} · {session.location}
-            {session.status === "cancelled" && <span className="ml-2 font-semibold text-red-300">CANCELLED</span>}
-          </p>
+      <div>
+        <BackLink href="/admin">Dashboard</BackLink>
+      <div className="reveal flex flex-wrap items-end justify-between gap-4" style={reveal(0)}>
+        <div className="flex gap-5">
+          <DateBlock iso={session.starts_at} className="pt-1" />
+          <div className="space-y-1">
+            <h1 className={`font-display text-5xl leading-[0.85] font-black tracking-tight uppercase ${cancelled ? "line-through" : ""}`}>
+              {session.title}
+            </h1>
+            <p className="text-ink-soft">
+              {formatTime(session.starts_at)} – {formatTime(session.ends_at)} · {session.location}
+            </p>
+            {cancelled && (
+              <Mark tone="bad" glyph="✕">
+                Cancelled
+              </Mark>
+            )}
+          </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           <Link href={`/s/${id}`} className={buttonClass("secondary", "sm")}>
             Player view
           </Link>
@@ -77,20 +91,23 @@ async function AdminSession({
           </a>
         </div>
       </div>
-
-      {typeof error === "string" && <p className="rounded-lg bg-red-950/50 p-3 text-sm text-red-300">{error}</p>}
-
-      <div className="grid gap-3 sm:grid-cols-4">
-        <Stat label="Confirmed" value={`${going.filter((r) => r.status === "confirmed").length}/${session.capacity}`} />
-        <Stat label="Awaiting payment" value={going.filter((r) => r.status === "pending_payment").length} />
-        <Stat label="Waitlist" value={waiting.length} />
-        <Stat label="e-Transfers in" value={formatMoney(collected)} />
       </div>
 
-      <Card className="space-y-3">
-        <h2 className="font-semibold">Roster</h2>
-        {going.length === 0 && <p className="text-sm text-stone-400">No sign-ups yet.</p>}
-        <ul className="divide-y divide-stone-800">
+      {typeof error === "string" && <Notice tone="bad">{error}</Notice>}
+
+      <div className="reveal space-y-4" style={reveal(1)}>
+        <div className="flex flex-wrap gap-4">
+          <Scoreboard size="sm" value={`${pad(confirmedCount)}/${pad(session.capacity)}`} label="Confirmed" />
+          <Scoreboard size="sm" value={pad(holdingCount)} label="Awaiting pay" />
+          <Scoreboard size="sm" value={pad(waiting.length)} label="Waitlist" />
+          <Scoreboard size="sm" value={formatMoney(collected)} label="e-Transfers in" />
+        </div>
+        <SpotDots capacity={session.capacity} confirmed={confirmedCount} holding={holdingCount} />
+      </div>
+
+      <Sheet label={`Roster · ${going.length}`} className="reveal" style={reveal(2)}>
+        {going.length === 0 && <p className="text-ink-soft">No sign-ups yet.</p>}
+        <ul className="divide-y divide-ink/20">
           {going.map((r) => (
             <PlayerRow key={r.id} reg={r} sessionId={id}>
               {r.status === "pending_payment" && (
@@ -114,14 +131,13 @@ async function AdminSession({
             </PlayerRow>
           ))}
         </ul>
-      </Card>
+      </Sheet>
 
-      <Card className="space-y-3">
-        <h2 className="font-semibold">Waitlist</h2>
-        {waiting.length === 0 && <p className="text-sm text-stone-400">Nobody waiting.</p>}
-        <ol className="divide-y divide-stone-800">
+      <Sheet label={`Waitlist · ${waiting.length}`} className="reveal" style={reveal(3)}>
+        {waiting.length === 0 && <p className="text-ink-soft">Nobody waiting.</p>}
+        <ol className="divide-y divide-ink/20">
           {waiting.map((r, i) => (
-            <PlayerRow key={r.id} reg={r} sessionId={id} prefix={`${i + 1}.`}>
+            <PlayerRow key={r.id} reg={r} sessionId={id} prefix={pad(i + 1)}>
               <form action={moveWaitlist.bind(null, r.id, -1, id)}>
                 <SubmitButton size="sm" variant="ghost">↑</SubmitButton>
               </form>
@@ -152,12 +168,14 @@ async function AdminSession({
             </PlayerRow>
           ))}
         </ol>
-      </Card>
+      </Sheet>
 
       {inactive.length > 0 && (
-        <details className="rounded-xl border border-stone-800 bg-stone-900 p-5">
-          <summary className="cursor-pointer font-semibold">Cancelled / expired ({inactive.length})</summary>
-          <ul className="mt-3 divide-y divide-stone-800">
+        <details className="group border-t-2 border-ink pt-3">
+          <summary className="flex cursor-pointer list-none items-center gap-2 font-display text-sm font-bold tracking-[0.2em] text-ink-soft uppercase">
+            <span className="transition-transform group-open:rotate-90">▸</span> Cancelled / expired · {inactive.length}
+          </summary>
+          <ul className="mt-3 divide-y divide-ink/20">
             {inactive.map((r) => (
               <PlayerRow key={r.id} reg={r} sessionId={id}>
                 {r.status === "expired" && (
@@ -182,16 +200,13 @@ async function AdminSession({
         </details>
       )}
 
-      <Card className="space-y-3">
-        <h2 className="font-semibold">Edit session</h2>
+      <Sheet label="Edit session">
         <SessionForm action={updateSession.bind(null, id)} session={session} submitLabel="Save changes" />
-      </Card>
+      </Sheet>
 
       {session.status === "scheduled" && (
-        <Card className="flex flex-wrap items-center justify-between gap-3 border-red-900">
-          <p className="text-sm text-stone-400">
-            Cancelling emails everyone and adds paid players to the refunds list.
-          </p>
+        <section className="flex flex-wrap items-center justify-between gap-4 border-t-2 border-bad pt-4">
+          <p className="text-ink-soft">Cancelling emails everyone and adds paid players to the refunds list.</p>
           <form action={cancelSession.bind(null, id)}>
             <SubmitButton
               variant="danger"
@@ -204,7 +219,7 @@ async function AdminSession({
               Cancel session
             </SubmitButton>
           </form>
-        </Card>
+        </section>
       )}
     </div>
   );
@@ -214,14 +229,7 @@ function name(r: Row) {
   return r.profile.display_name ?? r.profile.full_name ?? r.profile.email;
 }
 
-function Stat({ label, value }: { label: string; value: string | number }) {
-  return (
-    <Card className="p-4">
-      <p className="text-xs text-stone-400">{label}</p>
-      <p className="text-xl font-semibold">{value}</p>
-    </Card>
-  );
-}
+const pad = (n: number) => String(n).padStart(2, "0");
 
 function PlayerRow({
   reg,
@@ -235,13 +243,13 @@ function PlayerRow({
 }) {
   const payment = reg.payments[0];
   return (
-    <li className="flex flex-wrap items-center gap-3 py-2">
-      {prefix && <span className="w-5 text-right text-sm text-stone-400">{prefix}</span>}
+    <li className="flex flex-wrap items-center gap-3 py-3">
+      {prefix && <span className="w-7 font-score text-lg font-black text-mat">{prefix}</span>}
       <Avatar name={name(reg)} src={reg.profile.avatar_url} />
       <div className="min-w-0 flex-1">
-        <p className="truncate font-medium">{name(reg)}</p>
-        <p className="truncate text-xs text-stone-400">
-          {reg.profile.email} · <span className="font-mono">{reg.ref_code}</span>
+        <p className="truncate font-semibold">{name(reg)}</p>
+        <p className="truncate text-sm text-ink-soft">
+          {reg.profile.email} · <span className="font-score font-black text-ink">{reg.ref_code}</span>
           {reg.status === "pending_payment" && reg.hold_expires_at && ` · hold until ${formatDateTime(reg.hold_expires_at)}`}
           {payment &&
             ` · paid ${formatMoney(payment.amount_cents)} (${
@@ -249,8 +257,8 @@ function PlayerRow({
             })`}
         </p>
       </div>
-      <StatusBadge status={reg.status} />
-      <div className="flex gap-1">{children}</div>
+      <StatusMark status={reg.status} />
+      <div className="flex flex-wrap items-center gap-3">{children}</div>
     </li>
   );
 }
