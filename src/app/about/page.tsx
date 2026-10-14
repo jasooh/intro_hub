@@ -44,8 +44,8 @@ export default function AboutPage() {
       <Sheet label="Who we are" className="reveal" style={reveal(2)}>
         <div className="max-w-2xl space-y-4 text-lg">
           <p>
-            Intro 2 Volleyball started as a few people who wanted somewhere relaxed to play. It&apos;s grown into a weekly group
-            of beginners, people coming back to the sport, and a few regulars who just like helping out.
+            Intro 2 Volleyball started with one guy who wanted to spread the love of volleyball as far as possible, and to
+            build a community that&apos;s inclusive and fun.
           </p>
           <p className="text-ink-soft">
             Never touched a volleyball? Perfect. That&apos;s who this is for. Come as you are: every skill level, every
