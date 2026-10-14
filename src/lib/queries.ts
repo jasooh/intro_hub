@@ -71,3 +71,44 @@ export async function paymentWindowStart() {
   await connection();
   return new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
 }
+
+export type AdminSessionView = "upcoming" | "past" | "cancelled";
+
+/**
+ * Sessions for the host dashboard, split into upcoming / past / cancelled and
+ * optionally filtered by a search over title, location and notes. Also returns
+ * how many sessions match the search in each view, for the tab counts.
+ */
+export async function getAdminSessions(view: AdminSessionView, search: string) {
+  await connection();
+  const supabase = await createClient();
+  const cutoff = new Date(Date.now() - 3 * 3600 * 1000).toISOString();
+  // Commas, parentheses and wildcards would break PostgREST's or() filter syntax.
+  const term = search.replace(/[,()%*\\]/g, " ").trim().slice(0, 80);
+
+  const base = (head = false) => {
+    let q = supabase.from("sessions").select("*", head ? { count: "exact", head: true } : undefined);
+    if (term) q = q.or(`title.ilike.%${term}%,location.ilike.%${term}%,notes.ilike.%${term}%`);
+    return q;
+  };
+  const scope = (q: ReturnType<typeof base>, v: AdminSessionView) =>
+    v === "cancelled"
+      ? q.eq("status", "cancelled")
+      : v === "past"
+        ? q.eq("status", "scheduled").lt("starts_at", cutoff)
+        : q.eq("status", "scheduled").gte("starts_at", cutoff);
+
+  const listQuery = scope(base(), view)
+    .order("starts_at", { ascending: view === "upcoming" })
+    .limit(50);
+  const [list, upcoming, past, cancelled] = await Promise.all([
+    listQuery,
+    scope(base(true), "upcoming"),
+    scope(base(true), "past"),
+    scope(base(true), "cancelled"),
+  ]);
+  return {
+    sessions: (list.data ?? []) as Session[],
+    totals: { upcoming: upcoming.count ?? 0, past: past.count ?? 0, cancelled: cancelled.count ?? 0 },
+  };
+}
