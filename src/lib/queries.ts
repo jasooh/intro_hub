@@ -10,16 +10,17 @@ export async function getCounts(sessionIds: string[]): Promise<Map<string, Sessi
   return new Map(((data ?? []) as SessionCounts[]).map((c) => [c.session_id, c]));
 }
 
-export async function getUpcomingSessions(limit = 10): Promise<Session[]> {
+/**
+ * Sessions from 3 hours ago onwards. Players' lists pass `includeCancelled: false`;
+ * hosts keep cancelled ones visible so they can still reach rosters and refunds.
+ */
+export async function getUpcomingSessions(limit = 10, { includeCancelled = true } = {}): Promise<Session[]> {
   await connection(); // "now" must be read per request, not at prerender time
   const supabase = await createClient();
   const since = new Date(Date.now() - 3 * 3600 * 1000).toISOString();
-  const { data } = await supabase
-    .from("sessions")
-    .select("*")
-    .gte("starts_at", since)
-    .order("starts_at")
-    .limit(limit);
+  let query = supabase.from("sessions").select("*").gte("starts_at", since);
+  if (!includeCancelled) query = query.neq("status", "cancelled");
+  const { data } = await query.order("starts_at").limit(limit);
   return (data ?? []) as Session[];
 }
 

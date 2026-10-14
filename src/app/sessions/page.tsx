@@ -24,7 +24,7 @@ export default function SessionsPage() {
 }
 
 async function SessionList() {
-  const sessions = await getUpcomingSessions();
+  const sessions = await getUpcomingSessions(10, { includeCancelled: false });
   const counts = await getCounts(sessions.map((s) => s.id));
   if (sessions.length === 0) return <EmptyState>No sessions scheduled yet. Check back soon!</EmptyState>;
   return (
