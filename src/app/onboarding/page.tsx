@@ -1,18 +1,17 @@
 import { Suspense } from "react";
-import { saveProfile } from "@/app/actions";
-import { SubmitButton } from "@/components/submit-button";
-import { Avatar, Card, Field, inputClass, PageSpinner } from "@/components/ui";
+import { ProfileForm } from "@/components/profile-form";
+import { Avatar, Card, PageSpinner } from "@/components/ui";
 import { requireProfile } from "@/lib/auth";
 
 export default function OnboardingPage(props: PageProps<"/onboarding">) {
   return (
     <Suspense fallback={<PageSpinner />}>
-      <ProfileForm searchParams={props.searchParams} />
+      <Onboarding searchParams={props.searchParams} />
     </Suspense>
   );
 }
 
-async function ProfileForm({ searchParams }: { searchParams: PageProps<"/onboarding">["searchParams"] }) {
+async function Onboarding({ searchParams }: { searchParams: PageProps<"/onboarding">["searchParams"] }) {
   const profile = await requireProfile("/onboarding");
   const params = await searchParams;
   const next = typeof params.next === "string" ? params.next : "/";
@@ -30,24 +29,13 @@ async function ProfileForm({ searchParams }: { searchParams: PageProps<"/onboard
           </div>
         </div>
         {error && <p className="rounded-lg bg-red-950/50 p-2 text-sm text-red-300">{error}</p>}
-        <form action={saveProfile} className="space-y-4">
-          <input type="hidden" name="next" value={next} />
-          <Field label="Display name" hint="Shown to other players on the attendee list.">
-            <input name="display_name" defaultValue={name} required maxLength={60} className={inputClass} />
-          </Field>
-          <Field
-            label="Name on your e-Transfers"
-            hint="The name your bank shows when you send money (e.g. JANE DOE). Separate several with commas. This helps match your payment if you forget the code."
-          >
-            <input
-              name="etransfer_names"
-              defaultValue={profile.etransfer_names.join(", ") || name}
-              maxLength={300}
-              className={inputClass}
-            />
-          </Field>
-          <SubmitButton className="w-full">{profile.onboarded_at ? "Save" : "Continue"}</SubmitButton>
-        </form>
+        <ProfileForm
+          profile={profile}
+          next={next}
+          returnTo={`/onboarding?next=${encodeURIComponent(next)}`}
+          submitLabel={profile.onboarded_at ? "Save" : "Continue"}
+          submitClassName="w-full"
+        />
       </Card>
     </div>
   );

@@ -35,7 +35,7 @@ export default function Home() {
             See sessions
           </Link>
           <Link href="/me" className={buttonClass("secondary")}>
-            My sign-ups
+            My account
           </Link>
         </div>
       </section>

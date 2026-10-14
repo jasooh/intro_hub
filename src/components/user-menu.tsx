@@ -22,7 +22,7 @@ export async function UserMenu() {
       )}
       <Link href="/me" className={`${buttonClass("ghost", "sm")} gap-2`}>
         <Avatar name={name} src={profile.avatar_url} size={24} />
-        <span className="hidden sm:inline">My sign-ups</span>
+        <span className="hidden sm:inline">Account</span>
       </Link>
       <form action={signOut}>
         <button className={buttonClass("ghost", "sm")}>Sign out</button>

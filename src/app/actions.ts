@@ -47,13 +47,25 @@ const ProfileForm = z.object({
   display_name: z.string().trim().min(1, "Display name is required").max(60),
   etransfer_names: z.string().max(300),
   next: z.string().default("/"),
+  return_to: z.string().default("/onboarding"),
 });
+
+const localPath = (p: string, fallback: string) => (p.startsWith("/") && !p.startsWith("//") ? p : fallback);
+
+/** `path` with `params` added to its query string. */
+function withParams(path: string, params: Record<string, string>) {
+  const url = new URL(path, "http://x");
+  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
+  return `${url.pathname}${url.search}`;
+}
 
 export async function saveProfile(formData: FormData) {
   const profile = await requireProfile("/onboarding");
-  const parsed = ProfileForm.safeParse(Object.fromEntries(formData));
+  const raw = Object.fromEntries(formData);
+  const returnTo = localPath(typeof raw.return_to === "string" ? raw.return_to : "", "/onboarding");
+  const parsed = ProfileForm.safeParse(raw);
   if (!parsed.success) {
-    redirect(`/onboarding?error=${encodeURIComponent(parsed.error.issues[0].message)}`);
+    redirect(withParams(returnTo, { error: parsed.error.issues[0].message }));
   }
   const names = parsed.data.etransfer_names
     .split(",")
@@ -70,9 +82,8 @@ export async function saveProfile(formData: FormData) {
       onboarded_at: profile.onboarded_at ?? new Date().toISOString(),
     })
     .eq("id", profile.id);
-  if (error) redirect(`/onboarding?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(withParams(returnTo, { error: error.message }));
 
-  const next = parsed.data.next.startsWith("/") && !parsed.data.next.startsWith("//") ? parsed.data.next : "/";
   revalidatePath("/", "layout");
-  redirect(next);
+  redirect(localPath(parsed.data.next, "/"));
 }
