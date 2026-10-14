@@ -1,17 +1,36 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { cancelSession, markPaid, moveWaitlist, removeRegistration, updateSession } from "@/app/admin/actions";
+import {
+  cancelSession,
+  markPaid,
+  moveWaitlist,
+  removeRegistration,
+  updateSession,
+} from "@/app/admin/actions";
 import { LiveRefresh } from "@/components/live-refresh";
 import { SubmitButton } from "@/components/submit-button";
-import { Avatar, BackLink, buttonClass, Mark, Notice, PageSpinner, reveal, Scoreboard, Sheet, SpotDots, StatusMark } from "@/components/ui";
+import {
+  Avatar,
+  BackLink,
+  buttonClass,
+  Mark,
+  Notice,
+  PageSpinner,
+  reveal,
+  Scoreboard,
+  Sheet,
+  SpotDots,
+  StatusMark,
+} from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { formatDateTime, formatMoney, formatTime } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import { DateBlock } from "@/components/session-card";
 import { PlayerDetails } from "@/components/player-details";
-import type { Payment, Profile, Registration, Session } from "@/lib/types";
+import type { Payment, Profile, Registration, Session, Team } from "@/lib/types";
 import { SessionForm } from "../session-form";
+import { TeamsBoard, type TeamRow } from "./teams-board";
 
 type Row = Registration & { profile: Profile; payments: Pick<Payment, "matched_by" | "sender_name" | "amount_cents">[] };
 
@@ -35,15 +54,18 @@ async function AdminSession({
   const { error } = await searchParams;
   const supabase = await createClient();
 
-  const [{ data: session }, { data: regs }] = await Promise.all([
+  const [{ data: session }, { data: regs }, { data: teamRows }] = await Promise.all([
     supabase.from("sessions").select("*").eq("id", id).maybeSingle<Session>(),
     supabase
       .from("registrations")
       .select("*, profile:profiles(*), payments(matched_by, sender_name, amount_cents)")
       .eq("session_id", id)
       .order("created_at"),
+    supabase.from("session_teams").select("*").eq("session_id", id).order("position"),
   ]);
   if (!session) notFound();
+  const teams = (teamRows ?? []) as Team[];
+  const teamNames = new Map(teams.map((t) => [t.id, t.name]));
 
   const rows = (regs ?? []) as Row[];
   const going = rows
@@ -113,7 +135,7 @@ async function AdminSession({
         {going.length === 0 && <p className="text-ink-soft">No sign-ups yet.</p>}
         <ul className="divide-y divide-ink/20">
           {going.map((r) => (
-            <PlayerRow key={r.id} reg={r} sessionId={id}>
+            <PlayerRow key={r.id} reg={r} sessionId={id} teamName={r.team_id ? teamNames.get(r.team_id) : null}>
               {r.status === "pending_payment" && (
                 <form action={markPaid.bind(null, r.id, id)}>
                   <SubmitButton size="sm">Mark paid</SubmitButton>
@@ -136,6 +158,8 @@ async function AdminSession({
           ))}
         </ul>
       </Sheet>
+
+      {!cancelled && <TeamsBoard session={session} players={dropIn as TeamRow[]} teams={teams} />}
 
       <Sheet label={`Waitlist · ${waiting.length}`} className="reveal" style={reveal(3)}>
         {waiting.length === 0 && <p className="text-ink-soft">Nobody waiting.</p>}

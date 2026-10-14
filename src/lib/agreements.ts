@@ -3,8 +3,7 @@
 
 export const WAIVER_VERSION = "2026-10";
 
-// TODO: add the City of Markham Inclusion Charter URL when the host provides it.
-export const INCLUSION_CHARTER_URL: string | null = null;
+export const INCLUSION_CHARTER_URL: string | null = "https://www.markham.ca/sites/default/files/about-city-markham/Diversity%20%26%20Accessibility/Markham%2BInclusion%2BCharter%20(3).pdf";
 
 export const MEDIA_RELEASE = `I hereby consent to be recorded, photographed, videotaped or filmed by representatives of Intro2Volleyball for purposes of publication, display or broadcast (web, digital display and all other forms of media) within the organization's related properties and websites. I agree that such photographs, films, audio or video and/ or any reproductions of same in any form, are the property of Intro2Volleyball, and I relinquish any present or future claim for reimbursement for said photographic or film reproduction of my likeness. I hereby release Intro2Volleyball, its affiliates, employees, representatives and agents from any and all claims, demands, costs and liability that may arise from the use of these recordings, photographs, videotapes or films, and/or any reproductions of same in any form, as described above, arising out of being recorded, photographed, videotaped or filmed. I acknowledge that I have read this consent form in its entirety, or it has been read (or translated) to me, and I have had the opportunity to ask questions about it and understand it. I understand that my personal information, including Images of me, is being collected pursuant to the Municipal Freedom of Information and Protection of Privacy Act (MFIPPA). If you have any questions about the collection of personal information by Intro2Volleyball as referenced on this form, please contact me at Intro2Volleyball@gmail.com.`;
 

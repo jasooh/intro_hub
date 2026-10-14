@@ -6,6 +6,7 @@ import { LiveRefresh } from "@/components/live-refresh";
 import { PaymentInstructions } from "@/components/payment-instructions";
 import { DateBlock } from "@/components/session-card";
 import { AttendeeRow, OptionRadio } from "@/components/signup-parts";
+import { TeamsView } from "@/components/teams-view";
 import { SubmitButton } from "@/components/submit-button";
 import {
   BackLink,
@@ -26,7 +27,7 @@ import { formatDateTime, formatMoney, sessionTimes } from "@/lib/format";
 import { OPTION_LABELS } from "@/lib/profile";
 import { getCounts, getMySpot, spotsLeft } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
-import type { Attendee, Profile, Session, SessionCounts } from "@/lib/types";
+import type { Attendee, Profile, Session, SessionCounts, Team } from "@/lib/types";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
@@ -337,14 +338,54 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
 
 async function AttendeeList({ sessionId }: { sessionId: string }) {
   const supabase = await createClient();
-  const { data } = await supabase.rpc("get_session_attendees", { p_session_id: sessionId });
+  // Teams are only readable once the host publishes them (RLS), so an empty list means "not published".
+  const [{ data }, { data: teamRows }] = await Promise.all([
+    supabase.rpc("get_session_attendees", { p_session_id: sessionId }),
+    supabase.from("session_teams").select("*").eq("session_id", sessionId).order("position"),
+  ]);
   const attendees = (data ?? []) as Attendee[];
+  const teams = (teamRows ?? []) as Team[];
   const active = attendees.filter((a) => a.status === "confirmed" || a.status === "pending_payment");
   const going = active.filter((a) => a.option === "full");
   const instructionalOnly = active.filter((a) => a.option === "instructional");
   const waiting = attendees
     .filter((a) => a.status === "waitlisted")
     .sort((a, b) => (a.waitlist_position ?? 0) - (b.waitlist_position ?? 0));
+
+  const waitlistSheet = (
+    <Sheet label={`Waitlist · ${waiting.length}`}>
+      {waiting.length === 0 ? (
+        <p className="text-ink-soft">No one waiting.</p>
+      ) : (
+        <ol className="divide-y divide-ink/20">
+          {waiting.map((a) => (
+            <AttendeeRow key={a.registration_id} a={a} number={pad(a.waitlist_position ?? 0)} numberClass="text-mat" />
+          ))}
+        </ol>
+      )}
+    </Sheet>
+  );
+  const instructionalSheet = instructionalOnly.length > 0 && (
+    <Sheet label={`Instructional only · ${instructionalOnly.length}`}>
+      <ul className="divide-y divide-ink/20">
+        {instructionalOnly.map((a) => (
+          <AttendeeRow key={a.registration_id} a={a} number="◇" numberClass="text-mat" />
+        ))}
+      </ul>
+    </Sheet>
+  );
+
+  if (teams.length > 0) {
+    return (
+      <div className="space-y-10">
+        <TeamsView teams={teams} going={going} />
+        <div className="grid gap-10 sm:grid-cols-2">
+          {waitlistSheet}
+          {instructionalSheet}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="grid gap-10 sm:grid-cols-2">
@@ -360,26 +401,8 @@ async function AttendeeList({ sessionId }: { sessionId: string }) {
         )}
       </Sheet>
       <div className="space-y-10">
-        <Sheet label={`Waitlist · ${waiting.length}`}>
-          {waiting.length === 0 ? (
-            <p className="text-ink-soft">No one waiting.</p>
-          ) : (
-            <ol className="divide-y divide-ink/20">
-              {waiting.map((a) => (
-                <AttendeeRow key={a.registration_id} a={a} number={pad(a.waitlist_position ?? 0)} numberClass="text-mat" />
-              ))}
-            </ol>
-          )}
-        </Sheet>
-        {instructionalOnly.length > 0 && (
-          <Sheet label={`Instructional only · ${instructionalOnly.length}`}>
-            <ul className="divide-y divide-ink/20">
-              {instructionalOnly.map((a) => (
-                <AttendeeRow key={a.registration_id} a={a} number="◇" numberClass="text-mat" />
-              ))}
-            </ul>
-          </Sheet>
-        )}
+        {waitlistSheet}
+        {instructionalSheet}
       </div>
     </div>
   );
