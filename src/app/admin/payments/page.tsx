@@ -56,7 +56,7 @@ async function Payments({ searchParams }: { searchParams: PageProps<"/admin/paym
       {typeof error === "string" && <Notice tone="bad">{error}</Notice>}
 
       <Sheet label={`Needs attention · ${unmatched?.length ?? 0}`} className="reveal" style={reveal(1)}>
-        {!unmatched?.length && <EmptyState>All caught up</EmptyState>}
+        {!unmatched?.length && <EmptyState>All caught up!</EmptyState>}
         <div className="divide-y divide-ink/25">
         {(unmatched as Payment[] | null)?.map((p) => (
           <div key={p.id} className="space-y-3 py-4">
