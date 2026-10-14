@@ -206,6 +206,26 @@ export async function updateEtransferNames(profileId: string, formData: FormData
   revalidatePath("/admin/players");
 }
 
+/**
+ * Deletes a player's account (e.g. an offensive name). Removes their sign-in,
+ * profile and sign-ups (cascade); their payment records stay, unlinked. Hosts
+ * must be demoted first, and you can't delete yourself.
+ */
+export async function deleteAccount(profileId: string) {
+  const me = await requireAdmin();
+  if (profileId === me.id) fail("/admin/players", "You can't delete your own account.");
+  const admin = createAdminClient();
+  const { data: target } = await admin.from("profiles").select("role").eq("id", profileId).maybeSingle();
+  if (!target) fail("/admin/players", "That account no longer exists.");
+  if (target.role === "admin") fail("/admin/players", "Remove their host access before deleting the account.");
+
+  const { error } = await admin.auth.admin.deleteUser(profileId);
+  if (error) fail("/admin/players", error.message);
+  // Freed spots are filled from the waitlist by the every-minute job.
+  revalidatePath("/", "layout");
+  redirect("/admin/players?deleted=1");
+}
+
 // ---------------------------------------------------------------------------
 // Weekly templates
 // ---------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-import { setRole, updateEtransferNames } from "@/app/admin/actions";
+import { deleteAccount, setRole, updateEtransferNames } from "@/app/admin/actions";
 import { PlayerDetails } from "@/components/player-details";
 import { SubmitButton } from "@/components/submit-button";
 import { Avatar, inputClass, Mark } from "@/components/ui";
@@ -38,6 +38,7 @@ export function PlayerRow({
         </SubmitButton>
       </form>
       {!isMe && (
+        <div className="flex flex-wrap gap-3">
         <form action={setRole.bind(null, p.id, p.role === "admin" ? "player" : "admin")}>
           <SubmitButton
             size="sm"
@@ -54,6 +55,23 @@ export function PlayerRow({
             {p.role === "admin" ? "Remove host" : "Make host"}
           </SubmitButton>
         </form>
+        {p.role !== "admin" && (
+          <form action={deleteAccount.bind(null, p.id)}>
+            <SubmitButton
+              size="sm"
+              variant="danger"
+              confirm={{
+                title: `Delete ${name}'s account?`,
+                description:
+                  "This removes their sign-in, profile and all their sign-ups, and can't be undone. Any spot they hold goes to the waitlist. Their payment records stay, unlinked. They could still sign in again with Google as a new player.",
+                action: "Delete account",
+              }}
+            >
+              Delete account
+            </SubmitButton>
+          </form>
+        )}
+        </div>
       )}
     </div>
   );

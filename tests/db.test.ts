@@ -443,3 +443,23 @@ describe("teams", () => {
     expect((await regOf(a, sid)).status).toBe("pending_payment");
   });
 });
+
+describe("deleting an account", () => {
+  it("removes the profile and sign-ups but keeps payments, unlinked", async () => {
+    const sid = await createSession(db);
+    const admin = await createUser(db, "Host", { admin: true });
+    const a = await createUser(db, "Rude Name");
+    await register(a, sid);
+    const reg = await regOf(a, sid);
+    await asUser(db, admin, `select public.admin_mark_paid($1)`, [reg.id]);
+
+    await db.query(`delete from auth.users where id = $1`, [a]);
+
+    const profiles = await db.query(`select 1 from public.profiles where id = $1`, [a]);
+    const regs = await db.query(`select 1 from public.registrations where profile_id = $1`, [a]);
+    const payments = await db.query<{ registration_id: string | null }>(`select registration_id from public.payments`);
+    expect(profiles.rows).toHaveLength(0);
+    expect(regs.rows).toHaveLength(0);
+    expect(payments.rows).toEqual([{ registration_id: null }]);
+  });
+});

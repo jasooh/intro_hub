@@ -92,6 +92,7 @@ async function Players({ searchParams }: { searchParams: PageProps<"/admin/playe
         Players
       </PageTitle>
       {error && <Notice tone="bad">{error}</Notice>}
+      {params.deleted === "1" && <Notice tone="ok">Account deleted.</Notice>}
 
       <Sheet label={`Players · ${players.length}`} className="reveal" style={reveal(1)}>
         <ListFilters
