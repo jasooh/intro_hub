@@ -68,6 +68,34 @@ export function SessionForm({
       <Field label="Refund cutoff (hours before start)">
         <input type="number" name="cancel_cutoff_hours" defaultValue={cutoffHours} min={0} required className={inputClass} />
       </Field>
+      <Field label="Instructional-only price ($)" hint="Leave blank if there's no instructional-only option.">
+        <input
+          type="number"
+          name="instructional_price"
+          step="0.01"
+          min={0}
+          defaultValue={session?.instructional_price_cents != null ? session.instructional_price_cents / 100 : ""}
+          className={inputClass}
+        />
+      </Field>
+      <div className="grid grid-cols-2 gap-x-6">
+        <Field label="Instructional ends">
+          <input
+            type="time"
+            name="instructional_ends"
+            defaultValue={session?.instructional_ends_at ? utcToZonedLocal(session.instructional_ends_at).slice(11, 16) : ""}
+            className={inputClass}
+          />
+        </Field>
+        <Field label="Drop-in starts">
+          <input
+            type="time"
+            name="dropin_starts"
+            defaultValue={session?.dropin_starts_at ? utcToZonedLocal(session.dropin_starts_at).slice(11, 16) : ""}
+            className={inputClass}
+          />
+        </Field>
+      </div>
       <div className="sm:col-span-2">
         <Field label="Notes (shown to players)">
           <textarea name="notes" defaultValue={session?.notes ?? ""} rows={3} className={inputClass} />

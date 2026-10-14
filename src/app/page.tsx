@@ -3,6 +3,7 @@ import { cache, Suspense } from "react";
 import { LiveRefresh } from "@/components/live-refresh";
 import { SessionCard } from "@/components/session-card";
 import { buttonClass, EmptyState, PageSpinner, reveal, Scoreboard, Sheet } from "@/components/ui";
+import { env } from "@/lib/env";
 import { getCounts, getUpcomingSessions } from "@/lib/queries";
 
 const STEPS = [
@@ -82,6 +83,8 @@ export default function Home() {
           ))}
         </ol>
       </Sheet>
+
+      <Playlist />
       <LiveRefresh />
     </div>
   );
@@ -99,4 +102,33 @@ async function NextSession() {
   const next = await getNext();
   if (!next) return <EmptyState>No sessions scheduled yet. Check back soon!</EmptyState>;
   return <SessionCard session={next.session} counts={next.counts} href={`/s/${next.session.id}`} />;
+}
+
+/** The host's Spotify playlist, embedded when SPOTIFY_PLAYLIST_URL is set. */
+function Playlist() {
+  const url = env.spotifyPlaylistUrl();
+  const id = url?.match(/playlist\/([A-Za-z0-9]+)/)?.[1];
+  if (!id) return null;
+  return (
+    <Sheet
+      label="Warm-up playlist"
+      action={
+        <Link href="/me" className={buttonClass("ghost", "sm")}>
+          Add your hype song →
+        </Link>
+      }
+      className="reveal"
+      style={reveal(7)}
+    >
+      <iframe
+        title="Intro 2 Volleyball playlist on Spotify"
+        src={`https://open.spotify.com/embed/playlist/${id}?utm_source=generator`}
+        width="100%"
+        height="352"
+        loading="lazy"
+        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+        className="border-2 border-ink"
+      />
+    </Sheet>
+  );
 }

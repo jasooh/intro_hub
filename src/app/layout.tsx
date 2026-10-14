@@ -40,8 +40,21 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         </header>
         <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-8 sm:py-10">{children}</main>
         <footer className="mx-auto w-full max-w-4xl px-4 pb-8">
-          <div className="border-t-2 border-ink pt-3 font-display text-sm font-semibold tracking-widest text-ink-soft uppercase">
-            Intro 2 Volleyball · Drop-in · Toronto
+          <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 border-t-2 border-ink pt-3 font-display text-sm font-semibold tracking-widest text-ink-soft uppercase">
+            <span>Intro 2 Volleyball · Aaniin CC · Markham</span>
+            <span className="flex flex-wrap gap-x-5 gap-y-1">
+              <a
+                href="https://www.instagram.com/intro2volleyball/"
+                target="_blank"
+                rel="noreferrer"
+                className="text-ink hover:text-line"
+              >
+                Instagram @intro2volleyball
+              </a>
+              <a href="mailto:intro2volleyball@gmail.com" className="text-ink normal-case tracking-wide hover:text-line">
+                intro2volleyball@gmail.com
+              </a>
+            </span>
           </div>
         </footer>
       </body>

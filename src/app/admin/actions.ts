@@ -28,6 +28,19 @@ async function rpc(fn: string, args: Record<string, unknown>, path: string) {
 // ---------------------------------------------------------------------------
 
 const dollars = z.coerce.number().min(0).max(1000).transform((d) => Math.round(d * 100));
+/** Blank = not offered. */
+const optionalDollars = z.preprocess((v) => (v === "" || v == null ? null : v), dollars.nullable());
+const optionalClock = z
+  .string()
+  .regex(/^(\d{2}:\d{2})?$/, "Times must be HH:MM")
+  .default("")
+  .transform((v) => v || null);
+
+/** Minutes from `start` (HH:MM) to `time` (HH:MM), wrapping past midnight. */
+function minutesAfter(start: string, time: string) {
+  const toMin = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+  return (toMin(time) - toMin(start) + 1440) % 1440;
+}
 
 const SessionForm = z.object({
   title: z.string().trim().min(1).max(100),
@@ -40,6 +53,9 @@ const SessionForm = z.object({
   hold_hours: z.coerce.number().int().min(1).max(168),
   cancel_cutoff_hours: z.coerce.number().int().min(0).max(336),
   notes: z.string().max(2000).optional(),
+  instructional_price: optionalDollars,
+  instructional_ends: optionalClock,
+  dropin_starts: optionalClock,
 });
 
 function sessionRow(formData: FormData, path: string) {
@@ -58,7 +74,16 @@ function sessionRow(formData: FormData, path: string) {
     hold_hours: f.hold_hours,
     cancel_cutoff: new Date(startsAt.getTime() - f.cancel_cutoff_hours * 3_600_000).toISOString(),
     notes: f.notes?.trim() || null,
+    instructional_price_cents: f.instructional_price,
+    instructional_ends_at: atClock(startsAt, f.starts_at, f.instructional_ends),
+    dropin_starts_at: atClock(startsAt, f.starts_at, f.dropin_starts),
   };
+}
+
+/** The instant `clock` (HH:MM) falls at, on or after the session start. */
+function atClock(startsAt: Date, startsLocal: string, clock: string | null) {
+  if (!clock) return null;
+  return new Date(startsAt.getTime() + minutesAfter(startsLocal.slice(11, 16), clock) * 60_000).toISOString();
 }
 
 export async function createSession(formData: FormData) {
@@ -191,6 +216,9 @@ const TemplateForm = z.object({
   hold_hours: z.coerce.number().int().min(1).max(168),
   cancel_cutoff_hours: z.coerce.number().int().min(0).max(336),
   active: z.literal("on").optional(),
+  instructional_price: optionalDollars,
+  instructional_ends: optionalClock,
+  dropin_starts: optionalClock,
 });
 
 export async function saveTemplate(templateId: string | null, formData: FormData) {
@@ -199,8 +227,16 @@ export async function saveTemplate(templateId: string | null, formData: FormData
   if (!parsed.success) {
     fail("/admin/templates", parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; "));
   }
-  const { price, active, ...rest } = parsed.data;
-  const row = { ...rest, price_cents: price, active: active === "on", timezone: env.timezone() };
+  const { price, active, instructional_price, instructional_ends, dropin_starts, ...rest } = parsed.data;
+  const row = {
+    ...rest,
+    price_cents: price,
+    active: active === "on",
+    timezone: env.timezone(),
+    instructional_price_cents: instructional_price,
+    instructional_minutes: instructional_ends ? minutesAfter(rest.start_time, instructional_ends) || null : null,
+    dropin_offset_minutes: dropin_starts ? minutesAfter(rest.start_time, dropin_starts) : null,
+  };
 
   const supabase = await createClient();
   const { error } = templateId

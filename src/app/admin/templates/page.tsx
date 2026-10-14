@@ -83,13 +83,13 @@ function TemplateForm({ template }: { template?: SessionTemplate }) {
         </select>
       </Field>
       <Field label="Start time">
-        <input type="time" name="start_time" defaultValue={template?.start_time.slice(0, 5) ?? "18:00"} required className={inputClass} />
+        <input type="time" name="start_time" defaultValue={template?.start_time.slice(0, 5) ?? "20:00"} required className={inputClass} />
       </Field>
       <Field label="Location">
         <input name="location" defaultValue={template?.location} required className={inputClass} />
       </Field>
       <Field label="Length (minutes)">
-        <input type="number" name="duration_minutes" defaultValue={template?.duration_minutes ?? 120} min={15} required className={inputClass} />
+        <input type="number" name="duration_minutes" defaultValue={template?.duration_minutes ?? 225} min={15} required className={inputClass} />
       </Field>
       <Field label="Spots">
         <input type="number" name="capacity" defaultValue={template?.capacity ?? 12} min={1} required className={inputClass} />
@@ -100,7 +100,7 @@ function TemplateForm({ template }: { template?: SessionTemplate }) {
           name="price"
           step="0.01"
           min={0}
-          defaultValue={template ? template.price_cents / 100 : 10}
+          defaultValue={template ? template.price_cents / 100 : 15}
           required
           className={inputClass}
         />
@@ -114,6 +114,32 @@ function TemplateForm({ template }: { template?: SessionTemplate }) {
       <Field label="Refund cutoff (hours before)">
         <input type="number" name="cancel_cutoff_hours" defaultValue={template?.cancel_cutoff_hours ?? 24} min={0} required className={inputClass} />
       </Field>
+      <Field label="Instructional-only price ($)" hint="Blank = not offered">
+        <input
+          type="number"
+          name="instructional_price"
+          step="0.01"
+          min={0}
+          defaultValue={template ? (template.instructional_price_cents != null ? template.instructional_price_cents / 100 : "") : 10}
+          className={inputClass}
+        />
+      </Field>
+      <Field label="Instructional ends">
+        <input
+          type="time"
+          name="instructional_ends"
+          defaultValue={template ? clockAfter(template.start_time, template.instructional_minutes) : "20:45"}
+          className={inputClass}
+        />
+      </Field>
+      <Field label="Drop-in starts">
+        <input
+          type="time"
+          name="dropin_starts"
+          defaultValue={template ? clockAfter(template.start_time, template.dropin_offset_minutes) : "21:00"}
+          className={inputClass}
+        />
+      </Field>
       <label className="flex items-center gap-2 self-end pb-2 font-display text-sm font-bold tracking-[0.15em] uppercase">
         <input type="checkbox" name="active" defaultChecked={template?.active ?? true} className="size-5 accent-[var(--line)]" />
         Active
@@ -123,4 +149,11 @@ function TemplateForm({ template }: { template?: SessionTemplate }) {
       </div>
     </form>
   );
+}
+
+/** HH:MM that is `minutes` after `start` (HH:MM[:SS]), or "" when unset. */
+function clockAfter(start: string, minutes: number | null) {
+  if (minutes == null) return "";
+  const total = (Number(start.slice(0, 2)) * 60 + Number(start.slice(3, 5)) + minutes) % 1440;
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
 }

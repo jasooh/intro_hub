@@ -23,4 +23,6 @@ export const env = {
   etransferEmail: () => process.env.ETRANSFER_EMAIL ?? "(ask the host)",
   cronSecret: () => required("CRON_SECRET"),
   ingestSecret: () => required("INGEST_SECRET"),
+  /** Optional: the host's Spotify playlist link, shown on the home page. */
+  spotifyPlaylistUrl: () => process.env.SPOTIFY_PLAYLIST_URL?.trim() || null,
 };

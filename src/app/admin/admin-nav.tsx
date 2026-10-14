@@ -9,6 +9,7 @@ const links = [
   { href: "/admin/refunds", label: "Refunds" },
   { href: "/admin/players", label: "Players" },
   { href: "/admin/templates", label: "Weekly schedule" },
+  { href: "/admin/songs", label: "Songs" },
 ] as const;
 
 export function AdminNav() {

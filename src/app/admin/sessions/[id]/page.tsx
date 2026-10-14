@@ -9,6 +9,7 @@ import { requireAdmin } from "@/lib/auth";
 import { formatDateTime, formatMoney, formatTime } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import { DateBlock } from "@/components/session-card";
+import { SKILL_LABELS } from "@/lib/profile";
 import type { Payment, Profile, Registration, Session } from "@/lib/types";
 import { SessionForm } from "../session-form";
 
@@ -56,8 +57,10 @@ async function AdminSession({
     .flatMap((r) => r.payments)
     .filter((p) => p.matched_by !== "admin")
     .reduce((sum, p) => sum + p.amount_cents, 0);
-  const confirmedCount = going.filter((r) => r.status === "confirmed").length;
-  const holdingCount = going.length - confirmedCount;
+  const dropIn = going.filter((r) => r.option === "full");
+  const confirmedCount = dropIn.filter((r) => r.status === "confirmed").length;
+  const holdingCount = dropIn.length - confirmedCount;
+  const instructionalCount = going.length - dropIn.length;
   const cancelled = session.status === "cancelled";
 
   return (
@@ -100,6 +103,7 @@ async function AdminSession({
           <Scoreboard size="sm" value={`${pad(confirmedCount)}/${pad(session.capacity)}`} label="Confirmed" />
           <Scoreboard size="sm" value={pad(holdingCount)} label="Awaiting pay" />
           <Scoreboard size="sm" value={pad(waiting.length)} label="Waitlist" />
+          {instructionalCount > 0 && <Scoreboard size="sm" value={pad(instructionalCount)} label="Instr. only" />}
           <Scoreboard size="sm" value={formatMoney(collected)} label="e-Transfers in" />
         </div>
         <SpotDots capacity={session.capacity} confirmed={confirmedCount} holding={holdingCount} />
@@ -225,6 +229,10 @@ async function AdminSession({
   );
 }
 
+function fullName(r: Row) {
+  return [r.profile.first_name, r.profile.last_name].filter(Boolean).join(" ");
+}
+
 function name(r: Row) {
   return r.profile.display_name ?? r.profile.full_name ?? r.profile.email;
 }
@@ -247,15 +255,43 @@ function PlayerRow({
       {prefix && <span className="w-7 font-score text-lg font-black text-mat">{prefix}</span>}
       <Avatar name={name(reg)} src={reg.profile.avatar_url} />
       <div className="min-w-0 flex-1">
-        <p className="truncate font-semibold">{name(reg)}</p>
+        <p className="truncate font-semibold">
+          {name(reg)}
+          {fullName(reg) && fullName(reg) !== name(reg) && <span className="font-normal text-ink-soft"> · {fullName(reg)}</span>}
+        </p>
         <p className="truncate text-sm text-ink-soft">
-          {reg.profile.email} · <span className="font-score font-black text-ink">{reg.ref_code}</span>
+          {reg.profile.email}
+          {reg.profile.phone && ` · ${reg.profile.phone}`} · <span className="font-score font-black text-ink">{reg.ref_code}</span>
+          {` · owes ${formatMoney(reg.amount_cents)}`}
           {reg.status === "pending_payment" && reg.hold_expires_at && ` · hold until ${formatDateTime(reg.hold_expires_at)}`}
           {payment &&
             ` · paid ${formatMoney(payment.amount_cents)} (${
               payment.matched_by === "admin" ? "manual" : `${payment.sender_name ?? "?"}, by ${payment.matched_by}`
             })`}
         </p>
+        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+          {reg.option === "instructional" && (
+            <Mark tone="mat" glyph="◇">
+              Instructional only
+            </Mark>
+          )}
+          {reg.profile.skill_level && (
+            <Mark tone="muted" glyph="·">
+              {SKILL_LABELS[reg.profile.skill_level]}
+            </Mark>
+          )}
+          {reg.profile.attended_before === false && (
+            <Mark tone="line" glyph="★">
+              First time
+            </Mark>
+          )}
+          {reg.profile.media_consent === false && (
+            <Mark tone="bad" glyph="✕">
+              No photos
+            </Mark>
+          )}
+        </div>
+        {reg.note && <p className="mt-1 border-l-4 border-ink/20 pl-3 text-sm">&ldquo;{reg.note}&rdquo;</p>}
       </div>
       <StatusMark status={reg.status} />
       <div className="flex flex-wrap items-center gap-3">{children}</div>

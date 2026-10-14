@@ -92,6 +92,7 @@ There are two Supabase projects, so testing never touches real players' data:
 Copy `.env.example` to `.env.local` and fill it in:
 - Supabase keys are under **Project Settings → API**.
 - `ADMIN_EMAILS` is the host's Google address. That account becomes a host the first time it signs in, and more hosts can be added later from **Admin → Players**.
+- `SPOTIFY_PLAYLIST_URL` (optional) is the host's Spotify playlist link. When set, the home page embeds it, and **Admin → Songs** lists players' hype songs to add to it.
 - `CRON_SECRET` and `INGEST_SECRET` are random strings. Generate each with `openssl rand -hex 32`.
 - **Email**: the simplest free option is Gmail SMTP from the host's account.
   1. Turn on 2-Step Verification.
