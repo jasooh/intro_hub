@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { SessionCard } from "@/components/session-card";
-import { buttonClass, EmptyState, inputClass, PageSpinner, PageTitle, reveal, Scoreboard, Sheet } from "@/components/ui";
+import { buttonClass, EmptyState, PageSpinner, PageTitle, reveal, Scoreboard, Sheet } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { type AdminSessionView, getAdminSessions, getCounts } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
+import { SessionFilters } from "./session-filters";
 
 const VIEWS: { key: AdminSessionView; label: string }[] = [
   { key: "upcoming", label: "Upcoming" },
@@ -42,7 +43,6 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/admin">["
   ]);
   const counts = await getCounts(sessions.map((s) => s.id));
   const pad = (n: number) => String(n).padStart(2, "0");
-  const href = (v: AdminSessionView) => `/admin?${new URLSearchParams({ view: v, ...(q ? { q } : {}) })}`;
 
   return (
     <div className="space-y-12">
@@ -63,43 +63,7 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/admin">["
       </div>
 
       <Sheet label="Sessions" className="reveal" style={reveal(2)}>
-        <div className="space-y-5">
-          <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
-            <nav className="flex gap-6" aria-label="Session views">
-              {VIEWS.map((v) => (
-                <Link
-                  key={v.key}
-                  href={href(v.key)}
-                  aria-current={v.key === view ? "page" : undefined}
-                  className={`border-b-4 pb-1 font-display text-lg font-bold tracking-wide uppercase transition-colors ${
-                    v.key === view ? "border-line text-ink" : "border-transparent text-ink-soft hover:text-ink"
-                  }`}
-                >
-                  {v.label} <span className="font-score font-black">{totals[v.key]}</span>
-                </Link>
-              ))}
-            </nav>
-            <form action="/admin" className="flex items-end gap-3">
-              <input type="hidden" name="view" value={view} />
-              <input
-                type="search"
-                name="q"
-                defaultValue={q}
-                placeholder="Search title, location, notes"
-                aria-label="Search sessions"
-                className={`${inputClass} w-64 text-base`}
-              />
-              <button type="submit" className={buttonClass("secondary", "sm")}>
-                Search
-              </button>
-              {q && (
-                <Link href={`/admin?view=${view}`} className={buttonClass("ghost", "sm")}>
-                  Clear
-                </Link>
-              )}
-            </form>
-          </div>
-
+        <SessionFilters view={view} q={q} totals={totals}>
           {sessions.length === 0 ? (
             <EmptyState>
               {q ? (
@@ -124,7 +88,7 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/admin">["
             </div>
           )}
           {sessions.length === 50 && <p className="text-sm text-ink-soft">Showing the 50 most relevant. Search to narrow down.</p>}
-        </div>
+        </SessionFilters>
       </Sheet>
     </div>
   );
