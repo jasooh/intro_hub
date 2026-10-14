@@ -307,7 +307,8 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
         {reg.status === "confirmed" && (
           <p className="font-display text-3xl font-black uppercase">
             You&apos;re in<span className="text-line">.</span>{" "}
-            {reg.option === "instructional" ? "See you at the class." : "See you on court."}
+            {reg.option === "instructional" ? "See you at the class" : "See you on court"}
+            <span className="text-line">.</span>
           </p>
         )}
         {reg.status === "waitlisted" && (
