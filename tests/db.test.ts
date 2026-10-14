@@ -256,7 +256,7 @@ describe("row level security", () => {
     ).rejects.toThrow(/permission denied/);
     const seen = await asUser<Record<string, unknown>>(db, a, `select * from public.get_session_attendees($1)`, [sid]);
     expect(Object.keys(seen.rows[0]).sort()).toEqual(
-      ["avatar_url", "display_name", "is_me", "option", "registration_id", "status", "waitlist_position"],
+      ["avatar_url", "display_name", "is_me", "option", "registration_id", "status", "team_id", "waitlist_position"],
     );
   });
 
@@ -385,5 +385,61 @@ describe("profile completeness", () => {
     expect(res.rows[0].first_name).toBe("Ann");
     const other = await asUser(db, a, `update public.profiles set phone = 'x' where id = $1`, [b]);
     expect(other.affectedRows).toBe(0);
+  });
+});
+
+describe("teams", () => {
+  async function setup() {
+    const sid = await createSession(db, { priceCents: 1500, instructionalPriceCents: 1000 });
+    const admin = await createUser(db, "Host", { admin: true });
+    const a = await createUser(db, "A");
+    const b = await createUser(db, "B");
+    await register(a, sid);
+    await register(b, sid);
+    const team = await asUser<{ id: string }>(
+      db,
+      admin,
+      `insert into public.session_teams (session_id, name, position) values ($1, 'Spikers', 0) returning id`,
+      [sid],
+    );
+    const teamId = team.rows[0].id;
+    const regA = await regOf(a, sid);
+    await asUser(db, admin, `update public.registrations set team_id = $1 where id = $2`, [teamId, regA.id]);
+    return { sid, admin, a, b, teamId, regA };
+  }
+
+  it("are hidden from players until the host publishes them", async () => {
+    const { sid, admin, a, teamId } = await setup();
+    const hidden = await asUser<{ team_id: string | null }>(db, a, `select team_id from public.get_session_attendees($1)`, [sid]);
+    expect(hidden.rows.every((r) => r.team_id === null)).toBe(true);
+    expect((await asUser(db, a, `select * from public.session_teams`)).rows).toHaveLength(0);
+
+    await asUser(db, admin, `update public.sessions set teams_published_at = now() where id = $1`, [sid]);
+    const shown = await asUser<{ team_id: string | null; is_me: boolean }>(
+      db,
+      a,
+      `select team_id, is_me from public.get_session_attendees($1)`,
+      [sid],
+    );
+    expect(shown.rows.find((r) => r.is_me)?.team_id).toBe(teamId);
+    expect((await asUser(db, a, `select name from public.session_teams`)).rows).toEqual([{ name: "Spikers" }]);
+  });
+
+  it("only hosts can create teams or move players", async () => {
+    const { sid, b, teamId } = await setup();
+    await expect(
+      asUser(db, b, `insert into public.session_teams (session_id, name) values ($1, 'Mine')`, [sid]),
+    ).rejects.toThrow(/row-level security/);
+    const regB = await regOf(b, sid);
+    const res = await asUser(db, b, `update public.registrations set team_id = $1 where id = $2`, [teamId, regB.id]);
+    expect(res.affectedRows).toBe(0);
+  });
+
+  it("switching to instructional-only or cancelling drops the team", async () => {
+    const { a, regA, sid } = await setup();
+    await asUser(db, a, `select public.change_registration_option($1, 'instructional')`, [regA.id]);
+    const after = await db.query<{ team_id: string | null }>(`select team_id from public.registrations where id = $1`, [regA.id]);
+    expect(after.rows[0].team_id).toBeNull();
+    expect((await regOf(a, sid)).status).toBe("pending_payment");
   });
 });
