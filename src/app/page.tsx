@@ -114,25 +114,38 @@ function Playlist() {
   const id = url?.match(/playlist\/([A-Za-z0-9]+)/)?.[1];
   if (!id) return null;
   return (
-    <Sheet
-      label="Warm-up playlist"
-      action={
-        <Link href="/me" className={buttonClass("ghost", "sm")}>
-          Add your hype song →
-        </Link>
-      }
-      className="reveal"
-      style={reveal(7)}
-    >
-      <iframe
-        title="Intro 2 Volleyball playlist on Spotify"
-        src={`https://open.spotify.com/embed/playlist/${id}?utm_source=generator`}
-        width="100%"
-        height="352"
-        loading="lazy"
-        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-        className="border-2 border-ink"
-      />
+    <Sheet label="Hype song playlist" className="reveal" style={reveal(7)}>
+      <div className="grid gap-5 bg-board p-4 shadow-[inset_0_0_0_2px_#2a241f,6px_6px_0_var(--line)] sm:grid-cols-[14rem_1fr] sm:p-5">
+        <div className="flex flex-col justify-between gap-5">
+          <div className="space-y-3">
+            <p className="led animate-flicker font-score text-xl font-black tracking-widest">● ON AIR</p>
+            <h3 className="font-display text-4xl leading-[0.85] font-black text-[#f2e3c6] uppercase">
+              Warm-up
+              <br />
+              play<span className="text-line">list</span>
+            </h3>
+            <p className="text-sm text-[#f2e3c6]/60">Every track is a player&apos;s hype song. Yours could be next.</p>
+          </div>
+          <Link
+            href="/me"
+            className="group inline-flex items-center gap-2 font-display text-lg font-bold tracking-wide text-line uppercase hover:text-[#f2e3c6]"
+          >
+            Add your hype song
+            <span aria-hidden className="transition-transform group-hover:translate-x-1">
+              →
+            </span>
+          </Link>
+        </div>
+        <iframe
+          title="Intro 2 Volleyball playlist on Spotify"
+          src={`https://open.spotify.com/embed/playlist/${id}?utm_source=generator&theme=0`}
+          width="100%"
+          height="352"
+          loading="lazy"
+          allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+          className="rounded-xl"
+        />
+      </div>
     </Sheet>
   );
 }

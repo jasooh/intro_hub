@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Atkinson_Hyperlegible_Next, Big_Shoulders, Doto } from "next/font/google";
 import Link from "next/link";
 import { Suspense } from "react";
+import { AsciiBall } from "@/components/ascii-ball";
 import { UserMenu } from "@/components/user-menu";
 import "./globals.css";
 
@@ -18,6 +19,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${display.variable} ${score.variable} ${body.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col font-sans">
+        {/* Lowkey spinning ASCII volleyball behind every page. */}
+        <AsciiBall />
         <header className="sticky top-0 z-20 bg-maple/90 backdrop-blur-sm">
           <div className="mx-auto flex h-16 max-w-4xl items-center justify-between gap-4 px-4">
             <nav className="flex items-baseline gap-6">
