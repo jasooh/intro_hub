@@ -116,7 +116,12 @@ async function SessionView({
 
       {!cancelled && (
         <div className="reveal space-y-2" style={reveal(2)}>
-          <SpotDots capacity={session.capacity} confirmed={confirmed} holding={holding} />
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <span className="font-display text-sm font-bold tracking-[0.2em] text-ink-soft uppercase">
+              Drop-in spots
+            </span>
+            <SpotDots capacity={session.capacity} confirmed={confirmed} holding={holding} />
+          </div>
           <div className="flex flex-wrap gap-x-5 gap-y-1">
             <Mark tone="ok" glyph="●">
               {confirmed} confirmed

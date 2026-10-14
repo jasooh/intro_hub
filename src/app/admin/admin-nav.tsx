@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Suspense } from "react";
 
 const links = [
   { href: "/admin", label: "Dashboard" },
@@ -12,9 +13,26 @@ const links = [
   { href: "/admin/songs", label: "Songs" },
 ] as const;
 
+/**
+ * The pathname is request-time data, so the active underline streams in behind
+ * Suspense; the prerendered fallback is the same tabs with nothing underlined.
+ */
 export function AdminNav() {
-  const path = usePathname();
-  const active = (href: string) => (href === "/admin" ? path === "/admin" || path.startsWith("/admin/sessions") : path.startsWith(href));
+  return (
+    <Suspense fallback={<Tabs path={null} />}>
+      <ActiveTabs />
+    </Suspense>
+  );
+}
+
+function ActiveTabs() {
+  return <Tabs path={usePathname()} />;
+}
+
+function Tabs({ path }: { path: string | null }) {
+  const active = (href: string) =>
+    path !== null &&
+    (href === "/admin" ? path === "/admin" || path.startsWith("/admin/sessions") : path.startsWith(href));
   return (
     <nav className="-mx-4 flex gap-6 overflow-x-auto overflow-y-hidden px-4 shadow-[inset_0_-2px_0_var(--ink)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {links.map((l) => (
