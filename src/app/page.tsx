@@ -49,8 +49,8 @@ export default function Home() {
             </Link>
           </div>
         </div>
-        <div className="reveal" style={reveal(4)}>
-          <Suspense fallback={<Scoreboard value="--/--" label="Signed up" size="lg" />}>
+        <div className="reveal pr-1 pb-1" style={reveal(4)}>
+          <Suspense fallback={<Scoreboard value="--/--" label="Taken" />}>
             <NextScoreboard />
           </Suspense>
         </div>
@@ -93,12 +93,12 @@ export default function Home() {
 
 async function NextScoreboard() {
   const next = await getNext();
-  if (!next) return <Scoreboard value="--/--" label="No session yet" size="lg" />;
+  if (!next) return <Scoreboard value="--/--" label="No session yet" />;
   const taken = (next.counts?.confirmed ?? 0) + (next.counts?.holding ?? 0);
   const pad = (n: number) => String(n).padStart(2, "0");
   const { weekday, day, month } = dateParts(next.session.starts_at);
   return (
-    <Scoreboard value={`${pad(taken)}/${pad(next.session.capacity)}`} label={`Taken · ${weekday} ${month} ${day}`} size="lg" />
+    <Scoreboard value={`${pad(taken)}/${pad(next.session.capacity)}`} label={`Taken · ${weekday} ${month} ${day}`} />
   );
 }
 
