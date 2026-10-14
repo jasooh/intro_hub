@@ -223,11 +223,31 @@ const TemplateForm = z.object({
   dropin_starts: optionalClock,
 });
 
+const TEMPLATE_FIELD_LABELS: Record<string, string> = {
+  title: "Title",
+  weekday: "Day",
+  start_time: "Start time",
+  duration_minutes: "Length",
+  location: "Location",
+  capacity: "Spots",
+  price: "Price",
+  open_hours_before: "Sign-ups open",
+  hold_hours: "Payment window",
+  cancel_cutoff_hours: "Refund cutoff",
+  instructional_price: "Instructional-only price",
+  instructional_ends: "Instructional ends",
+  dropin_starts: "Drop-in starts",
+};
+
 export async function saveTemplate(templateId: string | null, formData: FormData) {
   await requireAdmin();
+  const formPath = templateId ? `/admin/templates/${templateId}` : "/admin/templates/new";
   const parsed = TemplateForm.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
-    fail("/admin/templates", parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; "));
+    fail(
+      formPath,
+      parsed.error.issues.map((i) => `${TEMPLATE_FIELD_LABELS[String(i.path[0])] ?? i.path.join(".")}: ${i.message}`).join("; "),
+    );
   }
   const { price, active, instructional_price, instructional_ends, dropin_starts, ...rest } = parsed.data;
   const row = {
@@ -244,11 +264,32 @@ export async function saveTemplate(templateId: string | null, formData: FormData
   const { error } = templateId
     ? await supabase.from("session_templates").update(row).eq("id", templateId)
     : await supabase.from("session_templates").insert(row);
-  if (error) fail("/admin/templates", error.message);
+  if (error) fail(formPath, error.message);
 
   // Create the next session right away instead of waiting for the cron tick.
   await createAdminClient().rpc("create_sessions_from_templates");
   revalidatePath("/", "layout");
+  redirect(`/admin/templates?saved=${templateId ? "updated" : "created"}`);
+}
+
+/** Pause or resume a weekly session (paused templates stop creating new sessions). */
+export async function setTemplateActive(templateId: string, active: boolean) {
+  await requireAdmin();
+  const supabase = await createClient();
+  const { error } = await supabase.from("session_templates").update({ active }).eq("id", templateId);
+  if (error) fail("/admin/templates", error.message);
+  if (active) await createAdminClient().rpc("create_sessions_from_templates");
+  revalidatePath("/", "layout");
+}
+
+/** Deletes a weekly session. Sessions it already created stay (cancel those separately). */
+export async function deleteTemplate(templateId: string) {
+  await requireAdmin();
+  const supabase = await createClient();
+  const { error } = await supabase.from("session_templates").delete().eq("id", templateId);
+  if (error) fail("/admin/templates", error.message);
+  revalidatePath("/", "layout");
+  redirect("/admin/templates?saved=deleted");
 }
 
 // ---------------------------------------------------------------------------

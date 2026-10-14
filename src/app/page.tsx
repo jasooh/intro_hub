@@ -124,7 +124,7 @@ function Playlist() {
               <br />
               play<span className="text-line">list</span>
             </h3>
-            <p className="text-sm text-[#f2e3c6]/60">Every track is a player&apos;s hype song. Yours could be next.</p>
+            <p className="text-sm text-[#f2e3c6]/60">Share your favourite hype song with us so everyone can jam during our next session!</p>
           </div>
           <Link
             href="/me"

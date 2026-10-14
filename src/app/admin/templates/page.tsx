@@ -1,14 +1,20 @@
+import Link from "next/link";
 import { Suspense } from "react";
-import { saveTemplate } from "@/app/admin/actions";
+import { deleteTemplate, setTemplateActive } from "@/app/admin/actions";
 import { SubmitButton } from "@/components/submit-button";
-import { Field, inputClass, Mark, Notice, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
+import { buttonClass, EmptyState, Mark, Notice, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { env } from "@/lib/env";
 import { formatMoney } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import type { SessionTemplate } from "@/lib/types";
+import { clockAfter, WEEKDAYS } from "./template-form";
 
-const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const SAVED: Record<string, string> = {
+  created: "Weekly session created. Its next session has been added.",
+  updated: "Weekly session saved. Changes apply to sessions created from now on.",
+  deleted: "Weekly session deleted. Sessions it already created are unchanged.",
+};
 
 export default function TemplatesPage(props: PageProps<"/admin/templates">) {
   return (
@@ -20,140 +26,106 @@ export default function TemplatesPage(props: PageProps<"/admin/templates">) {
 
 async function Templates({ searchParams }: { searchParams: PageProps<"/admin/templates">["searchParams"] }) {
   await requireAdmin();
-  const { error } = await searchParams;
+  const { error, saved } = await searchParams;
   const supabase = await createClient();
-  const { data } = await supabase.from("session_templates").select("*").order("created_at");
+  const { data } = await supabase.from("session_templates").select("*").order("weekday").order("start_time");
   const templates = (data ?? []) as SessionTemplate[];
 
   return (
     <div className="space-y-12">
-      <PageTitle
-        sub={`Each active template creates its next session automatically, about a week ahead. Times are in ${env.timezone()}. Changes apply to sessions created from now on; edit existing sessions from the dashboard.`}
-      >
-        Weekly schedule
-      </PageTitle>
-      {typeof error === "string" && <Notice tone="bad">{error}</Notice>}
-
-      {templates.map((t, i) => (
-        <Sheet
-          key={t.id}
-          className="reveal"
-          style={reveal(i + 1)}
-          label={`${t.title} · ${WEEKDAYS[t.weekday]}s ${t.start_time.slice(0, 5)} · ${formatMoney(t.price_cents)}`}
-          action={
-            t.active ? (
-              <Mark tone="ok" glyph="●">
-                Active
-              </Mark>
-            ) : (
-              <Mark tone="muted" glyph="‖">
-                Paused
-              </Mark>
-            )
-          }
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <PageTitle
+          sub={`Each active weekly session creates its next session automatically, about a week ahead. Times are in ${env.timezone()}.`}
         >
-          <TemplateForm template={t} />
-        </Sheet>
-      ))}
+          Weekly schedule
+        </PageTitle>
+        <Link href="/admin/templates/new" className={buttonClass()}>
+          + New weekly session
+        </Link>
+      </div>
+      {typeof error === "string" && <Notice tone="bad">{error}</Notice>}
+      {typeof saved === "string" && SAVED[saved] && <Notice tone="ok">{SAVED[saved]}</Notice>}
 
-      <Sheet
-        label={templates.length ? "Add another weekly session" : "Set up your weekly session"}
-        className="reveal"
-        style={reveal(templates.length + 1)}
-      >
-        <TemplateForm />
+      <Sheet label={`Weekly sessions · ${templates.length}`} className="reveal" style={reveal(1)}>
+        {templates.length === 0 ? (
+          <EmptyState>
+            No weekly sessions yet.{" "}
+            <Link href="/admin/templates/new" className="text-line underline decoration-2 underline-offset-4">
+              Set one up
+            </Link>
+          </EmptyState>
+        ) : (
+          <ul className="divide-y divide-ink/25">
+            {templates.map((t) => (
+              <TemplateRow key={t.id} t={t} />
+            ))}
+          </ul>
+        )}
       </Sheet>
     </div>
   );
 }
 
-function TemplateForm({ template }: { template?: SessionTemplate }) {
+function TemplateRow({ t }: { t: SessionTemplate }) {
+  const ends = clockAfter(t.start_time, t.duration_minutes);
   return (
-    <form action={saveTemplate.bind(null, template?.id ?? null)} className="grid gap-x-6 gap-y-5 sm:grid-cols-3">
-      <Field label="Title">
-        <input name="title" defaultValue={template?.title ?? "Intro 2 Volleyball"} required className={inputClass} />
-      </Field>
-      <Field label="Day">
-        <select name="weekday" defaultValue={template?.weekday ?? 6} className={inputClass}>
-          {WEEKDAYS.map((d, i) => (
-            <option key={d} value={i}>
-              {d}
-            </option>
-          ))}
-        </select>
-      </Field>
-      <Field label="Start time">
-        <input type="time" name="start_time" defaultValue={template?.start_time.slice(0, 5) ?? "20:00"} required className={inputClass} />
-      </Field>
-      <Field label="Location">
-        <input name="location" defaultValue={template?.location} required className={inputClass} />
-      </Field>
-      <Field label="Length (minutes)">
-        <input type="number" name="duration_minutes" defaultValue={template?.duration_minutes ?? 225} min={15} required className={inputClass} />
-      </Field>
-      <Field label="Spots">
-        <input type="number" name="capacity" defaultValue={template?.capacity ?? 12} min={1} required className={inputClass} />
-      </Field>
-      <Field label="Price ($)">
-        <input
-          type="number"
-          name="price"
-          step="0.01"
-          min={0}
-          defaultValue={template ? template.price_cents / 100 : 15}
-          required
-          className={inputClass}
-        />
-      </Field>
-      <Field label="Sign-ups open (hours before)" hint="120 = 5 days before">
-        <input type="number" name="open_hours_before" defaultValue={template?.open_hours_before ?? 120} min={0} required className={inputClass} />
-      </Field>
-      <Field label="Payment window (hours)">
-        <input type="number" name="hold_hours" defaultValue={template?.hold_hours ?? 12} min={1} required className={inputClass} />
-      </Field>
-      <Field label="Refund cutoff (hours before)">
-        <input type="number" name="cancel_cutoff_hours" defaultValue={template?.cancel_cutoff_hours ?? 24} min={0} required className={inputClass} />
-      </Field>
-      <Field label="Instructional-only price ($)" hint="Blank = not offered">
-        <input
-          type="number"
-          name="instructional_price"
-          step="0.01"
-          min={0}
-          defaultValue={template ? (template.instructional_price_cents != null ? template.instructional_price_cents / 100 : "") : 10}
-          className={inputClass}
-        />
-      </Field>
-      <Field label="Instructional ends">
-        <input
-          type="time"
-          name="instructional_ends"
-          defaultValue={template ? clockAfter(template.start_time, template.instructional_minutes) : "20:45"}
-          className={inputClass}
-        />
-      </Field>
-      <Field label="Drop-in starts">
-        <input
-          type="time"
-          name="dropin_starts"
-          defaultValue={template ? clockAfter(template.start_time, template.dropin_offset_minutes) : "21:00"}
-          className={inputClass}
-        />
-      </Field>
-      <label className="flex items-center gap-2 self-end pb-2 font-display text-sm font-bold tracking-[0.15em] uppercase">
-        <input type="checkbox" name="active" defaultChecked={template?.active ?? true} className="size-5 accent-[var(--line)]" />
-        Active
-      </label>
-      <div className="self-end">
-        <SubmitButton>{template ? "Save" : "Add"}</SubmitButton>
+    <li className={`flex flex-wrap items-center gap-x-6 gap-y-3 py-4 ${t.active ? "" : "opacity-60"}`}>
+      <div className="flex w-16 shrink-0 flex-col items-center font-display leading-none uppercase">
+        <span className="text-sm font-bold tracking-[0.2em] text-line">Every</span>
+        <span className="text-3xl font-black">{WEEKDAYS[t.weekday].slice(0, 3)}</span>
       </div>
-    </form>
+      <div className="min-w-0 flex-1 space-y-1">
+        <Link
+          href={`/admin/templates/${t.id}`}
+          className="font-display text-2xl leading-tight font-extrabold uppercase decoration-line decoration-2 underline-offset-4 hover:underline"
+        >
+          {t.title}
+        </Link>
+        <p className="text-ink-soft">
+          {t.start_time.slice(0, 5)} – {ends} · {t.location} · {t.capacity} spots
+        </p>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          <span className="font-score font-black">{formatMoney(t.price_cents)}</span>
+          {t.instructional_price_cents != null && (
+            <Mark tone="mat" glyph="◇">
+              {formatMoney(t.instructional_price_cents)} instructional only
+            </Mark>
+          )}
+          {t.active ? (
+            <Mark tone="ok" glyph="●">
+              Active
+            </Mark>
+          ) : (
+            <Mark tone="muted" glyph="‖">
+              Paused
+            </Mark>
+          )}
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <Link href={`/admin/templates/${t.id}`} className={buttonClass("secondary", "sm")}>
+          Edit
+        </Link>
+        <form action={setTemplateActive.bind(null, t.id, !t.active)}>
+          <SubmitButton size="sm" variant="ghost">
+            {t.active ? "Pause" : "Resume"}
+          </SubmitButton>
+        </form>
+        <form action={deleteTemplate.bind(null, t.id)}>
+          <SubmitButton
+            size="sm"
+            variant="danger"
+            confirm={{
+              title: `Delete ${WEEKDAYS[t.weekday]} ${t.title}?`,
+              description:
+                "No new sessions will be created from it. Sessions it already created stay on the schedule; cancel those from the dashboard if needed. To stop it temporarily, use Pause instead.",
+              action: "Delete",
+            }}
+          >
+            Delete
+          </SubmitButton>
+        </form>
+      </div>
+    </li>
   );
-}
-
-/** HH:MM that is `minutes` after `start` (HH:MM[:SS]), or "" when unset. */
-function clockAfter(start: string, minutes: number | null) {
-  if (minutes == null) return "";
-  const total = (Number(start.slice(0, 2)) * 60 + Number(start.slice(3, 5)) + minutes) % 1440;
-  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
 }
