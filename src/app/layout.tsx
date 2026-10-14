@@ -69,7 +69,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             </span>
           </div>
           <p className="mt-3 text-xs text-ink-soft/70">
-            Made with love by{" "}
+            Made with &lt;3 by{" "}
             <a
               href="https://justin-abuyuan.xyz/"
               target="_blank"
