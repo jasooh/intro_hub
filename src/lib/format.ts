@@ -19,6 +19,15 @@ export function formatTime(iso: string, timeZone = env.timezone()) {
   return new Intl.DateTimeFormat("en-CA", { timeZone, hour: "numeric", minute: "2-digit" }).format(new Date(iso));
 }
 
+/** Calendar parts for a date block: { weekday: "SAT", day: "18", month: "OCT" }. */
+export function dateParts(iso: string, timeZone = env.timezone()) {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone, weekday: "short", day: "numeric", month: "short" }).formatToParts(
+    new Date(iso),
+  );
+  const get = (type: string) => (parts.find((p) => p.type === type)?.value ?? "").replace(".", "").toUpperCase();
+  return { weekday: get("weekday"), day: get("day"), month: get("month") };
+}
+
 /** Offset (ms) of `timeZone`'s wall clock from UTC at the given instant. */
 function tzOffsetMs(instant: Date, timeZone: string) {
   const parts = new Intl.DateTimeFormat("en-US", {

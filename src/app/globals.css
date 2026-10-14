@@ -4,37 +4,64 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* The app is dark-only. shadcn tokens map onto the stone/orange palette used
-   by the rest of the UI (see src/components/ui.tsx). */
+/* "Gym-floor scoreboard": pale maple floor, painted court lines, ink rules,
+   one sharp line-paint orange, gym-mat blue, and a dot-matrix scoreboard. */
 :root {
-  /* Native controls (date pickers, checkboxes, scrollbars) render dark too. */
-  color-scheme: dark;
-  --radius: 0.75rem;
-  --background: oklch(0.147 0.004 49.25); /* stone-950 */
-  --foreground: oklch(0.97 0.001 106.424); /* stone-100 */
-  --card: oklch(0.216 0.006 56.043); /* stone-900 */
-  --card-foreground: oklch(0.97 0.001 106.424);
-  --popover: oklch(0.216 0.006 56.043);
-  --popover-foreground: oklch(0.97 0.001 106.424);
-  --primary: oklch(0.646 0.222 41.116); /* orange-600 */
-  --primary-foreground: oklch(0.985 0.001 106.423);
-  --secondary: oklch(0.268 0.007 34.298); /* stone-800 */
-  --secondary-foreground: oklch(0.97 0.001 106.424);
-  --muted: oklch(0.268 0.007 34.298);
-  --muted-foreground: oklch(0.709 0.01 56.259); /* stone-400 */
-  --accent: oklch(0.268 0.007 34.298);
-  --accent-foreground: oklch(0.97 0.001 106.424);
-  --destructive: oklch(0.637 0.237 25.331); /* red-500 */
-  --border: oklch(0.268 0.007 34.298); /* stone-800 */
-  --input: oklch(0.374 0.01 67.558); /* stone-700 */
-  --ring: oklch(0.705 0.213 47.604); /* orange-500 */
+  color-scheme: light;
+
+  --maple: #f2e3c6;
+  --maple-deep: #e6cfa4;
+  --ink: #1b1612;
+  --ink-soft: #5c5047;
+  --line: #e8541e;
+  --mat: #1e3a8a;
+  --board: #141210;
+  --led: #ff6a2b;
+  --ok: #2f6b3a;
+  --warn: #a8640c;
+  --bad: #a3321f;
+
+  /* shadcn tokens (AlertDialog, DropdownMenu) mapped onto the palette */
+  --radius: 0.125rem;
+  --background: var(--maple);
+  --foreground: var(--ink);
+  --card: #f7ecd6;
+  --card-foreground: var(--ink);
+  --popover: #f7ecd6;
+  --popover-foreground: var(--ink);
+  --primary: var(--line);
+  --primary-foreground: #fff8ee;
+  --secondary: var(--maple-deep);
+  --secondary-foreground: var(--ink);
+  --muted: var(--maple-deep);
+  --muted-foreground: var(--ink-soft);
+  --accent: var(--maple-deep);
+  --accent-foreground: var(--ink);
+  --destructive: var(--bad);
+  --border: var(--ink);
+  --input: var(--ink);
+  --ring: var(--line);
 }
 
 @theme inline {
+  --color-maple: var(--maple);
+  --color-maple-deep: var(--maple-deep);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-line: var(--line);
+  --color-mat: var(--mat);
+  --color-board: var(--board);
+  --color-led: var(--led);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-bad: var(--bad);
+
+  --font-display: var(--font-big-shoulders);
+  --font-score: var(--font-doto);
+  --font-sans: var(--font-atkinson);
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -55,13 +82,95 @@
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) * 1.4);
+
+  --animate-reveal: reveal 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-flicker: flicker 0.9s steps(1, end) both;
+  --animate-fill-dot: fill-dot 0.3s ease-out both;
+  --animate-bounce-ball: bounce-ball 0.6s cubic-bezier(0.5, 0, 0.5, 1) infinite alternate;
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
-    @apply bg-background text-foreground;
+    @apply text-ink;
+    background-color: var(--maple);
+    /* maple planks + fine grain */
+    background-image:
+      radial-gradient(rgb(27 22 18 / 0.035) 1px, transparent 1px),
+      repeating-linear-gradient(
+        90deg,
+        transparent 0 119px,
+        rgb(120 80 30 / 0.07) 119px 120px
+      );
+    background-size: 3px 3px, auto;
+  }
+
+  ::selection {
+    background: var(--line);
+    color: #fff8ee;
+  }
+}
+
+/* Staggered page-load reveal: give each element style={{ "--i": n }}. */
+.reveal {
+  animation: var(--animate-reveal);
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+
+.led {
+  color: var(--led);
+  text-shadow:
+    0 0 6px rgb(255 106 43 / 0.55),
+    0 0 18px rgb(255 106 43 / 0.25);
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Scoreboard digits "power on". */
+@keyframes flicker {
+  0% { opacity: 0; }
+  20% { opacity: 1; }
+  30% { opacity: 0.2; }
+  45% { opacity: 1; }
+  55% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+@keyframes fill-dot {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@keyframes bounce-ball {
+  from { transform: translateY(0); }
+  to { transform: translateY(-18px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

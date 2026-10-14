@@ -52,15 +52,18 @@ export function SubmitButton({
     <>
       {button}
       <AlertDialog open={open} onOpenChange={setOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="rounded-none border-2 bg-[#f7ecd6] shadow-[6px_6px_0_var(--ink)]">
           <AlertDialogHeader>
-            <AlertDialogTitle>{title}</AlertDialogTitle>
-            {description && <AlertDialogDescription>{description}</AlertDialogDescription>}
+            <AlertDialogTitle className="font-display text-3xl leading-none font-black uppercase">{title}</AlertDialogTitle>
+            {description && <AlertDialogDescription className="text-base text-ink-soft">{description}</AlertDialogDescription>}
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Go back</AlertDialogCancel>
+          <AlertDialogFooter className="gap-3 pt-2">
+            <AlertDialogCancel variant="ghost" className={`h-auto rounded-none ${buttonClass("secondary")}`}>
+              Go back
+            </AlertDialogCancel>
             <AlertDialogAction
-              variant={variant === "danger" ? "destructive" : "default"}
+              variant="ghost"
+              className={`h-auto rounded-none ${buttonClass(variant === "danger" ? "danger" : "primary")}`}
               onClick={() => buttonRef.current?.form?.requestSubmit()}
             >
               {action ?? (typeof children === "string" ? children : "Confirm")}

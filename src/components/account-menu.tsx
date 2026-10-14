@@ -22,13 +22,13 @@ export function AccountMenu({ name, email, avatarUrl }: { name: string; email: s
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label="Account menu"
-        className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 focus-visible:ring-offset-stone-950"
+        className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-line focus-visible:ring-offset-2 focus-visible:ring-offset-maple"
       >
         <Avatar name={name} src={avatarUrl} size={32} />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent align="end" className="w-60 rounded-none border-2 p-1.5 shadow-[4px_4px_0_var(--ink)]">
         <DropdownMenuLabel className="font-normal">
-          <p className="truncate font-medium">{name}</p>
+          <p className="truncate font-display text-lg font-extrabold uppercase">{name}</p>
           <p className="truncate text-xs text-muted-foreground">{email}</p>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
