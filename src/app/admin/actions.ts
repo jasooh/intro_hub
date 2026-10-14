@@ -8,6 +8,8 @@ import { requireAdmin } from "@/lib/auth";
 import { env } from "@/lib/env";
 import { zonedLocalToUtc } from "@/lib/format";
 import { dispatchEvents, parseEvents } from "@/lib/registrations";
+import { balanceTeams } from "@/lib/teams";
+import type { SkillLevel } from "@/lib/types";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 
 function fail(path: string, message: string): never {
@@ -247,4 +249,96 @@ export async function saveTemplate(templateId: string | null, formData: FormData
   // Create the next session right away instead of waiting for the cron tick.
   await createAdminClient().rpc("create_sessions_from_templates");
   revalidatePath("/", "layout");
+}
+
+// ---------------------------------------------------------------------------
+// Teams
+// ---------------------------------------------------------------------------
+
+function revalidateTeams(sessionId: string) {
+  revalidatePath(`/admin/sessions/${sessionId}`);
+  revalidatePath(`/s/${sessionId}`);
+}
+
+/** (Re)builds teams: drops any existing ones, then balances drop-in players by skill. */
+export async function makeTeams(sessionId: string, formData: FormData) {
+  await requireAdmin();
+  const path = `/admin/sessions/${sessionId}`;
+  const count = z.coerce.number().int().min(2).max(12).safeParse(formData.get("count"));
+  if (!count.success) fail(path, "Pick between 2 and 12 teams");
+
+  const supabase = await createClient();
+  const { data: regs, error: regsError } = await supabase
+    .from("registrations")
+    .select("id, profile:profiles(skill_level)")
+    .eq("session_id", sessionId)
+    .eq("option", "full")
+    .in("status", ["pending_payment", "confirmed"]);
+  if (regsError) fail(path, regsError.message);
+
+  const { error: delError } = await supabase.from("session_teams").delete().eq("session_id", sessionId);
+  if (delError) fail(path, delError.message);
+  const { data: teams, error: teamError } = await supabase
+    .from("session_teams")
+    .insert(Array.from({ length: count.data }, (_, i) => ({ session_id: sessionId, name: `Team ${i + 1}`, position: i })))
+    .select("id, position")
+    .order("position");
+  if (teamError || !teams) fail(path, teamError?.message ?? "Couldn't create teams");
+
+  const players = ((regs ?? []) as unknown as { id: string; profile: { skill_level: SkillLevel | null } }[]).map((r) => ({
+    id: r.id,
+    skill: r.profile.skill_level,
+  }));
+  const groups = balanceTeams(players, teams.length);
+  for (const [i, group] of groups.entries()) {
+    if (group.length === 0) continue;
+    const { error } = await supabase
+      .from("registrations")
+      .update({ team_id: teams[i].id })
+      .in(
+        "id",
+        group.map((p) => p.id),
+      );
+    if (error) fail(path, error.message);
+  }
+  revalidateTeams(sessionId);
+}
+
+export async function renameTeam(teamId: string, sessionId: string, formData: FormData) {
+  await requireAdmin();
+  const name = z.string().trim().min(1).max(40).safeParse(formData.get("name"));
+  if (!name.success) fail(`/admin/sessions/${sessionId}`, "Team names need 1–40 characters");
+  const supabase = await createClient();
+  const { error } = await supabase.from("session_teams").update({ name: name.data }).eq("id", teamId);
+  if (error) fail(`/admin/sessions/${sessionId}`, error.message);
+  revalidateTeams(sessionId);
+}
+
+export async function moveToTeam(registrationId: string, sessionId: string, formData: FormData) {
+  await requireAdmin();
+  const teamId = String(formData.get("team_id") ?? "") || null;
+  const supabase = await createClient();
+  const { error } = await supabase.from("registrations").update({ team_id: teamId }).eq("id", registrationId);
+  if (error) fail(`/admin/sessions/${sessionId}`, error.message);
+  revalidateTeams(sessionId);
+}
+
+export async function setTeamsPublished(sessionId: string, published: boolean) {
+  await requireAdmin();
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("sessions")
+    .update({ teams_published_at: published ? new Date().toISOString() : null })
+    .eq("id", sessionId);
+  if (error) fail(`/admin/sessions/${sessionId}`, error.message);
+  revalidateTeams(sessionId);
+}
+
+export async function removeTeams(sessionId: string) {
+  await requireAdmin();
+  const supabase = await createClient();
+  const { error } = await supabase.from("session_teams").delete().eq("session_id", sessionId);
+  if (!error) await supabase.from("sessions").update({ teams_published_at: null }).eq("id", sessionId);
+  if (error) fail(`/admin/sessions/${sessionId}`, error.message);
+  revalidateTeams(sessionId);
 }

@@ -9,7 +9,7 @@ import { requireAdmin } from "@/lib/auth";
 import { formatDateTime, formatMoney, formatTime } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import { DateBlock } from "@/components/session-card";
-import { SKILL_LABELS } from "@/lib/profile";
+import { PlayerDetails } from "@/components/player-details";
 import type { Payment, Profile, Registration, Session } from "@/lib/types";
 import { SessionForm } from "../session-form";
 
@@ -241,43 +241,42 @@ const pad = (n: number) => String(n).padStart(2, "0");
 
 function PlayerRow({
   reg,
+  teamName,
   prefix,
   children,
 }: {
   reg: Row;
   sessionId: string;
+  teamName?: string | null;
   prefix?: string;
   children?: React.ReactNode;
 }) {
   const payment = reg.payments[0];
+  const paid = payment
+    ? `${formatMoney(payment.amount_cents)} · ${
+        payment.matched_by === "admin" ? "marked paid by host" : `from ${payment.sender_name ?? "?"} (matched by ${payment.matched_by})`
+      }`
+    : null;
   return (
     <li className="flex flex-wrap items-center gap-3 py-3">
       {prefix && <span className="w-7 font-score text-lg font-black text-mat">{prefix}</span>}
       <Avatar name={name(reg)} src={reg.profile.avatar_url} />
       <div className="min-w-0 flex-1">
-        <p className="truncate font-semibold">
-          {name(reg)}
-          {fullName(reg) && fullName(reg) !== name(reg) && <span className="font-normal text-ink-soft"> · {fullName(reg)}</span>}
+        <p className="truncate">
+          <PlayerDetails data={{ profile: reg.profile, registration: reg, paid, teamName: teamName ?? null }}>
+            {name(reg)}
+          </PlayerDetails>
+          {fullName(reg) && fullName(reg) !== name(reg) && <span className="text-ink-soft"> · {fullName(reg)}</span>}
         </p>
         <p className="truncate text-sm text-ink-soft">
-          {reg.profile.email}
-          {reg.profile.phone && ` · ${reg.profile.phone}`} · <span className="font-score font-black text-ink">{reg.ref_code}</span>
-          {` · owes ${formatMoney(reg.amount_cents)}`}
+          <span className="font-score font-black text-ink">{reg.ref_code}</span> · owes {formatMoney(reg.amount_cents)}
           {reg.status === "pending_payment" && reg.hold_expires_at && ` · hold until ${formatDateTime(reg.hold_expires_at)}`}
-          {payment &&
-            ` · paid ${formatMoney(payment.amount_cents)} (${
-              payment.matched_by === "admin" ? "manual" : `${payment.sender_name ?? "?"}, by ${payment.matched_by}`
-            })`}
+          {payment && ` · paid ${formatMoney(payment.amount_cents)}`}
         </p>
         <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
           {reg.option === "instructional" && (
             <Mark tone="mat" glyph="◇">
               Instructional only
-            </Mark>
-          )}
-          {reg.profile.skill_level && (
-            <Mark tone="muted" glyph="·">
-              {SKILL_LABELS[reg.profile.skill_level]}
             </Mark>
           )}
           {reg.profile.attended_before === false && (
@@ -290,8 +289,17 @@ function PlayerRow({
               No photos
             </Mark>
           )}
+          {reg.note && (
+            <Mark tone="line" glyph="✎">
+              Note
+            </Mark>
+          )}
+          {teamName && (
+            <Mark tone="ok" glyph="●">
+              {teamName}
+            </Mark>
+          )}
         </div>
-        {reg.note && <p className="mt-1 border-l-4 border-ink/20 pl-3 text-sm">&ldquo;{reg.note}&rdquo;</p>}
       </div>
       <StatusMark status={reg.status} />
       <div className="flex flex-wrap items-center gap-3">{children}</div>

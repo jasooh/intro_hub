@@ -70,7 +70,10 @@ export type Session = {
   instructional_price_cents: number | null;
   instructional_ends_at: string | null;
   dropin_starts_at: string | null;
+  teams_published_at: string | null;
 };
+
+export type Team = { id: string; session_id: string; name: string; position: number };
 
 export type Registration = {
   id: string;
@@ -88,6 +91,7 @@ export type Registration = {
   option: SignupOption;
   amount_cents: number;
   note: string | null;
+  team_id: string | null;
 };
 
 export type Payment = {
@@ -119,6 +123,8 @@ export type Attendee = {
   avatar_url: string | null;
   status: RegistrationStatus;
   option: SignupOption;
+  /** Only set once the host has published teams. */
+  team_id: string | null;
   waitlist_position: number | null;
   is_me: boolean;
 };

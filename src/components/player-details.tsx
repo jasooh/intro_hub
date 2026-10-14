@@ -1,0 +1,158 @@
+"use client";
+
+import type { ReactNode } from "react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Avatar, Mark } from "@/components/ui";
+import { HEARD_LABELS, OPTION_LABELS, SKILL_LABELS } from "@/lib/profile";
+import type { Profile, Registration } from "@/lib/types";
+
+export type PlayerDetailsData = {
+  profile: Pick<
+    Profile,
+    | "display_name"
+    | "full_name"
+    | "first_name"
+    | "last_name"
+    | "email"
+    | "phone"
+    | "avatar_url"
+    | "skill_level"
+    | "attended_before"
+    | "learning_goals"
+    | "hype_song"
+    | "heard_about"
+    | "heard_about_other"
+    | "media_consent"
+    | "waiver_accepted_at"
+  >;
+  registration: Pick<Registration, "option" | "amount_cents" | "ref_code" | "note" | "status">;
+  /** Pre-formatted on the server (timezone-aware). */
+  paid: string | null;
+  teamName: string | null;
+};
+
+/** The player's name in the roster; clicking it opens everything they told the host. */
+export function PlayerDetails({ data, children }: { data: PlayerDetailsData; children: ReactNode }) {
+  const p = data.profile;
+  const r = data.registration;
+  const name = p.display_name ?? p.full_name ?? p.email;
+  const fullName = [p.first_name, p.last_name].filter(Boolean).join(" ");
+  const heard = p.heard_about === "other" ? `Other: ${p.heard_about_other ?? "—"}` : p.heard_about ? HEARD_LABELS[p.heard_about] : null;
+
+  return (
+    <Dialog>
+      <DialogTrigger className="text-left font-semibold decoration-line decoration-2 underline-offset-4 hover:underline">
+        {children}
+      </DialogTrigger>
+      <DialogContent className="max-h-[90vh] overflow-y-auto rounded-none border-2 bg-[#f7ecd6] shadow-[6px_6px_0_var(--ink)] sm:max-w-lg">
+        <DialogHeader className="flex-row items-center gap-4 text-left">
+          <Avatar name={name} src={p.avatar_url} size={56} />
+          <div className="min-w-0">
+            <DialogTitle className="truncate font-display text-3xl leading-none font-black uppercase">{name}</DialogTitle>
+            <DialogDescription className="truncate text-base text-ink-soft">{fullName || p.email}</DialogDescription>
+          </div>
+        </DialogHeader>
+
+        <div className="flex flex-wrap gap-x-4 gap-y-1">
+          {r.option === "instructional" && (
+            <Mark tone="mat" glyph="◇">
+              Instructional only
+            </Mark>
+          )}
+          {p.attended_before === false && (
+            <Mark tone="line" glyph="★">
+              First time
+            </Mark>
+          )}
+          {p.media_consent === false && (
+            <Mark tone="bad" glyph="✕">
+              No photos
+            </Mark>
+          )}
+          {data.teamName && (
+            <Mark tone="ok" glyph="●">
+              {data.teamName}
+            </Mark>
+          )}
+        </div>
+
+        {r.note && (
+          <Section title="Note to the host">
+            <p className="border-l-4 border-line pl-3 text-lg whitespace-pre-line">{r.note}</p>
+          </Section>
+        )}
+
+        <Section title="Contact">
+          <Rows>
+            <Row label="Email">
+              <a href={`mailto:${p.email}`} className="text-mat underline underline-offset-2">
+                {p.email}
+              </a>
+            </Row>
+            <Row label="Phone">
+              {p.phone ? (
+                <a href={`tel:${p.phone}`} className="text-mat underline underline-offset-2">
+                  {p.phone}
+                </a>
+              ) : null}
+            </Row>
+          </Rows>
+        </Section>
+
+        <Section title="This session">
+          <Rows>
+            <Row label="Option">{OPTION_LABELS[r.option]}</Row>
+            <Row label="Owes">
+              <span className="font-score font-black">${(r.amount_cents / 100).toFixed(2)}</span>
+            </Row>
+            <Row label="Ref code">
+              <span className="font-score font-black">{r.ref_code}</span>
+            </Row>
+            <Row label="Paid">{data.paid}</Row>
+          </Rows>
+        </Section>
+
+        <Section title="About them">
+          <Rows>
+            <Row label="Skill">{p.skill_level ? SKILL_LABELS[p.skill_level] : null}</Row>
+            <Row label="Attended before">{p.attended_before == null ? null : p.attended_before ? "Yes" : "No, first time"}</Row>
+            <Row label="Wants to learn">{p.learning_goals}</Row>
+            <Row label="Hype song">{p.hype_song}</Row>
+            <Row label="Heard via">{heard}</Row>
+          </Rows>
+        </Section>
+
+        <Section title="Agreements">
+          <Rows>
+            <Row label="Media release">
+              {p.media_consent == null ? null : p.media_consent ? "Agreed" : <b className="text-bad">Declined: keep out of photos</b>}
+            </Row>
+            <Row label="Waiver">{p.waiver_accepted_at ? `Accepted ${p.waiver_accepted_at.slice(0, 10)}` : null}</Row>
+          </Rows>
+        </Section>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="space-y-2 border-t-2 border-ink pt-3">
+      <h3 className="font-display text-sm font-bold tracking-[0.2em] text-ink-soft uppercase">{title}</h3>
+      {children}
+    </section>
+  );
+}
+
+function Rows({ children }: { children: ReactNode }) {
+  return <dl className="grid grid-cols-[8.5rem_1fr] gap-x-4 gap-y-1.5">{children}</dl>;
+}
+
+function Row({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <>
+      <dt className="font-display font-bold tracking-wide text-ink-soft uppercase">{label}</dt>
+      <dd className="min-w-0 break-words">{children ?? <span className="text-ink-soft">—</span>}</dd>
+    </>
+  );
+}
