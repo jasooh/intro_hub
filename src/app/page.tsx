@@ -9,7 +9,10 @@ import { getCounts, getUpcomingSessions } from "@/lib/queries";
 
 const STEPS = [
   { title: "Grab a spot", body: "Sign in with Google and tap Sign up. If there's room, your spot is held while you pay." },
-  { title: "e-Transfer", body: "Put your ref code (like VB-7K3Q) in the message. Payments are matched automatically." },
+  {
+    title: "e-Transfer",
+    body: "You get a code like VB-7K3Q. Put it in the e-Transfer message and your spot is confirmed within minutes. No screenshots needed.",
+  },
   { title: "Play", body: "You get a confirmation email. Session full? Join the waitlist and you move up automatically." },
 ];
 

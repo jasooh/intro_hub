@@ -71,7 +71,7 @@ async function Payments({ searchParams }: { searchParams: PageProps<"/admin/paym
 
   return (
     <div className="space-y-12">
-      <PageTitle sub="e-Transfers are matched automatically by ref code, or by sender name + exact amount. Anything that couldn't be matched needs your attention.">
+      <PageTitle sub="Every e-Transfer that reaches your Gmail shows up here within minutes. It's linked to a sign-up by the code in its message (or, with no code, the sender's name and the exact amount owed), and that player is marked paid. Anything that couldn't be linked is left for you to sort out.">
         Payments
       </PageTitle>
       {error && <Notice tone="bad">{error}</Notice>}
