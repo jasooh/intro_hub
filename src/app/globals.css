@@ -94,6 +94,13 @@
     @apply border-border outline-ring/50;
   }
 
+  /* Safety net: nothing should ever make the page pan sideways on a phone.
+     `clip` (unlike `hidden`) keeps the sticky header working. */
+  html,
+  body {
+    overflow-x: clip;
+  }
+
   body {
     @apply text-ink;
     background-color: var(--maple);

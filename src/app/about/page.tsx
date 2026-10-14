@@ -56,7 +56,7 @@ export default function AboutPage() {
       </Sheet>
 
       <Sheet label="A typical session" className="reveal" style={reveal(3)}>
-        <ol className="grid gap-6 sm:grid-cols-3 sm:gap-0 sm:divide-x-2 sm:divide-ink">
+        <ol className="grid grid-cols-1 gap-6 sm:grid-cols-3 sm:gap-0 sm:divide-x-2 sm:divide-ink">
           {SESSION_PARTS.map((part, i) => (
             <li key={part.title} className="space-y-2 sm:px-5 sm:first:pl-0 sm:last:pr-0">
               <div className="flex items-baseline gap-3">
@@ -69,7 +69,7 @@ export default function AboutPage() {
         </ol>
       </Sheet>
 
-      <section className="reveal grid gap-4 sm:grid-cols-[3fr_2fr]" style={reveal(4)}>
+      <section className="reveal grid grid-cols-1 gap-4 sm:grid-cols-[3fr_2fr]" style={reveal(4)}>
         <Photo {...PHOTOS.warmup} className="aspect-[4/5] sm:aspect-auto sm:row-span-2" />
         <Photo {...PHOTOS.game} className="aspect-[4/3]" />
         <Photo {...PHOTOS.huddle} className="aspect-[4/3]" />

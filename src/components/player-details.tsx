@@ -170,7 +170,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 }
 
 function Rows({ children }: { children: ReactNode }) {
-  return <dl className="grid grid-cols-[8.5rem_1fr] gap-x-4 gap-y-1.5">{children}</dl>;
+  return <dl className="grid grid-cols-[8.5rem_minmax(0,1fr)] gap-x-4 [overflow-wrap:anywhere] gap-y-1.5">{children}</dl>;
 }
 
 function Row({ label, children }: { label: string; children: ReactNode }) {

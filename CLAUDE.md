@@ -30,6 +30,7 @@ Next.js 16 App Router (Cache Components + partial prefetching), React 19, Tailwi
 - **Tailwind reload bug:** in `next dev`, edits to `globals.css` and brand-new utility classes don't appear until the dev server is restarted with `.next` deleted. To check styles reliably, `npx next build` then preview with the `intro-hub-prod` launch config (port 3100).
 - Request-time values (`Date.now()`, cookies, `usePathname()`) must be inside `<Suspense>` or after `await connection()`; `createClient()` in `src/lib/supabase/server.ts` already calls `connection()`.
 - Page files can only export the page; put reusable/previewable pieces in components.
+- **Mobile overflow:** a `grid` with only `sm:grid-cols-*` gets an `auto` track on phones that stretches to its widest child; always add `grid-cols-1`. Inputs/selects in flex rows need `min-w-0` (`inputClass` has it). Long user text (emails, team names) gets `[overflow-wrap:anywhere]`. `html, body { overflow-x: clip }` is only a safety net. Check at 320px and 360px.
 - `SubmitButton` (`src/components/submit-button.tsx`) takes `confirm` to show the shadcn confirmation modal; never use `window.confirm`.
 
 ## Frontend theme: "Gym-floor scoreboard"

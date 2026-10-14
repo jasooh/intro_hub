@@ -41,7 +41,7 @@ export function ProfileForm({
       <input type="hidden" name="return_to" value={returnTo} />
 
       <Group title="You">
-        <div className="grid gap-5 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <Field label="First name">
             <input name="first_name" defaultValue={first} required maxLength={60} autoComplete="given-name" autoCapitalize="words" spellCheck={false} className={inputClass} />
           </Field>

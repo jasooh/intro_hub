@@ -94,7 +94,7 @@ async function SessionView({
           )}
         </div>
 
-        <header className="grid items-end gap-6 sm:grid-cols-[1fr_auto]">
+        <header className="grid grid-cols-1 items-end gap-6 sm:grid-cols-[1fr_auto]">
           <div className="reveal flex gap-5" style={reveal(0)}>
             <DateBlock iso={session.starts_at} className="pt-1" />
             <div className="min-w-0 space-y-1">
@@ -417,7 +417,7 @@ async function AttendeeList({ sessionId }: { sessionId: string }) {
     return (
       <div className="space-y-10">
         <TeamsView teams={teams} going={going} />
-        <div className="grid gap-10 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-10 sm:grid-cols-2">
           {waitlistSheet}
           {instructionalSheet}
         </div>
@@ -426,7 +426,7 @@ async function AttendeeList({ sessionId }: { sessionId: string }) {
   }
 
   return (
-    <div className="grid gap-10 sm:grid-cols-2">
+    <div className="grid grid-cols-1 gap-10 sm:grid-cols-2">
       <Sheet label={`Team sheet · ${going.length}`}>
         {going.length === 0 ? (
           <p className="text-ink-soft">Nobody yet. Be the first!</p>

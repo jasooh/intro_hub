@@ -27,7 +27,7 @@ export function TemplateForm({
   return (
     <form action={action} className="space-y-10">
       <Group title="Session">
-        <div className="grid gap-x-6 gap-y-5 sm:grid-cols-[1fr_8rem]">
+        <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-[1fr_8rem]">
           <div className="sm:col-span-2">
             <Field label="Title">
               <input name="title" defaultValue={t?.title ?? "Intro 2 Volleyball"} required className={inputClass} />
@@ -43,7 +43,7 @@ export function TemplateForm({
       </Group>
 
       <Group title="When">
-        <div className="grid gap-x-6 gap-y-5 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-3">
           <Field label="Day">
             <select name="weekday" defaultValue={t?.weekday ?? 6} className={inputClass}>
               {WEEKDAYS.map((d, i) => (
@@ -63,7 +63,7 @@ export function TemplateForm({
       </Group>
 
       <Group title="Price">
-        <div className="grid gap-x-6 gap-y-5 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-3">
           <Field label="Instructional + drop-in ($)">
             <input
               type="number"
@@ -79,7 +79,7 @@ export function TemplateForm({
       </Group>
 
       <Group title="Instructional-only option" hint="Leave the price blank if you don't offer it.">
-        <div className="grid gap-x-6 gap-y-5 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-3">
           <Field label="Price ($)">
             <input
               type="number"
@@ -114,7 +114,7 @@ export function TemplateForm({
           <span className="text-line transition-transform group-open:rotate-90">▸</span> Advanced
           <span className="font-sans text-sm font-normal tracking-normal text-ink-soft normal-case">sign-up timing & refunds</span>
         </summary>
-        <div className="grid gap-x-6 gap-y-5 pt-5 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-x-6 gap-y-5 pt-5 sm:grid-cols-3">
           <Field label="Sign-ups open (hours before)" hint="120 = 5 days before">
             <input type="number" name="open_hours_before" defaultValue={t?.open_hours_before ?? 120} min={0} required className={inputClass} />
           </Field>

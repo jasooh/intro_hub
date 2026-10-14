@@ -26,7 +26,7 @@ export function RefundRow({ r, status, reason }: { r: RefundRowData; status: Ref
           {fullName && fullName !== name && <span className="text-ink-soft"> · {fullName}</span>}
         </p>
         <p className="text-sm text-ink-soft">
-          e-Transfer to <span className="text-ink">{r.profile.email}</span>
+          e-Transfer to <span className="text-ink [overflow-wrap:anywhere]">{r.profile.email}</span>
           {r.profile.phone && ` · ${r.profile.phone}`} · <span className="font-score font-black text-ink">{r.ref_code}</span>
         </p>
         <p className="text-sm">

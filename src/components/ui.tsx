@@ -295,7 +295,7 @@ export function Field({ label, hint, children }: { label: string; hint?: string;
 }
 
 export const inputClass =
-  "block w-full rounded-none border-0 border-b-2 border-ink bg-transparent px-0 py-2 text-lg text-ink placeholder:text-ink-soft/60 focus:border-line focus:ring-0 focus:outline-none";
+  "block w-full min-w-0 rounded-none border-0 border-b-2 border-ink bg-transparent px-0 py-2 text-lg text-ink placeholder:text-ink-soft/60 focus:border-line focus:ring-0 focus:outline-none";
 
 export function PageSpinner() {
   return (

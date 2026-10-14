@@ -18,13 +18,13 @@ const getNext = cache(async () => {
 export default function Home() {
   return (
     <div className="space-y-14">
-      <section className="grid items-end gap-8 sm:grid-cols-[1fr_auto]">
+      <section className="grid grid-cols-1 items-end gap-8 sm:grid-cols-[1fr_auto]">
         <div className="space-y-5">
           <p className="reveal font-display text-base font-bold tracking-[0.3em] text-line uppercase" style={reveal(0)}>
             Drop-in volleyball · beginners welcome
           </p>
           <h1
-            className="reveal font-display text-[clamp(4.5rem,17vw,9rem)] leading-[0.8] font-black tracking-tight uppercase"
+            className="reveal font-display text-[clamp(3rem,20vw,9rem)] leading-[0.8] font-black tracking-tight uppercase"
             style={reveal(1)}
           >
             Intro 2
@@ -96,7 +96,7 @@ function Playlist() {
   if (!id) return null;
   return (
     <Sheet label="Hype song playlist" className="reveal" style={reveal(6)}>
-      <div className="grid gap-5 bg-board p-4 shadow-[inset_0_0_0_2px_#2a241f,6px_6px_0_var(--line)] sm:grid-cols-[14rem_1fr] sm:p-5">
+      <div className="grid grid-cols-1 gap-5 bg-board p-4 shadow-[inset_0_0_0_2px_#2a241f,6px_6px_0_var(--line)] sm:grid-cols-[14rem_1fr] sm:p-5">
         <div className="flex flex-col justify-between gap-5">
           <div className="space-y-3">
             <p className="led animate-flicker font-score text-xl font-black tracking-widest">● ON AIR</p>

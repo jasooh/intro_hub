@@ -20,14 +20,14 @@ export function TeamsView({ teams, going }: { teams: Team[]; going: Attendee[] }
       }
     >
       <div className="space-y-8">
-        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
           {teams.map((t) => {
             const members = going.filter((a) => a.team_id === t.id);
             const mine = t.id === myTeam;
             return (
               <section key={t.id} className={`space-y-2 border-l-4 pl-4 ${mine ? "border-line" : "border-ink/15"}`}>
                 <div className="flex items-baseline justify-between gap-3">
-                  <h3 className="font-display text-3xl leading-none font-black uppercase">{t.name}</h3>
+                  <h3 className="min-w-0 font-display text-3xl leading-none font-black uppercase [overflow-wrap:anywhere]">{t.name}</h3>
                   {mine && (
                     <Mark tone="line" glyph="★">
                       Your team

@@ -13,13 +13,13 @@ export function TeamSelect({
   current: string | null;
 }) {
   return (
-    <form action={action}>
+    <form action={action} className="min-w-0 shrink">
       <select
         name="team_id"
         defaultValue={current ?? ""}
         aria-label="Team"
         onChange={(e) => e.currentTarget.form?.requestSubmit()}
-        className="border-0 border-b-2 border-ink bg-transparent py-1 pr-6 pl-0 font-display text-sm font-bold tracking-wide uppercase focus:border-line focus:ring-0"
+        className="w-full max-w-40 min-w-0 truncate border-0 border-b-2 border-ink bg-transparent py-1 pr-6 pl-0 font-display text-sm font-bold tracking-wide uppercase focus:border-line focus:ring-0"
       >
         <option value="">No team</option>
         {teams.map((t) => (
