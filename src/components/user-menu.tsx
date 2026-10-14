@@ -14,13 +14,6 @@ export async function UserMenu() {
   }
   const name = profile.display_name ?? profile.full_name ?? profile.email;
   return (
-    <nav className="flex items-center gap-2 text-sm">
-      {profile.role === "admin" && (
-        <Link href="/admin" className={buttonClass("ghost", "sm")}>
-          Admin
-        </Link>
-      )}
-      <AccountMenu name={name} email={profile.email} avatarUrl={profile.avatar_url} />
-    </nav>
+    <AccountMenu name={name} email={profile.email} avatarUrl={profile.avatar_url} isAdmin={profile.role === "admin"} />
   );
 }

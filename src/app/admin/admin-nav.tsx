@@ -15,12 +15,12 @@ export function AdminNav() {
   const path = usePathname();
   const active = (href: string) => (href === "/admin" ? path === "/admin" || path.startsWith("/admin/sessions") : path.startsWith(href));
   return (
-    <nav className="-mx-4 flex gap-6 overflow-x-auto border-b-2 border-ink px-4">
+    <nav className="-mx-4 flex gap-6 overflow-x-auto overflow-y-hidden px-4 shadow-[inset_0_-2px_0_var(--ink)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {links.map((l) => (
         <Link
           key={l.href}
           href={l.href}
-          className={`-mb-[2px] border-b-4 pb-2 font-display text-lg font-bold tracking-wide whitespace-nowrap uppercase transition-colors ${
+          className={`border-b-4 pb-2 font-display text-lg font-bold tracking-wide whitespace-nowrap uppercase transition-colors ${
             active(l.href) ? "border-line text-ink" : "border-transparent text-ink-soft hover:text-ink"
           }`}
         >

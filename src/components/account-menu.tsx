@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, UserRound } from "lucide-react";
+import { LayoutDashboard, LogOut, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useTransition } from "react";
 import { signOut } from "@/app/auth/actions";
@@ -14,8 +14,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-/** Profile picture in the header that opens Account / Sign out. */
-export function AccountMenu({ name, email, avatarUrl }: { name: string; email: string; avatarUrl: string | null }) {
+/** Profile picture in the header that opens Account / Admin (hosts only) / Sign out. */
+export function AccountMenu({
+  name,
+  email,
+  avatarUrl,
+  isAdmin,
+}: {
+  name: string;
+  email: string;
+  avatarUrl: string | null;
+  isAdmin: boolean;
+}) {
   const [signingOut, startSignOut] = useTransition();
 
   return (
@@ -38,6 +48,15 @@ export function AccountMenu({ name, email, avatarUrl }: { name: string; email: s
             Account
           </Link>
         </DropdownMenuItem>
+        {isAdmin && (
+          <DropdownMenuItem asChild>
+            <Link href="/admin">
+              <LayoutDashboard />
+              Admin
+            </Link>
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuSeparator />
         <DropdownMenuItem disabled={signingOut} onSelect={() => startSignOut(() => signOut())}>
           <LogOut />
           {signingOut ? "Signing out…" : "Sign out"}
