@@ -5,7 +5,7 @@ import { buttonClass, EmptyState, PageSpinner, PageTitle, reveal, Scoreboard, Sh
 import { requireAdmin } from "@/lib/auth";
 import { type AdminSessionView, getAdminSessions, getCounts } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
-import { SessionFilters } from "./session-filters";
+import { ListFilters } from "@/components/list-filters";
 
 const VIEWS: { key: AdminSessionView; label: string }[] = [
   { key: "upcoming", label: "Upcoming" },
@@ -63,7 +63,12 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/admin">["
       </div>
 
       <Sheet label="Sessions" className="reveal" style={reveal(2)}>
-        <SessionFilters view={view} q={q} totals={totals}>
+        <ListFilters
+          path="/admin"
+          tabs={{ param: "view", value: view, options: VIEWS.map((v) => ({ ...v, count: totals[v.key] })) }}
+          q={q}
+          placeholder="Search title, location, notes"
+        >
           {sessions.length === 0 ? (
             <EmptyState>
               {q ? (
@@ -88,7 +93,7 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/admin">["
             </div>
           )}
           {sessions.length === 50 && <p className="text-sm text-ink-soft">Showing the 50 most relevant. Search to narrow down.</p>}
-        </SessionFilters>
+        </ListFilters>
       </Sheet>
     </div>
   );
