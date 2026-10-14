@@ -66,7 +66,15 @@ async function SessionView({
     <div className="space-y-10">
       <LiveRefresh sessionId={id} />
       <div>
-        <BackLink href="/sessions">All sessions</BackLink>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <BackLink href="/sessions">All sessions</BackLink>
+          {/* Hosts only: jump to this session's admin page. */}
+          {profile?.role === "admin" && (
+            <Link href={`/admin/sessions/${id}`} className={buttonClass("secondary", "sm")}>
+              Edit session
+            </Link>
+          )}
+        </div>
 
         <header className="grid items-end gap-6 sm:grid-cols-[1fr_auto]">
           <div className="reveal flex gap-5" style={reveal(0)}>
