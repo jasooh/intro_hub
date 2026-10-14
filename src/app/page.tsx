@@ -38,7 +38,8 @@ export default function Home() {
             Volley<span className="text-line">ball</span>
           </h1>
           <p className="reveal max-w-md text-lg text-ink-soft" style={reveal(2)}>
-            Sign up in seconds, see who&apos;s playing, and skip the group-chat chaos.
+            Just a few people spreading the love of volleyball. Never played? Perfect. Everyone&apos;s welcome on this
+            court.
           </p>
           <div className="reveal flex flex-wrap gap-4 pt-1" style={reveal(3)}>
             <Link href="/sessions" className={buttonClass("primary")}>
