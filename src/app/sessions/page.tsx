@@ -11,7 +11,7 @@ export default function SessionsPage() {
         <h1 className="font-display text-6xl leading-[0.85] font-black tracking-tight uppercase sm:text-7xl">
           Upcoming<span className="text-line">.</span>
         </h1>
-        <p className="text-lg text-ink-soft">Grab a spot, pay by e-Transfer, and you&apos;re in.</p>
+        <p className="text-lg text-ink-soft">Come join us for our weekly drop-ins!</p>
       </div>
       <Sheet label="Roster" className="reveal" style={reveal(1)}>
         <Suspense fallback={<PageSpinner />}>

@@ -23,7 +23,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <AsciiBall />
         <header className="sticky top-0 z-20 bg-maple/90 backdrop-blur-sm">
           <div className="mx-auto flex h-16 max-w-4xl items-center justify-between gap-4 px-4">
-            <nav className="flex items-baseline gap-6">
+            <nav className="flex items-baseline gap-4 sm:gap-6">
               <Link href="/" className="font-display text-2xl font-black tracking-tight uppercase">
                 Intro<span className="text-line">/</span>Hub
               </Link>
@@ -32,6 +32,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 className="font-display text-lg font-bold tracking-wide text-ink-soft uppercase underline-offset-[6px] hover:text-ink hover:underline hover:decoration-line hover:decoration-2"
               >
                 Sessions
+              </Link>
+              <Link
+                href="/about"
+                className="font-display text-lg font-bold tracking-wide text-ink-soft uppercase underline-offset-[6px] hover:text-ink hover:underline hover:decoration-line hover:decoration-2"
+              >
+                About
               </Link>
             </nav>
             <Suspense>
@@ -46,6 +52,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 border-t-2 border-ink pt-3 font-display text-sm font-semibold tracking-widest text-ink-soft uppercase">
             <span>Intro 2 Volleyball · Aaniin CC · Markham</span>
             <span className="flex flex-wrap gap-x-5 gap-y-1">
+              <Link href="/about" className="text-ink hover:text-line">
+                About
+              </Link>
               <a
                 href="https://www.instagram.com/intro2volleyball/"
                 target="_blank"

@@ -7,15 +7,6 @@ import { env } from "@/lib/env";
 import { dateParts } from "@/lib/format";
 import { getCounts, getUpcomingSessions } from "@/lib/queries";
 
-const STEPS = [
-  { title: "Grab a spot", body: "Sign in with Google and tap Sign up. If there's room, your spot is held while you pay." },
-  {
-    title: "e-Transfer",
-    body: "You get a code like VB-7K3Q. Put it in the e-Transfer message and your spot is confirmed within minutes. No screenshots needed.",
-  },
-  { title: "Play", body: "You get a confirmation email. Session full? Join the waitlist and you move up automatically." },
-];
-
 // Shared by the hero scoreboard and the "Next session" row within one request.
 const getNext = cache(async () => {
   const [next] = await getUpcomingSessions(1, { includeCancelled: false });
@@ -75,20 +66,6 @@ export default function Home() {
         </Suspense>
       </Sheet>
 
-      <Sheet label="How it works" className="reveal" style={reveal(6)}>
-        <ol className="grid gap-6 sm:grid-cols-3 sm:gap-0 sm:divide-x-2 sm:divide-ink">
-          {STEPS.map((step, i) => (
-            <li key={step.title} className="space-y-2 sm:px-5 sm:first:pl-0 sm:last:pr-0">
-              <div className="flex items-baseline gap-3">
-                <span className="font-score text-4xl font-black text-line">{String(i + 1).padStart(2, "0")}</span>
-                <span className="font-display text-2xl font-extrabold uppercase">{step.title}</span>
-              </div>
-              <p className="text-ink-soft">{step.body}</p>
-            </li>
-          ))}
-        </ol>
-      </Sheet>
-
       <Playlist />
       <LiveRefresh />
     </div>
@@ -118,7 +95,7 @@ function Playlist() {
   const id = url?.match(/playlist\/([A-Za-z0-9]+)/)?.[1];
   if (!id) return null;
   return (
-    <Sheet label="Hype song playlist" className="reveal" style={reveal(7)}>
+    <Sheet label="Hype song playlist" className="reveal" style={reveal(6)}>
       <div className="grid gap-5 bg-board p-4 shadow-[inset_0_0_0_2px_#2a241f,6px_6px_0_var(--line)] sm:grid-cols-[14rem_1fr] sm:p-5">
         <div className="flex flex-col justify-between gap-5">
           <div className="space-y-3">
