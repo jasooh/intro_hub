@@ -68,6 +68,17 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               </a>
             </span>
           </div>
+          <p className="mt-3 text-xs text-ink-soft/70">
+            Made with love by{" "}
+            <a
+              href="https://justin-abuyuan.xyz/"
+              target="_blank"
+              rel="noreferrer"
+              className="underline decoration-ink/30 underline-offset-2 hover:text-line hover:decoration-line"
+            >
+              one of the players
+            </a>
+          </p>
         </footer>
       </body>
     </html>
