@@ -112,6 +112,35 @@
     background: var(--line);
     color: #fff8ee;
   }
+
+  /* Scrollbars: square ink thumb on a maple track, orange on hover.
+     Chrome ignores ::-webkit-scrollbar once scrollbar-color is set, so the
+     standard property is only used where the custom one isn't supported (Firefox). */
+  @supports not selector(::-webkit-scrollbar) {
+    html {
+      scrollbar-color: var(--ink) var(--maple-deep);
+    }
+  }
+  ::-webkit-scrollbar {
+    width: 14px;
+    height: 14px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--maple-deep);
+    border-left: 2px solid var(--ink);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--ink);
+    border: 3px solid var(--maple-deep);
+    border-left-width: 5px;
+    border-radius: 0;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--line);
+  }
+  ::-webkit-scrollbar-corner {
+    background: var(--maple-deep);
+  }
 }
 
 /* Staggered page-load reveal: give each element style={{ "--i": n }}. */
