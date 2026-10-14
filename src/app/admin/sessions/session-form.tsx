@@ -1,3 +1,4 @@
+import { LocationInput } from "@/components/location-input";
 import { SubmitButton } from "@/components/submit-button";
 import { Field, inputClass } from "@/components/ui";
 import { utcToZonedLocal } from "@/lib/format";
@@ -25,7 +26,7 @@ export function SessionForm({
         <input name="title" defaultValue={session?.title ?? "Intro 2 Volleyball"} required className={inputClass} />
       </Field>
       <Field label="Location">
-        <input name="location" defaultValue={session?.location} required className={inputClass} />
+        <LocationInput name="location" defaultValue={session?.location} required />
       </Field>
       <Field label="Starts at">
         <input

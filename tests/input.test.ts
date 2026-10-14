@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { cleanName, cleanNameList, cleanText, formatPhoneAsTyped, normalizePhone } from "@/lib/input";
-import { mapUrl } from "@/lib/maps";
+import { detectPlatform, mapUrl, parsePhoton } from "@/lib/maps";
 
 describe("normalizePhone", () => {
   it.each([
@@ -73,12 +73,34 @@ describe("cleanNameList", () => {
 });
 
 describe("mapUrl", () => {
-  it("encodes the location for each app", () => {
-    const loc = "Aaniin Community Centre, 5665 14th Ave, Markham";
-    expect(mapUrl("google", loc)).toBe(
-      "https://www.google.com/maps/search/?api=1&query=Aaniin%20Community%20Centre%2C%205665%2014th%20Ave%2C%20Markham",
-    );
-    expect(mapUrl("apple", loc)).toMatch(/^https:\/\/maps\.apple\.com\/\?q=Aaniin%20/);
-    expect(mapUrl("waze", loc)).toMatch(/^https:\/\/waze\.com\/ul\?q=Aaniin%20.*&navigate=yes$/);
+  const loc = "Aaniin Community Centre, 5665 14th Ave, Markham";
+  const q = "Aaniin%20Community%20Centre%2C%205665%2014th%20Ave%2C%20Markham";
+  it("hands the link to the phone's maps app", () => {
+    expect(mapUrl(loc, "ios")).toBe(`https://maps.apple.com/?q=${q}`);
+    expect(mapUrl(loc, "android")).toBe(`geo:0,0?q=${q}`);
+    expect(mapUrl(loc)).toBe(`https://www.google.com/maps/search/?api=1&query=${q}`);
+  });
+
+  it("detects the platform from the user agent", () => {
+    expect(detectPlatform("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)")).toBe("ios");
+    expect(detectPlatform("Mozilla/5.0 (Linux; Android 15; Pixel 9)")).toBe("android");
+    expect(detectPlatform("Mozilla/5.0 (Windows NT 10.0; Win64; x64)")).toBe("other");
+  });
+});
+
+describe("parsePhoton", () => {
+  it("formats places as name, street, city and drops duplicates", () => {
+    const feature = (properties: object) => ({ properties });
+    expect(
+      parsePhoton({
+        features: [
+          feature({ name: "Aaniin Community Centre", housenumber: "5665", street: "14th Avenue", city: "Markham" }),
+          feature({ name: "Aaniin Community Centre", housenumber: "5665", street: "14th Avenue", city: "Markham" }),
+          feature({ housenumber: "1", street: "Main St", state: "Ontario" }),
+          feature({}),
+        ],
+      }),
+    ).toEqual(["Aaniin Community Centre, 5665 14th Avenue, Markham", "1 Main St, Ontario"]);
+    expect(parsePhoton(null)).toEqual([]);
   });
 });

@@ -1,3 +1,4 @@
+import { LocationInput } from "@/components/location-input";
 import type { ReactNode } from "react";
 import { SubmitButton } from "@/components/submit-button";
 import { Field, inputClass } from "@/components/ui";
@@ -33,12 +34,7 @@ export function TemplateForm({
             </Field>
           </div>
           <Field label="Location">
-            <input
-              name="location"
-              defaultValue={t?.location ?? "Aaniin Community Centre, Gym 2"}
-              required
-              className={inputClass}
-            />
+            <LocationInput name="location" defaultValue={t?.location ?? "Aaniin Community Centre, Gym 2, 5665 14th Avenue, Markham"} required />
           </Field>
           <Field label="Spots">
             <input type="number" name="capacity" defaultValue={t?.capacity ?? 18} min={1} required className={inputClass} />

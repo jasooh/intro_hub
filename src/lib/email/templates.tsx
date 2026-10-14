@@ -40,7 +40,7 @@ function Layout({ preview, children, ctx }: { preview: string; children: ReactNo
           {children}
           <Hr />
           <Text style={styles.muted}>
-            {ctx.sessionTitle} · {ctx.when} · <a href={mapUrl("google", ctx.location)}>{ctx.location}</a>
+            {ctx.sessionTitle} · {ctx.when} · <a href={mapUrl(ctx.location)}>{ctx.location}</a>
             <br />
             Can&apos;t make it? Cancel from <a href={ctx.myUrl}>your sign-ups</a> so someone on the waitlist gets your spot.
           </Text>
