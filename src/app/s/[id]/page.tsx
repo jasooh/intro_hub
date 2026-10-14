@@ -167,6 +167,15 @@ async function SessionView({
         {cancelled ? (
           <Sheet label="Status">
             <p className="font-display text-3xl font-black text-bad uppercase">This session has been cancelled.</p>
+            {session.cancel_reason && (
+              <p className="mt-3 border-l-4 border-bad py-1 pl-4 text-lg whitespace-pre-line">
+                <span className="font-display text-sm font-bold tracking-[0.15em] text-ink-soft uppercase">
+                  Message from the host
+                </span>
+                <br />
+                {session.cancel_reason}
+              </p>
+            )}
           </Sheet>
         ) : profile ? (
           <MySpot session={session} profile={profile} counts={sessionCounts} />

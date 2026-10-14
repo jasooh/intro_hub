@@ -14,6 +14,7 @@ import {
   Avatar,
   BackLink,
   buttonClass,
+  inputClass,
   Mark,
   Notice,
   PageSpinner,
@@ -233,9 +234,22 @@ async function AdminSession({
       </Sheet>
 
       {session.status === "scheduled" && (
-        <section className="flex flex-wrap items-center justify-between gap-4 border-t-2 border-bad pt-4">
+        <section className="space-y-4 border-t-2 border-bad pt-4">
           <p className="text-ink-soft">Cancelling emails everyone and adds paid players to the refunds list.</p>
-          <form action={cancelSession.bind(null, id)}>
+          <form action={cancelSession.bind(null, id)} className="flex flex-wrap items-end gap-4">
+            <label className="block min-w-64 flex-1 space-y-1">
+              <span className="font-display text-sm font-bold tracking-[0.15em] uppercase">
+                Message to players (optional)
+              </span>
+              <textarea
+                name="reason"
+                rows={2}
+                maxLength={500}
+                placeholder="e.g. The gym was double-booked. Sorry, see you next week!"
+                className={`${inputClass} text-base`}
+              />
+              <span className="block text-sm text-ink-soft">Shown on the session page and in the cancellation email.</span>
+            </label>
             <SubmitButton
               variant="danger"
               confirm={{

@@ -14,6 +14,8 @@ export type EmailContext = {
   etransferEmail: string;
   sessionUrl: string;
   myUrl: string;
+  /** Host's optional message when a session is cancelled. */
+  cancelReason?: string | null;
 };
 
 const styles = {
@@ -169,6 +171,13 @@ export function buildEmail(kind: RegistrationEvent["event"], ctx: EmailContext):
             <Text style={styles.text}>
               The host cancelled this session. If you already paid, the host will refund you.
             </Text>
+            {ctx.cancelReason && (
+              <Section style={styles.box}>
+                <Text style={{ ...styles.text, margin: 0 }}>
+                  <b>Message from the host:</b> {ctx.cancelReason}
+                </Text>
+              </Section>
+            )}
           </Layout>
         ),
       };

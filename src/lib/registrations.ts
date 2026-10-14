@@ -76,6 +76,7 @@ async function sendForEvent(event: RegistrationEvent, reg: Loaded) {
     etransferEmail: env.etransferEmail(),
     sessionUrl: `${appUrl}/s/${reg.session_id}`,
     myUrl: `${appUrl}/me`,
+    cancelReason: reg.session.cancel_reason,
   });
 
   try {

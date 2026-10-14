@@ -110,9 +110,10 @@ export async function updateSession(sessionId: string, formData: FormData) {
   revalidatePath("/", "layout");
 }
 
-export async function cancelSession(sessionId: string) {
+export async function cancelSession(sessionId: string, formData: FormData) {
   await requireAdmin();
-  await rpc("admin_cancel_session", { p_session_id: sessionId }, `/admin/sessions/${sessionId}`);
+  const reason = String(formData.get("reason") ?? "").trim().slice(0, 500);
+  await rpc("admin_cancel_session", { p_session_id: sessionId, p_reason: reason || null }, `/admin/sessions/${sessionId}`);
   revalidatePath("/", "layout");
 }
 

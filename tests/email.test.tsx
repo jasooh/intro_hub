@@ -42,4 +42,14 @@ describe("email templates", () => {
       expect(text).toContain("host@example.com");
     }
   });
+
+  it("cancellation emails include the host's message only when given", async () => {
+    const withReason = await render(
+      buildEmail("session_cancelled", { ...ctx, cancelReason: "Gym double-booked, sorry!" }).element,
+      { plainText: true },
+    );
+    expect(withReason).toContain("Gym double-booked, sorry!");
+    const without = await render(buildEmail("session_cancelled", ctx).element, { plainText: true });
+    expect(without).not.toContain("Message from the host");
+  });
 });

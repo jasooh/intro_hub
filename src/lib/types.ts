@@ -71,6 +71,7 @@ export type Session = {
   instructional_ends_at: string | null;
   dropin_starts_at: string | null;
   teams_published_at: string | null;
+  cancel_reason: string | null;
 };
 
 export type Team = { id: string; session_id: string; name: string; position: number };

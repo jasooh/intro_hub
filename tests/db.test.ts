@@ -463,3 +463,34 @@ describe("deleting an account", () => {
     expect(payments.rows).toEqual([{ registration_id: null }]);
   });
 });
+
+describe("cancelling a session with a reason", () => {
+  it("stores the host's message, trimmed, and cancels everyone", async () => {
+    const sid = await createSession(db);
+    const admin = await createUser(db, "Host", { admin: true });
+    const a = await createUser(db, "A");
+    await register(a, sid);
+    const res = await asUser<{ events: Event[] }>(
+      db,
+      admin,
+      `select public.admin_cancel_session($1, $2) as events`,
+      [sid, "  Gym double-booked, sorry!  "],
+    );
+    expect(res.rows[0].events).toHaveLength(1);
+    const s = await db.query<{ status: string; cancel_reason: string }>(
+      `select status, cancel_reason from public.sessions where id = $1`,
+      [sid],
+    );
+    expect(s.rows[0]).toEqual({ status: "cancelled", cancel_reason: "Gym double-booked, sorry!" });
+  });
+
+  it("works without a reason, and players can't call it", async () => {
+    const sid = await createSession(db);
+    const admin = await createUser(db, "Host", { admin: true });
+    const a = await createUser(db, "A");
+    await expect(asUser(db, a, `select public.admin_cancel_session($1)`, [sid])).rejects.toThrow(/forbidden/);
+    await asUser(db, admin, `select public.admin_cancel_session($1)`, [sid]);
+    const s = await db.query<{ cancel_reason: string | null }>(`select cancel_reason from public.sessions where id = $1`, [sid]);
+    expect(s.rows[0].cancel_reason).toBeNull();
+  });
+});
