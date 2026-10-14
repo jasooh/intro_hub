@@ -1,21 +1,23 @@
 import { Suspense } from "react";
 import { signInWithGoogle } from "@/app/auth/actions";
 import { SubmitButton } from "@/components/submit-button";
-import { Card } from "@/components/ui";
+import { Notice, reveal } from "@/components/ui";
 
 export default function LoginPage(props: PageProps<"/login">) {
   return (
-    <div className="mx-auto max-w-sm py-12">
-      <Card className="space-y-5 text-center">
-        <div className="text-4xl">🏐</div>
-        <div>
-          <h1 className="text-xl font-semibold">Sign in to Intro Hub</h1>
-          <p className="mt-1 text-sm text-stone-400">Sign up for sessions, see who&apos;s coming, and manage your spot.</p>
-        </div>
+    <div className="mx-auto max-w-md space-y-8 py-6 sm:py-12">
+      <div className="reveal space-y-3" style={reveal(0)}>
+        <p className="font-display text-base font-bold tracking-[0.3em] text-line uppercase">Check in</p>
+        <h1 className="font-display text-6xl leading-[0.85] font-black tracking-tight uppercase sm:text-7xl">
+          Sign in to play<span className="text-line">.</span>
+        </h1>
+        <p className="text-lg text-ink-soft">Sign up for sessions, see who&apos;s coming, and manage your spot.</p>
+      </div>
+      <div className="reveal border-t-2 border-ink pt-6" style={reveal(1)}>
         <Suspense>
           <LoginForm searchParams={props.searchParams} />
         </Suspense>
-      </Card>
+      </div>
     </div>
   );
 }
@@ -25,10 +27,10 @@ async function LoginForm({ searchParams }: { searchParams: PageProps<"/login">["
   const next = typeof params.next === "string" ? params.next : "/";
   const error = typeof params.error === "string" ? params.error : null;
   return (
-    <form action={signInWithGoogle} className="space-y-3">
+    <form action={signInWithGoogle} className="space-y-4">
       <input type="hidden" name="next" value={next} />
-      {error && <p className="rounded-lg bg-red-950/50 p-2 text-sm text-red-300">{error}</p>}
-      <SubmitButton variant="secondary" className="w-full">
+      {error && <Notice tone="bad">{error}</Notice>}
+      <SubmitButton variant="secondary" className="w-full bg-[#fff8ee]">
         <GoogleIcon /> Continue with Google
       </SubmitButton>
     </form>

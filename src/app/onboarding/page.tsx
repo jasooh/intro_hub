@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { ProfileForm } from "@/components/profile-form";
-import { Avatar, Card, PageSpinner } from "@/components/ui";
+import { Avatar, Notice, PageSpinner, reveal } from "@/components/ui";
 import { requireProfile } from "@/lib/auth";
 
 export default function OnboardingPage(props: PageProps<"/onboarding">) {
@@ -19,16 +19,19 @@ async function Onboarding({ searchParams }: { searchParams: PageProps<"/onboardi
   const name = profile.display_name ?? profile.full_name ?? "";
 
   return (
-    <div className="mx-auto max-w-md">
-      <Card className="space-y-5">
-        <div className="flex items-center gap-3">
-          <Avatar name={name || profile.email} src={profile.avatar_url} size={48} />
-          <div>
-            <h1 className="text-xl font-semibold">{profile.onboarded_at ? "Your profile" : "Welcome! 👋"}</h1>
-            <p className="text-sm text-stone-400">{profile.email}</p>
-          </div>
+    <div className="mx-auto max-w-md space-y-8">
+      <div className="reveal flex items-center gap-4" style={reveal(0)}>
+        <Avatar name={name || profile.email} src={profile.avatar_url} size={64} />
+        <div className="min-w-0">
+          <h1 className="font-display text-5xl leading-[0.85] font-black tracking-tight uppercase">
+            {profile.onboarded_at ? "Your profile" : "Welcome"}
+            <span className="text-line">{profile.onboarded_at ? "." : "!"}</span>
+          </h1>
+          <p className="truncate text-ink-soft">{profile.email}</p>
         </div>
-        {error && <p className="rounded-lg bg-red-950/50 p-2 text-sm text-red-300">{error}</p>}
+      </div>
+      <div className="reveal space-y-5 border-t-2 border-ink pt-5" style={reveal(1)}>
+        {error && <Notice tone="bad">{error}</Notice>}
         <ProfileForm
           profile={profile}
           next={next}
@@ -36,7 +39,7 @@ async function Onboarding({ searchParams }: { searchParams: PageProps<"/onboardi
           submitLabel={profile.onboarded_at ? "Save" : "Continue"}
           submitClassName="w-full"
         />
-      </Card>
+      </div>
     </div>
   );
 }

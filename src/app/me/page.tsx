@@ -3,10 +3,11 @@ import { Suspense } from "react";
 import { cancelRegistration } from "@/app/actions";
 import { PaymentInstructions } from "@/components/payment-instructions";
 import { ProfileForm } from "@/components/profile-form";
+import { DateBlock } from "@/components/session-card";
 import { SubmitButton } from "@/components/submit-button";
-import { Avatar, Card, EmptyState, PageSpinner, StatusBadge } from "@/components/ui";
+import { Avatar, EmptyState, Notice, PageSpinner, reveal, Sheet, StatusMark } from "@/components/ui";
 import { requireProfile } from "@/lib/auth";
-import { formatDateTime, formatMoney } from "@/lib/format";
+import { formatDateTime, formatMoney, formatTime } from "@/lib/format";
 import { getMyRegistrations } from "@/lib/queries";
 import type { Registration, Session } from "@/lib/types";
 
@@ -25,71 +26,85 @@ async function Account({ searchParams }: { searchParams: PageProps<"/me">["searc
   const name = profile.display_name ?? profile.full_name ?? profile.email;
 
   return (
-    <div className="space-y-8">
-      <h1 className="text-2xl font-semibold">Account</h1>
-      {typeof error === "string" && <p className="rounded-lg bg-red-950/50 p-3 text-sm text-red-300">{error}</p>}
-
-      <Card className="space-y-5">
-        <div className="flex items-center gap-3">
-          <Avatar name={name} src={profile.avatar_url} size={48} />
-          <div className="min-w-0">
-            <p className="truncate font-semibold">{name}</p>
-            <p className="truncate text-sm text-stone-400">{profile.email}</p>
-          </div>
+    <div className="space-y-12">
+      <div className="reveal flex items-center gap-5" style={reveal(0)}>
+        <Avatar name={name} src={profile.avatar_url} size={72} />
+        <div className="min-w-0">
+          <h1 className="truncate font-display text-5xl leading-[0.85] font-black tracking-tight uppercase sm:text-6xl">
+            {name}
+          </h1>
+          <p className="truncate text-ink-soft">{profile.email}</p>
         </div>
-        {saved === "1" && <p className="rounded-lg bg-green-950 p-2 text-sm text-green-300">Profile saved.</p>}
-        <ProfileForm profile={profile} next="/me?saved=1" returnTo="/me" submitLabel="Save changes" />
-      </Card>
+      </div>
+      {typeof error === "string" && <Notice tone="bad">{error}</Notice>}
 
-      <section className="space-y-3">
-        <h2 className="text-lg font-semibold">My sign-ups</h2>
-        <h3 className="text-sm font-semibold tracking-wide text-stone-400 uppercase">Upcoming</h3>
+      <Sheet label="Profile" className="reveal max-w-xl" style={reveal(1)}>
+        <div className="space-y-5">
+          {saved === "1" && <Notice tone="ok">Profile saved.</Notice>}
+          <ProfileForm profile={profile} next="/me?saved=1" returnTo="/me" submitLabel="Save changes" />
+        </div>
+      </Sheet>
+
+      <Sheet label="My sign-ups · upcoming" className="reveal" style={reveal(2)}>
         {upcoming.length === 0 ? (
           <EmptyState>
-            Nothing yet. <Link href="/sessions" className="text-orange-400 underline">Find a session</Link>
+            Nothing yet.{" "}
+            <Link href="/sessions" className="text-line underline decoration-2 underline-offset-4">
+              Find a session
+            </Link>
           </EmptyState>
         ) : (
-          upcoming.map((r) => <RegistrationCard key={r.id} reg={r} />)
+          <div className="divide-y divide-ink/25">
+            {upcoming.map((r) => (
+              <RegistrationRow key={r.id} reg={r} />
+            ))}
+          </div>
         )}
-      </section>
+      </Sheet>
 
       {past.length > 0 && (
-        <section className="space-y-2">
-          <h3 className="text-sm font-semibold tracking-wide text-stone-400 uppercase">Past</h3>
-          <ul className="divide-y divide-stone-800 rounded-xl border border-stone-800 bg-stone-900">
+        <Sheet label="Past" className="reveal" style={reveal(3)}>
+          <ul className="divide-y divide-ink/20">
             {past.map((r) => (
-              <li key={r.id} className="flex items-center justify-between px-4 py-2 text-sm">
-                <span>
+              <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                <span className="text-ink-soft">
                   {r.session.title} · {formatDateTime(r.session.starts_at)}
                 </span>
-                <StatusBadge status={r.status} />
+                <StatusMark status={r.status} />
               </li>
             ))}
           </ul>
-        </section>
+        </Sheet>
       )}
     </div>
   );
 }
 
-function RegistrationCard({ reg }: { reg: Registration & { session: Session } }) {
+function RegistrationRow({ reg }: { reg: Registration & { session: Session } }) {
   const active = ["pending_payment", "confirmed", "waitlisted"].includes(reg.status);
   return (
-    <Card className="space-y-3">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <Link href={`/s/${reg.session_id}`} className="font-semibold hover:underline">
-            {reg.session.title}
-          </Link>
-          <p className="text-sm text-stone-400">
-            {formatDateTime(reg.session.starts_at)} · {reg.session.location} · {formatMoney(reg.session.price_cents)}
+    <div className="space-y-4 py-5">
+      <div className="flex gap-4">
+        <DateBlock iso={reg.session.starts_at} />
+        <div className="min-w-0 flex-1 space-y-1">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <Link
+              href={`/s/${reg.session_id}`}
+              className="font-display text-2xl leading-tight font-extrabold uppercase decoration-line decoration-2 underline-offset-4 hover:underline"
+            >
+              {reg.session.title}
+            </Link>
+            <StatusMark status={reg.status} />
+          </div>
+          <p className="text-ink-soft">
+            {formatTime(reg.session.starts_at)} · {reg.session.location} ·{" "}
+            <span className="font-score font-black text-ink">{formatMoney(reg.session.price_cents)}</span>
           </p>
         </div>
-        <StatusBadge status={reg.status} />
       </div>
       {reg.status === "pending_payment" && <PaymentInstructions session={reg.session} registration={reg} />}
       {reg.refund_owed && (
-        <p className="text-sm text-stone-400">
+        <p className="text-sm text-ink-soft">
           {reg.refunded_at ? "Refunded." : "Refund owed. The host will e-Transfer it back."}
         </p>
       )}
@@ -111,6 +126,6 @@ function RegistrationCard({ reg }: { reg: Registration & { session: Session } })
           </SubmitButton>
         </form>
       )}
-    </Card>
+    </div>
   );
 }
