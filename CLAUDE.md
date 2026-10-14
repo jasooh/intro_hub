@@ -48,7 +48,7 @@ Light only. A community-centre gym, not a SaaS template.
   - `buttonClass`: square, caps, hard ink shadow that presses in
   - `inputClass`: underline-only "scoresheet" inputs
   - `Notice`, `BackLink`, `EmptyState`, `reveal(i)` (staggered fade-up)
-- **Teams** render as a `LineupCard` (`src/components/lineup-card.tsx`): a column per team with a dark header + LED count, numbered slots (empty slots show size differences), scrolls sideways inside the card on phones. Host view adds skill dots, a skill tally and a Move picker; players never see skill.
+- **Teams** render as `TeamBlocks` (`src/components/team-blocks.tsx`): one bordered block per team (dark header + LED count), roster in 1–2 columns via container queries, blocks 2-across from `md`. Never scroll sideways. Host view adds skill dots, a skill tally and a Move picker; players never see skill.
 - **Lists are ruled rows** (`divide-y divide-ink/20`), with dates as a `DateBlock` (SAT / 17 / OCT).
 - **Motion:** CSS only (`.reveal` stagger, scoreboard flicker, dot fill), disabled under `prefers-reduced-motion`.
 - **Banned:** rounded card grids / three-card heroes, icons in tinted square containers, generic pill badges, purple gradients, Inter/Roboto/system fonts.

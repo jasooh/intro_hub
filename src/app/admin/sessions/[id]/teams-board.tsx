@@ -1,6 +1,6 @@
 import { makeTeams, moveToTeam, removeTeams, renameTeam, setTeamsPublished } from "@/app/admin/actions";
 import { FlashOnSettle } from "@/components/flash-toaster";
-import { LineupCard } from "@/components/lineup-card";
+import { TeamBlocks } from "@/components/team-blocks";
 import { SubmitButton } from "@/components/submit-button";
 import { TeamSelect } from "@/components/team-select";
 import { Avatar, inputClass, Mark, reveal, Sheet } from "@/components/ui";
@@ -78,9 +78,8 @@ export function TeamsBoard({ session, players, teams }: { session: Session; play
       }
     >
       <div className="space-y-6">
-        <LineupCard
-          showSkill
-          columnMin="17.5rem"
+        <TeamBlocks
+          host
           teams={teams.map((t) => ({
             id: t.id,
             name: t.name,

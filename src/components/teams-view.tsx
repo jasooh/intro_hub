@@ -1,9 +1,9 @@
-import { LineupCard } from "@/components/lineup-card";
+import { TeamBlocks } from "@/components/team-blocks";
 import { AttendeeRow } from "@/components/signup-parts";
 import { Mark, Sheet } from "@/components/ui";
 import type { Attendee, Team } from "@/lib/types";
 
-/** Published teams as a lineup card, with the viewer's own team called out. */
+/** Published teams as stacked team blocks, with the viewer's own team called out. */
 export function TeamsView({ teams, going }: { teams: Team[]; going: Attendee[] }) {
   const myTeam = going.find((a) => a.is_me)?.team_id ?? null;
   const unplaced = going.filter((a) => !a.team_id || !teams.some((t) => t.id === a.team_id));
@@ -19,7 +19,7 @@ export function TeamsView({ teams, going }: { teams: Team[]; going: Attendee[] }
       }
     >
       <div className="space-y-8">
-        <LineupCard
+        <TeamBlocks
           teams={teams.map((t) => ({
             id: t.id,
             name: t.name,
