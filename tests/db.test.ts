@@ -256,7 +256,7 @@ describe("row level security", () => {
     ).rejects.toThrow(/permission denied/);
     const seen = await asUser<Record<string, unknown>>(db, a, `select * from public.get_session_attendees($1)`, [sid]);
     expect(Object.keys(seen.rows[0]).sort()).toEqual(
-      ["avatar_url", "display_name", "is_me", "registration_id", "status", "waitlist_position"],
+      ["avatar_url", "display_name", "is_me", "option", "registration_id", "status", "waitlist_position"],
     );
   });
 
@@ -267,5 +267,123 @@ describe("row level security", () => {
     await register(a, sid);
     const regs = await asUser(db, admin, `select * from public.registrations`);
     expect(regs.rows).toHaveLength(1);
+  });
+});
+
+describe("instructional-only option", () => {
+  async function registerAs(userId: string, sessionId: string, option: string, note: string | null = null) {
+    const res = await asUser<{ events: Event[] }>(
+      db,
+      userId,
+      `select public.register_for_session($1, $2, $3) as events`,
+      [sessionId, option, note],
+    );
+    return res.rows[0].events;
+  }
+  async function switchTo(userId: string, regId: string, option: string) {
+    const res = await asUser<{ events: Event[] }>(
+      db,
+      userId,
+      `select public.change_registration_option($1, $2) as events`,
+      [regId, option],
+    );
+    return res.rows[0].events;
+  }
+  async function reg(userId: string, sessionId: string) {
+    const res = await db.query<{ id: string; status: string; option: string; amount_cents: number; note: string | null }>(
+      `select id, status::text, option, amount_cents, note from public.registrations
+        where profile_id = $1 and session_id = $2 order by created_at desc limit 1`,
+      [userId, sessionId],
+    );
+    return res.rows[0];
+  }
+
+  it("doesn't use a spot, never waitlists, and owes the instructional price", async () => {
+    const sid = await createSession(db, { capacity: 1, priceCents: 1500, instructionalPriceCents: 1000 });
+    const [a, b, c] = [await createUser(db, "A"), await createUser(db, "B"), await createUser(db, "C")];
+    await registerAs(a, sid, "full");
+    expect((await registerAs(b, sid, "instructional", "  first time!  "))[0].event).toBe("signed_up");
+    expect((await registerAs(c, sid, "full"))[0].event).toBe("waitlisted");
+
+    expect(await reg(b, sid)).toMatchObject({ status: "pending_payment", option: "instructional", amount_cents: 1000, note: "first time!" });
+    expect((await reg(a, sid)).amount_cents).toBe(1500);
+    const counts = await asUser<{ confirmed: number; holding: number; waitlisted: number; instructional: number }>(
+      db,
+      a,
+      `select confirmed, holding, waitlisted, instructional from public.get_session_counts(array[$1::uuid])`,
+      [sid],
+    );
+    expect(counts.rows[0]).toEqual({ confirmed: 0, holding: 1, waitlisted: 1, instructional: 1 });
+  });
+
+  it("is refused when the session has no instructional price", async () => {
+    const sid = await createSession(db);
+    const a = await createUser(db, "A");
+    await expect(registerAs(a, sid, "instructional")).rejects.toThrow(/option_unavailable/);
+  });
+
+  it("switching full -> instructional frees the spot for the next waitlister", async () => {
+    const sid = await createSession(db, { capacity: 1, priceCents: 1500, instructionalPriceCents: 1000 });
+    const [a, b] = [await createUser(db, "A"), await createUser(db, "B")];
+    await registerAs(a, sid, "full");
+    await registerAs(b, sid, "full");
+    const events = await switchTo(a, (await reg(a, sid)).id, "instructional");
+    expect(events).toEqual([{ event: "promoted", registration_id: (await reg(b, sid)).id }]);
+    expect(await reg(a, sid)).toMatchObject({ status: "pending_payment", option: "instructional", amount_cents: 1000 });
+    expect((await reg(b, sid)).status).toBe("pending_payment");
+  });
+
+  it("switching instructional -> full needs a spot, otherwise waitlists", async () => {
+    const sid = await createSession(db, { capacity: 1, priceCents: 1500, instructionalPriceCents: 1000 });
+    const [a, b] = [await createUser(db, "A"), await createUser(db, "B")];
+    await registerAs(a, sid, "instructional");
+    await registerAs(b, sid, "full");
+    expect(await switchTo(a, (await reg(a, sid)).id, "full")).toEqual([
+      { event: "waitlisted", registration_id: (await reg(a, sid)).id },
+    ]);
+    expect(await reg(a, sid)).toMatchObject({ status: "waitlisted", option: "full", amount_cents: 1500 });
+  });
+
+  it("can't switch once paid, or someone else's sign-up", async () => {
+    const sid = await createSession(db, { priceCents: 1500, instructionalPriceCents: 1000 });
+    const [a, b] = [await createUser(db, "A"), await createUser(db, "B")];
+    await registerAs(a, sid, "full");
+    const id = (await reg(a, sid)).id;
+    await expect(switchTo(b, id, "instructional")).rejects.toThrow(/forbidden/);
+    await db.query(`update public.registrations set status = 'confirmed' where id = $1`, [id]);
+    await expect(switchTo(a, id, "instructional")).rejects.toThrow(/option_locked/);
+  });
+
+  it("admin mark-paid records the registration's own amount", async () => {
+    const sid = await createSession(db, { priceCents: 1500, instructionalPriceCents: 1000 });
+    const admin = await createUser(db, "Host", { admin: true });
+    const a = await createUser(db, "A");
+    await registerAs(a, sid, "instructional");
+    await asUser(db, admin, `select public.admin_mark_paid($1)`, [(await reg(a, sid)).id]);
+    const paid = await db.query<{ amount_cents: number }>(`select amount_cents from public.payments`);
+    expect(paid.rows[0].amount_cents).toBe(1000);
+    expect((await reg(a, sid)).status).toBe("confirmed");
+  });
+});
+
+describe("profile completeness", () => {
+  it("sign-up needs a completed profile (name, phone, skill, waiver...)", async () => {
+    const sid = await createSession(db);
+    const a = await createUser(db, "New", { incomplete: true });
+    await expect(register(a, sid)).rejects.toThrow(/profile_incomplete/);
+  });
+
+  it("players can fill in their own profile fields but not someone else's", async () => {
+    const [a, b] = [await createUser(db, "A", { incomplete: true }), await createUser(db, "B")];
+    await asUser(
+      db,
+      a,
+      `update public.profiles set first_name = 'Ann', phone = '555', waiver_accepted_at = now() where id = $1`,
+      [a],
+    );
+    const res = await db.query<{ first_name: string }>(`select first_name from public.profiles where id = $1`, [a]);
+    expect(res.rows[0].first_name).toBe("Ann");
+    const other = await asUser(db, a, `update public.profiles set phone = 'x' where id = $1`, [b]);
+    expect(other.affectedRows).toBe(0);
   });
 });

@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 
@@ -27,11 +27,10 @@ const SUPABASE_STUB = `
 export async function createDb() {
   const db = new PGlite();
   await db.exec(SUPABASE_STUB);
-  const migration = readFileSync(
-    join(__dirname, "..", "supabase", "migrations", "20261012000000_init.sql"),
-    "utf8",
-  );
-  await db.exec(migration);
+  const dir = join(__dirname, "..", "supabase", "migrations");
+  for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()) {
+    await db.exec(readFileSync(join(dir, file), "utf8"));
+  }
   return db;
 }
 
@@ -39,7 +38,8 @@ export type Db = PGlite;
 
 let userCounter = 0;
 
-export async function createUser(db: Db, name: string, opts: { admin?: boolean } = {}) {
+/** Creates a signed-up user. Their profile is complete (waiver etc.) unless `incomplete` is set. */
+export async function createUser(db: Db, name: string, opts: { admin?: boolean; incomplete?: boolean } = {}) {
   userCounter += 1;
   const id = `00000000-0000-4000-8000-${String(userCounter).padStart(12, "0")}`;
   await db.query(
@@ -48,6 +48,15 @@ export async function createUser(db: Db, name: string, opts: { admin?: boolean }
   );
   if (opts.admin) {
     await db.query(`update public.profiles set role = 'admin' where id = $1`, [id]);
+  }
+  if (!opts.incomplete) {
+    await db.query(
+      `update public.profiles
+          set first_name = 'Test', last_name = $2, phone = '555-0100', skill_level = 'some',
+              attended_before = false, media_consent = true, waiver_accepted_at = now(), waiver_version = 'test'
+        where id = $1`,
+      [id, name],
+    );
   }
   return id;
 }
@@ -74,14 +83,27 @@ export async function asService<T>(db: Db, sql: string, params: unknown[] = []) 
 
 export async function createSession(
   db: Db,
-  opts: { capacity?: number; priceCents?: number; opensInMinutes?: number; startsInHours?: number } = {},
+  opts: {
+    capacity?: number;
+    priceCents?: number;
+    instructionalPriceCents?: number | null;
+    opensInMinutes?: number;
+    startsInHours?: number;
+  } = {},
 ) {
   const res = await db.query<{ id: string }>(
-    `insert into public.sessions (title, starts_at, ends_at, location, capacity, price_cents, opens_at, hold_hours, cancel_cutoff)
+    `insert into public.sessions (title, starts_at, ends_at, location, capacity, price_cents, opens_at, hold_hours, cancel_cutoff,
+                                  instructional_price_cents)
      values ('Test', now() + make_interval(hours => $1), now() + make_interval(hours => $1 + 2), 'Gym',
-             $2, $3, now() + make_interval(mins => $4), 12, now() + make_interval(hours => $1 - 24))
+             $2, $3, now() + make_interval(mins => $4), 12, now() + make_interval(hours => $1 - 24), $5)
      returning id`,
-    [opts.startsInHours ?? 72, opts.capacity ?? 12, opts.priceCents ?? 1000, opts.opensInMinutes ?? -60],
+    [
+      opts.startsInHours ?? 72,
+      opts.capacity ?? 12,
+      opts.priceCents ?? 1000,
+      opts.opensInMinutes ?? -60,
+      opts.instructionalPriceCents ?? null,
+    ],
   );
   return res.rows[0].id;
 }
