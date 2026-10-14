@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { signOut } from "@/app/auth/actions";
-import { Avatar, buttonClass } from "@/components/ui";
+import { AccountMenu } from "@/components/account-menu";
+import { buttonClass } from "@/components/ui";
 import { getProfile } from "@/lib/auth";
 
 export async function UserMenu() {
@@ -14,19 +14,13 @@ export async function UserMenu() {
   }
   const name = profile.display_name ?? profile.full_name ?? profile.email;
   return (
-    <nav className="flex items-center gap-1 text-sm">
+    <nav className="flex items-center gap-2 text-sm">
       {profile.role === "admin" && (
         <Link href="/admin" className={buttonClass("ghost", "sm")}>
           Admin
         </Link>
       )}
-      <Link href="/me" className={`${buttonClass("ghost", "sm")} gap-2`}>
-        <Avatar name={name} src={profile.avatar_url} size={24} />
-        <span className="hidden sm:inline">Account</span>
-      </Link>
-      <form action={signOut}>
-        <button className={buttonClass("ghost", "sm")}>Sign out</button>
-      </form>
+      <AccountMenu name={name} email={profile.email} avatarUrl={profile.avatar_url} />
     </nav>
   );
 }

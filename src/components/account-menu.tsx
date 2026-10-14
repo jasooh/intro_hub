@@ -1,0 +1,48 @@
+"use client";
+
+import { LogOut, UserRound } from "lucide-react";
+import Link from "next/link";
+import { useTransition } from "react";
+import { signOut } from "@/app/auth/actions";
+import { Avatar } from "@/components/ui";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+/** Profile picture in the header that opens Account / Sign out. */
+export function AccountMenu({ name, email, avatarUrl }: { name: string; email: string; avatarUrl: string | null }) {
+  const [signingOut, startSignOut] = useTransition();
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        aria-label="Account menu"
+        className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 focus-visible:ring-offset-stone-950"
+      >
+        <Avatar name={name} src={avatarUrl} size={32} />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuLabel className="font-normal">
+          <p className="truncate font-medium">{name}</p>
+          <p className="truncate text-xs text-muted-foreground">{email}</p>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link href="/me">
+            <UserRound />
+            Account
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem disabled={signingOut} onSelect={() => startSignOut(() => signOut())}>
+          <LogOut />
+          {signingOut ? "Signing out…" : "Sign out"}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
