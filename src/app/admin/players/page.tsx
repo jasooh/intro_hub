@@ -48,7 +48,14 @@ async function Players({ searchParams }: { searchParams: PageProps<"/admin/playe
                     <SubmitButton
                       size="sm"
                       variant="secondary"
-                      confirm={p.role === "admin" ? `Remove host access for ${name}?` : `Make ${name} a host?`}
+                      confirm={
+                        p.role === "admin"
+                          ? { title: `Remove ${name} as a host?`, description: "They'll lose access to the admin dashboard." }
+                          : {
+                              title: `Make ${name} a host?`,
+                              description: "They'll get full access to the admin dashboard: sessions, payments, refunds and players.",
+                            }
+                      }
                     >
                       {p.role === "admin" ? "Remove host" : "Make host"}
                     </SubmitButton>

@@ -5,7 +5,7 @@ import { cancelRegistration, registerForSession } from "@/app/actions";
 import { LiveRefresh } from "@/components/live-refresh";
 import { PaymentInstructions } from "@/components/payment-instructions";
 import { SubmitButton } from "@/components/submit-button";
-import { Avatar, Badge, buttonClass, Card, PageSpinner, StatusBadge } from "@/components/ui";
+import { Avatar, BackLink, Badge, buttonClass, Card, PageSpinner, StatusBadge } from "@/components/ui";
 import { getProfile } from "@/lib/auth";
 import { formatDateTime, formatMoney, formatTime } from "@/lib/format";
 import { getCounts, getMySpot, spotsLeft } from "@/lib/queries";
@@ -40,9 +40,7 @@ async function SessionView({
   return (
     <div className="space-y-5">
       <LiveRefresh sessionId={id} />
-      <Link href="/sessions" className="text-sm text-stone-400 hover:text-stone-100">
-        ← All sessions
-      </Link>
+      <BackLink href="/sessions">All sessions</BackLink>
 
       <Card className="space-y-3">
         <div className="flex flex-wrap items-start justify-between gap-2">
@@ -148,11 +146,18 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
           <SubmitButton
             variant="danger"
             size="sm"
-            confirm={
-              reg.status === "confirmed" && !beforeCutoff
-                ? "It's past the cancellation cutoff, so this won't be refunded. Cancel anyway?"
-                : "Give up your spot?"
-            }
+            confirm={{
+              title: reg.status === "waitlisted" ? "Leave the waitlist?" : "Cancel your spot?",
+              description:
+                reg.status === "waitlisted"
+                  ? "You'll lose your place in line."
+                  : reg.status === "pending_payment"
+                    ? "Your held spot goes to the next person on the waitlist. Don't send payment."
+                    : beforeCutoff
+                      ? "Your spot goes to the next person on the waitlist, and you'll be added to the refund list."
+                      : "It's past the cancellation cutoff, so you won't be refunded. Your spot goes to the next person on the waitlist.",
+              action: reg.status === "waitlisted" ? "Leave waitlist" : "Cancel spot",
+            }}
           >
             {reg.status === "waitlisted" ? "Leave waitlist" : "Cancel my spot"}
           </SubmitButton>

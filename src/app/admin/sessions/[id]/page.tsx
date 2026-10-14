@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { cancelSession, markPaid, moveWaitlist, removeRegistration, updateSession } from "@/app/admin/actions";
 import { LiveRefresh } from "@/components/live-refresh";
 import { SubmitButton } from "@/components/submit-button";
-import { Avatar, buttonClass, Card, PageSpinner, StatusBadge } from "@/components/ui";
+import { Avatar, BackLink, buttonClass, Card, PageSpinner, StatusBadge } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
@@ -59,11 +59,9 @@ async function AdminSession({
   return (
     <div className="space-y-6">
       <LiveRefresh sessionId={id} />
+      <BackLink href="/admin">Dashboard</BackLink>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <Link href="/admin" className="text-sm text-stone-400 hover:text-stone-100">
-            ← Dashboard
-          </Link>
           <h1 className="text-2xl font-semibold">{session.title}</h1>
           <p className="text-stone-400">
             {formatDateTime(session.starts_at)} · {session.location}
@@ -101,7 +99,15 @@ async function AdminSession({
                 </form>
               )}
               <form action={removeRegistration.bind(null, r.id, id)}>
-                <SubmitButton size="sm" variant="danger" confirm={`Remove ${name(r)}? The next waitlister gets the spot.`}>
+                <SubmitButton
+                  size="sm"
+                  variant="danger"
+                  confirm={{
+                    title: `Remove ${name(r)}?`,
+                    description:
+                      "Their spot goes to the next person on the waitlist. If they've paid, they're added to the refund list.",
+                  }}
+                >
                   Remove
                 </SubmitButton>
               </form>
@@ -123,12 +129,25 @@ async function AdminSession({
                 <SubmitButton size="sm" variant="ghost">↓</SubmitButton>
               </form>
               <form action={markPaid.bind(null, r.id, id)}>
-                <SubmitButton size="sm" variant="secondary" confirm={`Confirm ${name(r)} even though the session may be full?`}>
+                <SubmitButton
+                  size="sm"
+                  variant="secondary"
+                  confirm={{
+                    title: `Add ${name(r)} as paid?`,
+                    description: "They'll be confirmed straight from the waitlist, even if the session is already full.",
+                  }}
+                >
                   Add as paid
                 </SubmitButton>
               </form>
               <form action={removeRegistration.bind(null, r.id, id)}>
-                <SubmitButton size="sm" variant="danger">Remove</SubmitButton>
+                <SubmitButton
+                  size="sm"
+                  variant="danger"
+                  confirm={{ title: `Remove ${name(r)} from the waitlist?`, description: "They'll lose their place in line." }}
+                >
+                  Remove
+                </SubmitButton>
               </form>
             </PlayerRow>
           ))}
@@ -143,7 +162,16 @@ async function AdminSession({
               <PlayerRow key={r.id} reg={r} sessionId={id}>
                 {r.status === "expired" && (
                   <form action={markPaid.bind(null, r.id, id)}>
-                    <SubmitButton size="sm" variant="secondary" confirm={`Re-add ${name(r)} as paid?`}>
+                    <SubmitButton
+                      size="sm"
+                      variant="secondary"
+                      confirm={{
+                        title: `Re-add ${name(r)} as paid?`,
+                        description:
+                          "Use this when their payment arrived after the hold expired. They'll be confirmed even if the session is full.",
+                        action: "Re-add as paid",
+                      }}
+                    >
                       Paid late? Re-add
                     </SubmitButton>
                   </form>
@@ -165,7 +193,14 @@ async function AdminSession({
             Cancelling emails everyone and adds paid players to the refunds list.
           </p>
           <form action={cancelSession.bind(null, id)}>
-            <SubmitButton variant="danger" confirm="Cancel this session for everyone?">
+            <SubmitButton
+              variant="danger"
+              confirm={{
+                title: "Cancel this session for everyone?",
+                description:
+                  "Everyone signed up or waitlisted is emailed, and paid players are added to the refund list. This can't be undone.",
+              }}
+            >
               Cancel session
             </SubmitButton>
           </form>

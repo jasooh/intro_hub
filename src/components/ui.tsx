@@ -1,3 +1,5 @@
+import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
 import type { RegistrationStatus } from "@/lib/types";
 
@@ -19,6 +21,18 @@ export function buttonClass(variant: ButtonVariant = "primary", size: "sm" | "md
     "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
     size === "sm" ? "px-2.5 py-1 text-sm" : "px-4 py-2",
     buttonVariants[variant],
+  );
+}
+
+/** "← Back" link shown above a page's content, on its own row with breathing room below. */
+export function BackLink({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <div className="pb-2">
+      <Link href={href} className={cn(buttonClass("ghost", "sm"), "-ml-2.5 text-stone-400 hover:text-stone-100")}>
+        <ArrowLeft className="size-4" aria-hidden />
+        {children}
+      </Link>
+    </div>
   );
 }
 

@@ -85,7 +85,18 @@ function RegistrationCard({ reg }: { reg: Registration & { session: Session } })
       )}
       {active && (
         <form action={cancelRegistration.bind(null, reg.id, "/me")}>
-          <SubmitButton variant="danger" size="sm" confirm="Give up your spot?">
+          <SubmitButton
+            variant="danger"
+            size="sm"
+            confirm={{
+              title: reg.status === "waitlisted" ? "Leave the waitlist?" : "Cancel your spot?",
+              description:
+                reg.status === "waitlisted"
+                  ? "You'll lose your place in line."
+                  : "Your spot goes to the next person on the waitlist. Refunds only apply before the cancellation cutoff.",
+              action: reg.status === "waitlisted" ? "Leave waitlist" : "Cancel spot",
+            }}
+          >
             {reg.status === "waitlisted" ? "Leave waitlist" : "Cancel my spot"}
           </SubmitButton>
         </form>

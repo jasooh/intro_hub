@@ -54,7 +54,10 @@ async function Refunds() {
             </div>
             <div className="flex gap-2">
               <form action={waiveRefund.bind(null, r.id)}>
-                <SubmitButton size="sm" variant="ghost" confirm="Remove from the refund list without refunding?">
+                <SubmitButton size="sm" variant="ghost" confirm={{
+                    title: "Skip this refund?",
+                    description: "They'll be removed from the refund list without being refunded.",
+                  }}>
                   No refund
                 </SubmitButton>
               </form>
