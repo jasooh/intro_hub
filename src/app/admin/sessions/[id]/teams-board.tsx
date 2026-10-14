@@ -1,4 +1,6 @@
 import { makeTeams, moveToTeam, removeTeams, renameTeam, setTeamsPublished } from "@/app/admin/actions";
+import { FlashOnSettle } from "@/components/flash-toaster";
+import { LineupCard } from "@/components/lineup-card";
 import { SubmitButton } from "@/components/submit-button";
 import { TeamSelect } from "@/components/team-select";
 import { Avatar, inputClass, Mark, reveal, Sheet } from "@/components/ui";
@@ -76,36 +78,31 @@ export function TeamsBoard({ session, players, teams }: { session: Session; play
       }
     >
       <div className="space-y-6">
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          {teams.map((t) => {
-            const members = players.filter((p) => p.team_id === t.id);
-            return (
-              <section key={t.id} className="space-y-2">
-                <form action={renameTeam.bind(null, t.id, session.id)} className="flex items-end gap-2">
-                  <input
-                    name="name"
-                    defaultValue={t.name}
-                    maxLength={40}
-                    aria-label="Team name"
-                    className={`${inputClass} font-display text-2xl font-black uppercase`}
+        <LineupCard
+          showSkill
+          columnMin="17.5rem"
+          teams={teams.map((t) => ({
+            id: t.id,
+            name: t.name,
+            title: <RenameTeam team={t} sessionId={session.id} />,
+            members: players
+              .filter((p) => p.team_id === t.id)
+              .map((p) => ({
+                id: p.id,
+                name: nameOf(p),
+                avatarUrl: p.profile.avatar_url,
+                skill: p.profile.skill_level,
+                control: (
+                  <TeamSelect
+                    mode="move"
+                    action={moveToTeam.bind(null, p.id, session.id)}
+                    teams={teams}
+                    current={p.team_id}
                   />
-                  <SubmitButton size="sm" variant="ghost">
-                    Save
-                  </SubmitButton>
-                </form>
-                <p className="font-display text-sm font-bold tracking-[0.2em] text-ink-soft uppercase">
-                  {members.length} player{members.length === 1 ? "" : "s"}
-                </p>
-                <ul className="divide-y divide-ink/20">
-                  {members.map((m) => (
-                    <TeamMember key={m.id} reg={m} sessionId={session.id} teams={teams} />
-                  ))}
-                  {members.length === 0 && <li className="py-2 text-ink-soft">Empty</li>}
-                </ul>
-              </section>
-            );
-          })}
-        </div>
+                ),
+              })),
+          }))}
+        />
 
         {unassigned.length > 0 && (
           <section className="space-y-2 border-l-4 border-warn pl-4">
@@ -172,6 +169,29 @@ function TeamMember({ reg, sessionId, teams }: { reg: TeamRow; sessionId: string
   );
 }
 
+/** Team name, editable in the card's dark header. Saves on Enter or the check. */
+function RenameTeam({ team, sessionId }: { team: Team; sessionId: string }) {
+  return (
+    <form action={renameTeam.bind(null, team.id, sessionId)} className="flex items-center gap-2">
+      <input
+        name="name"
+        defaultValue={team.name}
+        maxLength={40}
+        aria-label="Team name"
+        className="w-full min-w-0 border-0 border-b border-maple/30 bg-transparent p-0 font-display text-xl leading-tight font-black text-maple uppercase focus:border-line focus:ring-0 focus:outline-none"
+      />
+      <button
+        type="submit"
+        aria-label="Save team name"
+        className="shrink-0 font-display text-sm font-bold tracking-wide text-led uppercase hover:text-maple"
+      >
+        Save
+      </button>
+      <FlashOnSettle />
+    </form>
+  );
+}
+
 /** "?" that explains how auto-balancing works (hover, focus or tap). */
 function BalanceHelp() {
   return (
@@ -185,7 +205,7 @@ function BalanceHelp() {
       </button>
       <span
         role="tooltip"
-        className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-3 w-72 -translate-x-1/2 border-2 border-ink bg-[#f7ecd6] p-3 text-left text-sm text-ink opacity-0 shadow-[4px_4px_0_var(--ink)] transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
+        className="pointer-events-none fixed inset-x-4 bottom-4 z-30 border-2 sm:absolute sm:inset-x-auto sm:bottom-full sm:left-1/2 sm:mb-3 sm:w-72 sm:-translate-x-1/2 border-ink bg-[#f7ecd6] p-3 text-left text-sm text-ink opacity-0 shadow-[4px_4px_0_var(--ink)] transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
       >
         <b className="mb-1 block font-display tracking-wide uppercase">How balancing works</b>
         Players are ranked by the skill level they picked (experienced → some → prefer not to say → never played),

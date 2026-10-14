@@ -1,10 +1,9 @@
+import { LineupCard } from "@/components/lineup-card";
 import { AttendeeRow } from "@/components/signup-parts";
 import { Mark, Sheet } from "@/components/ui";
 import type { Attendee, Team } from "@/lib/types";
 
-const pad = (n: number) => String(n).padStart(2, "0");
-
-/** Published teams: one column per team, with the viewer's own team called out. */
+/** Published teams as a lineup card, with the viewer's own team called out. */
 export function TeamsView({ teams, going }: { teams: Team[]; going: Attendee[] }) {
   const myTeam = going.find((a) => a.is_me)?.team_id ?? null;
   const unplaced = going.filter((a) => !a.team_id || !teams.some((t) => t.id === a.team_id));
@@ -20,30 +19,16 @@ export function TeamsView({ teams, going }: { teams: Team[]; going: Attendee[] }
       }
     >
       <div className="space-y-8">
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          {teams.map((t) => {
-            const members = going.filter((a) => a.team_id === t.id);
-            const mine = t.id === myTeam;
-            return (
-              <section key={t.id} className={`space-y-2 border-l-4 pl-4 ${mine ? "border-line" : "border-ink/15"}`}>
-                <div className="flex items-baseline justify-between gap-3">
-                  <h3 className="min-w-0 font-display text-3xl leading-none font-black uppercase [overflow-wrap:anywhere]">{t.name}</h3>
-                  {mine && (
-                    <Mark tone="line" glyph="★">
-                      Your team
-                    </Mark>
-                  )}
-                </div>
-                <ol className="divide-y divide-ink/20">
-                  {members.map((a, i) => (
-                    <AttendeeRow key={a.registration_id} a={a} number={pad(i + 1)} />
-                  ))}
-                  {members.length === 0 && <li className="py-2 text-ink-soft">No players yet</li>}
-                </ol>
-              </section>
-            );
-          })}
-        </div>
+        <LineupCard
+          teams={teams.map((t) => ({
+            id: t.id,
+            name: t.name,
+            mine: t.id === myTeam,
+            members: going
+              .filter((a) => a.team_id === t.id)
+              .map((a) => ({ id: a.registration_id, name: a.display_name, avatarUrl: a.avatar_url, isMe: a.is_me })),
+          }))}
+        />
         {unplaced.length > 0 && (
           <section className="space-y-2">
             <p className="font-display text-sm font-bold tracking-[0.2em] text-ink-soft uppercase">

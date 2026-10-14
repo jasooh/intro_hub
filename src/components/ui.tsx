@@ -73,9 +73,9 @@ export function Sheet({
   }
   return (
     <section className={className} {...props}>
-      <div className="mb-5 flex items-end justify-between gap-3 border-b-2 border-ink">
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-x-3 gap-y-1 border-b-2 border-ink">
         {label ? (
-          <h2 className="inline-flex items-center gap-2.5 bg-ink px-3 pt-1.5 pb-1 font-display text-sm font-bold tracking-[0.2em] text-maple uppercase">
+          <h2 className="inline-flex shrink-0 items-center gap-2.5 bg-ink px-3 whitespace-nowrap pt-1.5 pb-1 font-display text-sm font-bold tracking-[0.2em] text-maple uppercase">
             <span aria-hidden className="size-1.5 shrink-0 bg-line" />
             {label}
           </h2>

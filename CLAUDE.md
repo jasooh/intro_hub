@@ -31,6 +31,7 @@ Next.js 16 App Router (Cache Components + partial prefetching), React 19, Tailwi
 - Request-time values (`Date.now()`, cookies, `usePathname()`) must be inside `<Suspense>` or after `await connection()`; `createClient()` in `src/lib/supabase/server.ts` already calls `connection()`.
 - Page files can only export the page; put reusable/previewable pieces in components.
 - **Mobile overflow:** a `grid` with only `sm:grid-cols-*` gets an `auto` track on phones that stretches to its widest child; always add `grid-cols-1`. Inputs/selects in flex rows need `min-w-0` (`inputClass` has it). Long user text (emails, team names) gets `[overflow-wrap:anywhere]`. `html, body { overflow-x: clip }` is only a safety net. Check at 320px and 360px.
+- **Toasts:** server actions call `flash("success", msg)` (`src/lib/flash.ts`, a one-shot cookie); failures keep redirecting with `?error=`. `FlashToaster` (in the root layout) shows both and cleans up. Forms without a `SubmitButton` need `<FlashOnSettle />` inside the form. Don't add inline success/error notices.
 - `SubmitButton` (`src/components/submit-button.tsx`) takes `confirm` to show the shadcn confirmation modal; never use `window.confirm`.
 
 ## Frontend theme: "Gym-floor scoreboard"
@@ -47,6 +48,7 @@ Light only. A community-centre gym, not a SaaS template.
   - `buttonClass`: square, caps, hard ink shadow that presses in
   - `inputClass`: underline-only "scoresheet" inputs
   - `Notice`, `BackLink`, `EmptyState`, `reveal(i)` (staggered fade-up)
+- **Teams** render as a `LineupCard` (`src/components/lineup-card.tsx`): a column per team with a dark header + LED count, numbered slots (empty slots show size differences), scrolls sideways inside the card on phones. Host view adds skill dots, a skill tally and a Move picker; players never see skill.
 - **Lists are ruled rows** (`divide-y divide-ink/20`), with dates as a `DateBlock` (SAT / 17 / OCT).
 - **Motion:** CSS only (`.reveal` stagger, scoreboard flicker, dot fill), disabled under `prefers-reduced-motion`.
 - **Banned:** rounded card grids / three-card heroes, icons in tinted square containers, generic pill badges, purple gradients, Inter/Roboto/system fonts.
