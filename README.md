@@ -56,6 +56,24 @@ Sign-ups, waitlist, e-Transfer confirmation and emails for a weekly volleyball g
 
 ---
 
+## Environments
+
+There are two Supabase projects, so testing never touches real players' data:
+
+| Where | Git branch | Supabase project | Config |
+|---|---|---|---|
+| `localhost` | `dev` | `intro-hub-dev` | `.env.local` |
+| Vercel preview deploys | `dev` | `intro-hub-dev` | Vercel env vars, **Preview** scope |
+| Production (`intro-hub-eight.vercel.app`) | `main` | `intro-hub` | Vercel env vars, **Production** scope |
+
+- Work happens on `dev`. It's merged into `main` to release.
+- Each project has its own accounts, sessions, payments and admins. Sign in once on each to create your account there.
+- **Every database change has to be applied to both projects**: add a new file in `supabase/migrations/` and run it on dev first, then on prod after merging.
+- The every-minute cron job (`supabase/setup/cron.sql`) only runs on prod. On dev, trigger a tick by hand when testing holds or the waitlist:
+  `curl -X POST -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/tick`
+
+---
+
 ## Setup
 
 ### 1. Supabase
