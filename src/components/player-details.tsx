@@ -25,14 +25,25 @@ export type PlayerDetailsData = {
     | "media_consent"
     | "waiver_accepted_at"
   >;
-  registration: Pick<Registration, "option" | "amount_cents" | "ref_code" | "note" | "status">;
+  /** Present when opened from a session roster. */
+  registration?: Pick<Registration, "option" | "amount_cents" | "ref_code" | "note" | "status">;
   /** Pre-formatted on the server (timezone-aware). */
-  paid: string | null;
-  teamName: string | null;
+  paid?: string | null;
+  teamName?: string | null;
+  /** Present when opened from the Players page. lastPlayed is pre-formatted. */
+  history?: { played: number; upcoming: number; lastPlayed: string | null; memberSince: string };
 };
 
-/** The player's name in the roster; clicking it opens everything they told the host. */
-export function PlayerDetails({ data, children }: { data: PlayerDetailsData; children: ReactNode }) {
+/** The player's name; clicking it opens everything they told the host, plus optional host actions. */
+export function PlayerDetails({
+  data,
+  actions,
+  children,
+}: {
+  data: PlayerDetailsData;
+  actions?: ReactNode;
+  children: ReactNode;
+}) {
   const p = data.profile;
   const r = data.registration;
   const name = p.display_name ?? p.full_name ?? p.email;
@@ -54,7 +65,7 @@ export function PlayerDetails({ data, children }: { data: PlayerDetailsData; chi
         </DialogHeader>
 
         <div className="flex flex-wrap gap-x-4 gap-y-1">
-          {r.option === "instructional" && (
+          {r?.option === "instructional" && (
             <Mark tone="mat" glyph="◇">
               Instructional only
             </Mark>
@@ -76,7 +87,7 @@ export function PlayerDetails({ data, children }: { data: PlayerDetailsData; chi
           )}
         </div>
 
-        {r.note && (
+        {r?.note && (
           <Section title="Note to the host">
             <p className="border-l-4 border-line pl-3 text-lg whitespace-pre-line">{r.note}</p>
           </Section>
@@ -99,6 +110,18 @@ export function PlayerDetails({ data, children }: { data: PlayerDetailsData; chi
           </Rows>
         </Section>
 
+        {data.history && (
+          <Section title="History">
+            <Rows>
+              <Row label="Played">{`${data.history.played} session${data.history.played === 1 ? "" : "s"}`}</Row>
+              <Row label="Last played">{data.history.lastPlayed}</Row>
+              <Row label="Signed up for">{data.history.upcoming ? `${data.history.upcoming} upcoming` : null}</Row>
+              <Row label="Member since">{data.history.memberSince}</Row>
+            </Rows>
+          </Section>
+        )}
+
+        {r && (
         <Section title="This session">
           <Rows>
             <Row label="Option">{OPTION_LABELS[r.option]}</Row>
@@ -111,6 +134,7 @@ export function PlayerDetails({ data, children }: { data: PlayerDetailsData; chi
             <Row label="Paid">{data.paid}</Row>
           </Rows>
         </Section>
+        )}
 
         <Section title="About them">
           <Rows>
@@ -130,6 +154,7 @@ export function PlayerDetails({ data, children }: { data: PlayerDetailsData; chi
             <Row label="Waiver">{p.waiver_accepted_at ? `Accepted ${p.waiver_accepted_at.slice(0, 10)}` : null}</Row>
           </Rows>
         </Section>
+        {actions && <Section title="Manage">{actions}</Section>}
       </DialogContent>
     </Dialog>
   );

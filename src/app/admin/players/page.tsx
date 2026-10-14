@@ -1,10 +1,30 @@
 import { Suspense } from "react";
-import { setRole, updateEtransferNames } from "@/app/admin/actions";
-import { SubmitButton } from "@/components/submit-button";
-import { Avatar, inputClass, Mark, Notice, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
+import { ListFilters } from "@/components/list-filters";
+import { EmptyState, Notice, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
+import { profileComplete } from "@/lib/profile";
 import { createClient } from "@/lib/supabase/server";
+import { getPlayerHistory } from "@/lib/queries";
 import type { Profile } from "@/lib/types";
+import { PlayerRow, type PlayerStats } from "./player-row";
+
+type Segment = "all" | "hosts" | "new" | "incomplete";
+type Sort = "recent" | "name" | "played";
+
+const SEGMENTS: { key: Segment; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "hosts", label: "Hosts" },
+  { key: "new", label: "New" },
+  { key: "incomplete", label: "Profile incomplete" },
+];
+const SORTS: { key: Sort; label: string }[] = [
+  { key: "recent", label: "Recently joined" },
+  { key: "name", label: "Name" },
+  { key: "played", label: "Most played" },
+];
+
+const shortDate = (iso: string) =>
+  new Intl.DateTimeFormat("en-CA", { month: "short", day: "numeric", year: "numeric" }).format(new Date(iso));
 
 export default function PlayersPage(props: PageProps<"/admin/players">) {
   return (
@@ -16,68 +36,81 @@ export default function PlayersPage(props: PageProps<"/admin/players">) {
 
 async function Players({ searchParams }: { searchParams: PageProps<"/admin/players">["searchParams"] }) {
   const me = await requireAdmin();
-  const { error } = await searchParams;
+  const params = await searchParams;
+  const error = typeof params.error === "string" ? params.error : null;
+  const segment = SEGMENTS.some((s) => s.key === params.view) ? (params.view as Segment) : "all";
+  const sort = SORTS.some((s) => s.key === params.sort) ? (params.sort as Sort) : "recent";
+  const q = (typeof params.q === "string" ? params.q : "").trim().toLowerCase();
+
   const supabase = await createClient();
-  const { data } = await supabase.from("profiles").select("*").order("role").order("display_name");
-  const players = (data ?? []) as Profile[];
+  const [{ data: profileRows }, stats] = await Promise.all([
+    supabase.from("profiles").select("*").limit(2000),
+    getPlayerHistory(),
+  ]);
+
+  const players = ((profileRows ?? []) as Profile[]).map((p) => {
+    const s = stats.get(p.id) ?? { played: 0, upcoming: 0, last: null };
+    const playerStats: PlayerStats = {
+      played: s.played,
+      upcoming: s.upcoming,
+      lastPlayed: s.last ? shortDate(s.last) : null,
+      memberSince: shortDate(p.created_at),
+    };
+    return { p, stats: playerStats, complete: profileComplete(p) };
+  });
+
+  const matches = (x: (typeof players)[number]) => {
+    if (!q) return true;
+    const hay = [x.p.display_name, x.p.full_name, x.p.first_name, x.p.last_name, x.p.email, x.p.phone, ...x.p.etransfer_names]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    return q.split(/\s+/).every((w) => hay.includes(w));
+  };
+  const inSegment = (x: (typeof players)[number], seg: Segment) =>
+    seg === "all" ||
+    (seg === "hosts" && x.p.role === "admin") ||
+    (seg === "new" && x.stats.played === 0) ||
+    (seg === "incomplete" && !x.complete);
+
+  const searched = players.filter(matches);
+  const count = (seg: Segment) => searched.filter((x) => inSegment(x, seg)).length;
+  const nameOf = (x: (typeof players)[number]) => (x.p.display_name ?? x.p.full_name ?? x.p.email).toLowerCase();
+  const shown = searched
+    .filter((x) => inSegment(x, segment))
+    .sort((a, b) =>
+      sort === "name"
+        ? nameOf(a).localeCompare(nameOf(b))
+        : sort === "played"
+          ? b.stats.played - a.stats.played || nameOf(a).localeCompare(nameOf(b))
+          : b.p.created_at.localeCompare(a.p.created_at),
+    );
 
   return (
     <div className="space-y-12">
-      <PageTitle sub="Everyone who has signed in. Add the names their e-Transfers come from to improve auto-matching.">
+      <PageTitle sub="Everyone who has signed in with Google, whether or not they've played yet. Click a name for their details, e-Transfer names and host access.">
         Players
       </PageTitle>
-      {typeof error === "string" && <Notice tone="bad">{error}</Notice>}
-      <Sheet label={`Roster · ${players.length}`} className="reveal" style={reveal(1)}>
-      <div className="divide-y divide-ink/25">
-        {players.map((p) => {
-          const name = p.display_name ?? p.full_name ?? p.email;
-          return (
-            <div key={p.id} className="space-y-3 py-4">
-              <div className="flex flex-wrap items-center gap-3">
-                <Avatar name={name} src={p.avatar_url} />
-                <div className="min-w-0 flex-1">
-                  <p className="flex flex-wrap items-center gap-x-3 font-display text-xl font-extrabold uppercase">
-                    <span className="truncate">{name}</span>
-                    {p.role === "admin" && (
-                      <Mark tone="line" glyph="★">
-                        Host
-                      </Mark>
-                    )}
-                  </p>
-                  <p className="truncate text-sm text-ink-soft">{p.email}</p>
-                </div>
-                {p.id !== me.id && (
-                  <form action={setRole.bind(null, p.id, p.role === "admin" ? "player" : "admin")}>
-                    <SubmitButton
-                      size="sm"
-                      variant="secondary"
-                      confirm={
-                        p.role === "admin"
-                          ? { title: `Remove ${name} as a host?`, description: "They'll lose access to the admin dashboard." }
-                          : {
-                              title: `Make ${name} a host?`,
-                              description: "They'll get full access to the admin dashboard: sessions, payments, refunds and players.",
-                            }
-                      }
-                    >
-                      {p.role === "admin" ? "Remove host" : "Make host"}
-                    </SubmitButton>
-                  </form>
-                )}
-              </div>
-              <form action={updateEtransferNames.bind(null, p.id)} className="flex items-end gap-4">
-                <input
-                  name="etransfer_names"
-                  defaultValue={p.etransfer_names.join(", ")}
-                  placeholder="e-Transfer sender names, comma separated"
-                  className={`${inputClass} py-1 text-base`}
-                />
-                <SubmitButton size="sm" variant="secondary">Save</SubmitButton>
-              </form>
-            </div>
-          );
-        })}
-      </div>
+      {error && <Notice tone="bad">{error}</Notice>}
+
+      <Sheet label={`Players · ${players.length}`} className="reveal" style={reveal(1)}>
+        <ListFilters
+          path="/admin/players"
+          tabs={{ param: "view", value: segment, options: SEGMENTS.map((s) => ({ ...s, count: count(s.key) })) }}
+          chips={{ param: "sort", value: sort, options: SORTS }}
+          q={typeof params.q === "string" ? params.q : ""}
+          placeholder="Search name, email, phone, e-Transfer name"
+        >
+          {shown.length === 0 ? (
+            <EmptyState>{q ? <>No players match &ldquo;{params.q}&rdquo;.</> : "No players here."}</EmptyState>
+          ) : (
+            <ul className="divide-y divide-ink/20">
+              {shown.map((x) => (
+                <PlayerRow key={x.p.id} p={x.p} stats={x.stats} complete={x.complete} isMe={x.p.id === me.id} />
+              ))}
+            </ul>
+          )}
+        </ListFilters>
       </Sheet>
     </div>
   );

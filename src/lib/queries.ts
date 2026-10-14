@@ -112,3 +112,26 @@ export async function getAdminSessions(view: AdminSessionView, search: string) {
     totals: { upcoming: upcoming.count ?? 0, past: past.count ?? 0, cancelled: cancelled.count ?? 0 },
   };
 }
+
+/** Per-player history for the Players page: confirmed sessions already played, upcoming sign-ups, last played. */
+export async function getPlayerHistory() {
+  await connection();
+  const supabase = await createClient();
+  const { data } = await supabase.from("registrations").select("profile_id, status, session:sessions(starts_at)").limit(10000);
+  const now = Date.now();
+  const history = new Map<string, { played: number; upcoming: number; last: string | null }>();
+  type Row = { profile_id: string; status: Registration["status"]; session: { starts_at: string } | null };
+  for (const r of (data ?? []) as unknown as Row[]) {
+    if (!r.session) continue;
+    const h = history.get(r.profile_id) ?? { played: 0, upcoming: 0, last: null };
+    const started = new Date(r.session.starts_at).getTime() <= now;
+    if (started && r.status === "confirmed") {
+      h.played += 1;
+      if (!h.last || r.session.starts_at > h.last) h.last = r.session.starts_at;
+    } else if (!started && ["pending_payment", "confirmed", "waitlisted"].includes(r.status)) {
+      h.upcoming += 1;
+    }
+    history.set(r.profile_id, h);
+  }
+  return history;
+}
