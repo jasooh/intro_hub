@@ -494,3 +494,40 @@ describe("cancelling a session with a reason", () => {
     expect(s.rows[0].cancel_reason).toBeNull();
   });
 });
+
+describe("sign-up rate limits", () => {
+  async function cancelOwn(userId: string, sessionId: string) {
+    const reg = await regOf(userId, sessionId);
+    await asUser(db, userId, `select public.cancel_registration($1)`, [reg.id]);
+  }
+
+  it("stops a player rejoining the same session after 3 sign-ups", async () => {
+    const sid = await createSession(db);
+    const a = await createUser(db, "A");
+    for (let i = 0; i < 3; i++) {
+      expect(await register(a, sid)).toHaveLength(1);
+      if (i < 2) await cancelOwn(a, sid);
+    }
+    await cancelOwn(a, sid);
+    await expect(register(a, sid)).rejects.toThrow(/too_many_signups/);
+  });
+
+  it("caps sign-up bursts across sessions at 10 an hour", async () => {
+    const a = await createUser(db, "A");
+    for (let i = 0; i < 10; i++) await register(a, await createSession(db));
+    await expect(register(a, await createSession(db))).rejects.toThrow(/slow_down/);
+    // Older sign-ups fall out of the window.
+    await asService(db, `update public.registrations set created_at = now() - interval '2 hours'`);
+    expect(await register(a, await createSession(db))).toHaveLength(1);
+  });
+
+  it("doesn't limit hosts", async () => {
+    const sid = await createSession(db);
+    const host = await createUser(db, "Host", { admin: true });
+    for (let i = 0; i < 4; i++) {
+      await register(host, sid);
+      await cancelOwn(host, sid);
+    }
+    expect(await register(host, sid)).toHaveLength(1);
+  });
+});

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { saveProfile } from "@/app/actions";
 import { SubmitButton } from "@/components/submit-button";
+import { PhoneInput } from "@/components/phone-input";
 import { Field, inputClass } from "@/components/ui";
 import {
   INCLUSION_CHARTER_URL,
@@ -42,24 +43,16 @@ export function ProfileForm({
       <Group title="You">
         <div className="grid gap-5 sm:grid-cols-2">
           <Field label="First name">
-            <input name="first_name" defaultValue={first} required maxLength={60} autoComplete="given-name" className={inputClass} />
+            <input name="first_name" defaultValue={first} required maxLength={60} autoComplete="given-name" autoCapitalize="words" spellCheck={false} className={inputClass} />
           </Field>
           <Field label="Last name">
-            <input name="last_name" defaultValue={last} required maxLength={60} autoComplete="family-name" className={inputClass} />
+            <input name="last_name" defaultValue={last} required maxLength={60} autoComplete="family-name" autoCapitalize="words" spellCheck={false} className={inputClass} />
           </Field>
           <Field label="Display name" hint="What other players see on the team sheet.">
-            <input name="display_name" defaultValue={display} required maxLength={60} className={inputClass} />
+            <input name="display_name" defaultValue={display} required maxLength={60} autoComplete="nickname" autoCapitalize="words" spellCheck={false} className={inputClass} />
           </Field>
           <Field label="Contact number" hint="Only the hosts can see this.">
-            <input
-              name="phone"
-              type="tel"
-              defaultValue={profile.phone ?? ""}
-              required
-              maxLength={30}
-              autoComplete="tel"
-              className={inputClass}
-            />
+            <PhoneInput name="phone" defaultValue={profile.phone ?? ""} required />
           </Field>
         </div>
       </Group>
@@ -82,10 +75,10 @@ export function ProfileForm({
             </Radio>
           </Choice>
           <Field label="What do you most want to learn or improve? (optional)">
-            <textarea name="learning_goals" defaultValue={profile.learning_goals ?? ""} rows={2} maxLength={500} className={inputClass} />
+            <textarea name="learning_goals" defaultValue={profile.learning_goals ?? ""} rows={2} maxLength={500} autoCapitalize="sentences" className={inputClass} />
           </Field>
           <Field label="Your hype song (optional)" hint="The song that gets your adrenaline pumping. It goes on the session playlist.">
-            <input name="hype_song" defaultValue={profile.hype_song ?? ""} maxLength={200} placeholder="Song – Artist" className={inputClass} />
+            <input name="hype_song" defaultValue={profile.hype_song ?? ""} maxLength={200} placeholder="Song – Artist" autoComplete="off" className={inputClass} />
           </Field>
           <Choice label="How did you hear about us? (optional)">
             {Object.entries(HEARD_LABELS).map(([value, label]) => (
@@ -97,6 +90,7 @@ export function ProfileForm({
               name="heard_about_other"
               defaultValue={profile.heard_about_other ?? ""}
               maxLength={100}
+              autoComplete="off"
               placeholder="If other, where?"
               className={`${inputClass} max-w-xs text-base`}
             />
@@ -107,12 +101,15 @@ export function ProfileForm({
       <Group title="Payments">
         <Field
           label="Name on your e-Transfers"
-          hint="The name your bank shows when you send money (e.g. JANE DOE). Separate several with commas. This helps match your payment if you forget the code."
+          hint="The name your bank shows when you send money (e.g. JANE DOE). Separate several with commas (up to 5). This helps match your payment if you forget the code."
         >
           <input
             name="etransfer_names"
             defaultValue={profile.etransfer_names.join(", ") || `${first} ${last}`.trim()}
             maxLength={300}
+            autoComplete="off"
+            autoCapitalize="characters"
+            spellCheck={false}
             className={inputClass}
           />
         </Field>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MapLink } from "@/components/map-link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { cancelRegistration, changeOption, registerForSession } from "@/app/actions";
@@ -103,7 +104,9 @@ async function SessionView({
               ) : (
                 <p className="text-lg text-ink">{times.full}</p>
               )}
-              <p className="text-ink-soft">{session.location}</p>
+              <p className="text-ink-soft">
+                <MapLink location={session.location} />
+              </p>
               <p className="flex flex-wrap items-baseline gap-x-3">
                 <span className="font-score text-2xl font-black text-line">{formatMoney(session.price_cents)}</span>
                 {session.instructional_price_cents != null && (

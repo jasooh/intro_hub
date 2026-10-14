@@ -1,4 +1,5 @@
 import { Body, Button, Container, Head, Heading, Hr, Html, Preview, Section, Text } from "@react-email/components";
+import { mapUrl } from "@/lib/maps";
 import type { ReactNode } from "react";
 import type { RegistrationEvent } from "@/lib/types";
 
@@ -39,7 +40,7 @@ function Layout({ preview, children, ctx }: { preview: string; children: ReactNo
           {children}
           <Hr />
           <Text style={styles.muted}>
-            {ctx.sessionTitle} · {ctx.when} · {ctx.location}
+            {ctx.sessionTitle} · {ctx.when} · <a href={mapUrl("google", ctx.location)}>{ctx.location}</a>
             <br />
             Can&apos;t make it? Cancel from <a href={ctx.myUrl}>your sign-ups</a> so someone on the waitlist gets your spot.
           </Text>

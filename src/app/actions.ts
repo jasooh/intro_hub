@@ -6,6 +6,7 @@ import { after } from "next/server";
 import { z } from "zod";
 import { WAIVER_VERSION } from "@/lib/agreements";
 import { requireProfile } from "@/lib/auth";
+import { cleanName, cleanNameList, cleanText, normalizePhone } from "@/lib/input";
 import { profileComplete } from "@/lib/profile";
 import { dispatchEvents, parseEvents } from "@/lib/registrations";
 import { createClient } from "@/lib/supabase/server";
@@ -19,6 +20,8 @@ const ERRORS: Record<string, string> = {
   profile_incomplete: "Please finish your profile first.",
   option_unavailable: "That option isn't offered for this session.",
   option_locked: "You've already paid, so the option can't be changed here. Please contact the host.",
+  too_many_signups: "You've signed up for this session a few times already. Please message the host if you still need a spot.",
+  slow_down: "That's a lot of sign-ups in a short time. Please wait a bit and try again.",
 };
 
 function friendly(message: string) {
@@ -77,15 +80,37 @@ export async function cancelRegistration(registrationId: string, returnTo: strin
   revalidatePath(returnTo);
 }
 
-const text = (max: number) => z.string().trim().max(max);
-const required = (label: string, max: number) => z.string().trim().min(1, `${label} is required`).max(max);
+const text = (max: number) => z.string().transform(cleanText).pipe(z.string().max(max, `Please keep it under ${max} characters`));
+const required = (label: string, max: number) =>
+  z.string().transform(cleanText).pipe(z.string().min(1, `${label} is required`).max(max, `${label} is too long`));
+const personName = (label: string) =>
+  required(label, 60).transform((v, ctx) => {
+    const r = cleanName(v);
+    if (!r.ok) {
+      ctx.addIssue({ code: "custom", message: `${label} can only use letters, spaces, apostrophes, hyphens and periods` });
+      return z.NEVER;
+    }
+    return r.value;
+  });
+const phone = z.string().transform((v, ctx) => {
+  if (!v.trim()) {
+    ctx.addIssue({ code: "custom", message: "Contact number is required" });
+    return z.NEVER;
+  }
+  const r = normalizePhone(v);
+  if (!r.ok) {
+    ctx.addIssue({ code: "custom", message: r.error });
+    return z.NEVER;
+  }
+  return r.value;
+});
 
 const ProfileForm = z
   .object({
-    first_name: required("First name", 60),
-    last_name: required("Last name", 60),
-    display_name: required("Display name", 60),
-    phone: required("Phone number", 30).regex(/^[0-9+()\-.\s]{7,}$/, "Please enter a valid phone number"),
+    first_name: personName("First name"),
+    last_name: personName("Last name"),
+    display_name: required("Display name", 60).transform((v) => v.replace(/\n/g, " ")),
+    phone,
     skill_level: z.enum(["never", "some", "experienced", "prefer_not"], { message: "Please pick your skill level" }),
     attended_before: z.enum(["yes", "no"], { message: "Please say whether you've attended before" }),
     learning_goals: text(500),
@@ -118,11 +143,7 @@ export async function saveProfile(formData: FormData) {
     redirect(withParams(returnTo, { error: parsed.error.issues[0].message }));
   }
   const f = parsed.data;
-  const names = f.etransfer_names
-    .split(",")
-    .map((n) => n.trim())
-    .filter(Boolean)
-    .slice(0, 5);
+  const names = cleanNameList(f.etransfer_names, 5);
   const consent = f.media_consent === "agree";
   const now = new Date().toISOString();
   const waiverIsCurrent = profile.waiver_accepted_at && profile.waiver_version === WAIVER_VERSION;
