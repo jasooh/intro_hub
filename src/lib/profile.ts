@@ -1,0 +1,49 @@
+import { WAIVER_VERSION } from "@/lib/agreements";
+import type { HeardAbout, Profile, SignupOption, SkillLevel } from "@/lib/types";
+
+export const SKILL_LABELS: Record<SkillLevel, string> = {
+  never: "Never played before",
+  some: "Have played here and there",
+  experienced: "Have experience but want to work on certain skills",
+  prefer_not: "Prefer not to say",
+};
+
+export const HEARD_LABELS: Record<HeardAbout, string> = {
+  word_of_mouth: "Word of mouth",
+  instagram: "Instagram",
+  javelin: "Javelin",
+  other: "Other",
+};
+
+export const OPTION_LABELS: Record<SignupOption, string> = {
+  full: "Instructional + Drop-in",
+  instructional: "Instructional only",
+};
+
+/** Everything sign-up needs. Mirrors public._profile_complete() plus the current waiver version. */
+export function profileComplete(p: Profile): boolean {
+  return Boolean(
+    p.first_name?.trim() &&
+      p.last_name?.trim() &&
+      p.phone?.trim() &&
+      p.skill_level &&
+      p.attended_before !== null &&
+      p.media_consent !== null &&
+      p.waiver_accepted_at &&
+      p.waiver_version === WAIVER_VERSION,
+  );
+}
+
+/** "Jane D." from first/last name. */
+export function defaultDisplayName(first: string, last: string): string {
+  const initial = last.trim().charAt(0);
+  return initial ? `${first.trim()} ${initial.toUpperCase()}.` : first.trim();
+}
+
+/** Google's full name split into a first/last guess, for pre-filling. */
+export function splitFullName(fullName: string | null): { first: string; last: string } {
+  const parts = (fullName ?? "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return { first: "", last: "" };
+  if (parts.length === 1) return { first: parts[0], last: "" };
+  return { first: parts.slice(0, -1).join(" "), last: parts[parts.length - 1] };
+}

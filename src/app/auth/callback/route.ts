@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { env } from "@/lib/env";
+import { profileComplete } from "@/lib/profile";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
+import type { Profile } from "@/lib/types";
 
 // Google redirects here after sign-in. Exchanges the code for a session,
 // promotes emails listed in ADMIN_EMAILS, and sends first-timers to onboarding.
@@ -21,13 +23,14 @@ export async function GET(request: NextRequest) {
 
   const user = data.user;
   const admin = createAdminClient();
-  const { data: profile } = await admin.from("profiles").select("role, onboarded_at").eq("id", user.id).single();
+  const { data: profile } = await admin.from("profiles").select("*").eq("id", user.id).single<Profile>();
 
   if (profile && profile.role !== "admin" && env.adminEmails().includes((user.email ?? "").toLowerCase())) {
     await admin.from("profiles").update({ role: "admin" }).eq("id", user.id);
   }
 
-  if (!profile?.onboarded_at) {
+  // First sign-in, or an older profile missing details the sign-up now needs.
+  if (!profile || !profileComplete(profile)) {
     return NextResponse.redirect(`${base}/onboarding?next=${encodeURIComponent(next)}`);
   }
   return NextResponse.redirect(`${base}${next}`);

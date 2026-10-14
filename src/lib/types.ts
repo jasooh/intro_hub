@@ -3,6 +3,10 @@
 
 export type Role = "player" | "admin";
 export type RegistrationStatus = "pending_payment" | "confirmed" | "waitlisted" | "expired" | "cancelled";
+/** full = instructional + drop-in (uses a spot); instructional = instructional only (no spot). */
+export type SignupOption = "full" | "instructional";
+export type SkillLevel = "never" | "some" | "experienced" | "prefer_not";
+export type HeardAbout = "word_of_mouth" | "instagram" | "javelin" | "other";
 
 export type Profile = {
   id: string;
@@ -14,6 +18,19 @@ export type Profile = {
   etransfer_names: string[];
   onboarded_at: string | null;
   created_at: string;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+  skill_level: SkillLevel | null;
+  attended_before: boolean | null;
+  learning_goals: string | null;
+  hype_song: string | null;
+  heard_about: HeardAbout | null;
+  heard_about_other: string | null;
+  media_consent: boolean | null;
+  media_consent_at: string | null;
+  waiver_accepted_at: string | null;
+  waiver_version: string | null;
 };
 
 export type SessionTemplate = {
@@ -30,6 +47,9 @@ export type SessionTemplate = {
   cancel_cutoff_hours: number;
   timezone: string;
   active: boolean;
+  instructional_price_cents: number | null;
+  instructional_minutes: number | null;
+  dropin_offset_minutes: number | null;
 };
 
 export type Session = {
@@ -47,6 +67,9 @@ export type Session = {
   status: "scheduled" | "cancelled";
   notes: string | null;
   roster_version: number;
+  instructional_price_cents: number | null;
+  instructional_ends_at: string | null;
+  dropin_starts_at: string | null;
 };
 
 export type Registration = {
@@ -62,6 +85,9 @@ export type Registration = {
   refund_owed: boolean;
   refunded_at: string | null;
   created_at: string;
+  option: SignupOption;
+  amount_cents: number;
+  note: string | null;
 };
 
 export type Payment = {
@@ -78,13 +104,21 @@ export type Payment = {
   dismissed: boolean;
 };
 
-export type SessionCounts = { session_id: string; confirmed: number; holding: number; waitlisted: number };
+/** confirmed/holding count drop-in sign-ups only; instructional-only sign-ups are counted separately. */
+export type SessionCounts = {
+  session_id: string;
+  confirmed: number;
+  holding: number;
+  waitlisted: number;
+  instructional: number;
+};
 
 export type Attendee = {
   registration_id: string;
   display_name: string;
   avatar_url: string | null;
   status: RegistrationStatus;
+  option: SignupOption;
   waitlist_position: number | null;
   is_me: boolean;
 };

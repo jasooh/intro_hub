@@ -4,7 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { z } from "zod";
+import { WAIVER_VERSION } from "@/lib/agreements";
 import { requireProfile } from "@/lib/auth";
+import { profileComplete } from "@/lib/profile";
 import { dispatchEvents, parseEvents } from "@/lib/registrations";
 import { createClient } from "@/lib/supabase/server";
 
@@ -14,6 +16,9 @@ const ERRORS: Record<string, string> = {
   signups_not_open: "Sign-ups haven't opened yet.",
   session_started: "This session has already started.",
   forbidden: "You can't do that.",
+  profile_incomplete: "Please finish your profile first.",
+  option_unavailable: "That option isn't offered for this session.",
+  option_locked: "You've already paid, so the option can't be changed here. Please contact the host.",
 };
 
 function friendly(message: string) {
@@ -21,15 +26,44 @@ function friendly(message: string) {
   return key ? ERRORS[key] : "Something went wrong. Please try again.";
 }
 
-export async function registerForSession(sessionId: string) {
-  await requireProfile(`/s/${sessionId}`);
+const Option = z.enum(["full", "instructional"]);
+
+export async function registerForSession(sessionId: string, formData: FormData) {
+  const path = `/s/${sessionId}`;
+  const profile = await requireProfile(path);
+  if (!profileComplete(profile)) redirect(`/onboarding?next=${encodeURIComponent(path)}`);
+
+  const option = Option.catch("full").parse(formData.get("option"));
+  const note = String(formData.get("note") ?? "").slice(0, 1000);
+
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("register_for_session", { p_session_id: sessionId });
-  if (error) redirect(`/s/${sessionId}?error=${encodeURIComponent(friendly(error.message))}`);
+  const { data, error } = await supabase.rpc("register_for_session", {
+    p_session_id: sessionId,
+    p_option: option,
+    p_note: note || null,
+  });
+  if (error) {
+    if (error.message.includes("profile_incomplete")) redirect(`/onboarding?next=${encodeURIComponent(path)}`);
+    redirect(`${path}?error=${encodeURIComponent(friendly(error.message))}`);
+  }
 
   const events = parseEvents(data);
   after(() => dispatchEvents(events));
-  revalidatePath(`/s/${sessionId}`);
+  revalidatePath(path);
+}
+
+export async function changeOption(registrationId: string, option: "full" | "instructional", returnTo: string) {
+  await requireProfile(returnTo);
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("change_registration_option", {
+    p_registration_id: registrationId,
+    p_option: option,
+  });
+  if (error) redirect(`${returnTo}?error=${encodeURIComponent(friendly(error.message))}`);
+
+  const events = parseEvents(data);
+  after(() => dispatchEvents(events));
+  revalidatePath(returnTo);
 }
 
 export async function cancelRegistration(registrationId: string, returnTo: string) {
@@ -43,12 +77,28 @@ export async function cancelRegistration(registrationId: string, returnTo: strin
   revalidatePath(returnTo);
 }
 
-const ProfileForm = z.object({
-  display_name: z.string().trim().min(1, "Display name is required").max(60),
-  etransfer_names: z.string().max(300),
-  next: z.string().default("/"),
-  return_to: z.string().default("/onboarding"),
-});
+const text = (max: number) => z.string().trim().max(max);
+const required = (label: string, max: number) => z.string().trim().min(1, `${label} is required`).max(max);
+
+const ProfileForm = z
+  .object({
+    first_name: required("First name", 60),
+    last_name: required("Last name", 60),
+    display_name: required("Display name", 60),
+    phone: required("Phone number", 30).regex(/^[0-9+()\-.\s]{7,}$/, "Please enter a valid phone number"),
+    skill_level: z.enum(["never", "some", "experienced", "prefer_not"], { message: "Please pick your skill level" }),
+    attended_before: z.enum(["yes", "no"], { message: "Please say whether you've attended before" }),
+    learning_goals: text(500),
+    hype_song: text(200),
+    heard_about: z.enum(["word_of_mouth", "instagram", "javelin", "other"]).optional(),
+    heard_about_other: text(100),
+    media_consent: z.enum(["agree", "disagree"], { message: "Please answer the media release" }),
+    waiver: z.literal("on", { message: "Please accept the waiver to play" }),
+    etransfer_names: z.string().max(300).default(""),
+    next: z.string().default("/"),
+    return_to: z.string().default("/onboarding"),
+  })
+  .partial({ learning_goals: true, hype_song: true, heard_about_other: true });
 
 const localPath = (p: string, fallback: string) => (p.startsWith("/") && !p.startsWith("//") ? p : fallback);
 
@@ -67,23 +117,40 @@ export async function saveProfile(formData: FormData) {
   if (!parsed.success) {
     redirect(withParams(returnTo, { error: parsed.error.issues[0].message }));
   }
-  const names = parsed.data.etransfer_names
+  const f = parsed.data;
+  const names = f.etransfer_names
     .split(",")
     .map((n) => n.trim())
     .filter(Boolean)
     .slice(0, 5);
+  const consent = f.media_consent === "agree";
+  const now = new Date().toISOString();
+  const waiverIsCurrent = profile.waiver_accepted_at && profile.waiver_version === WAIVER_VERSION;
 
   const supabase = await createClient();
   const { error } = await supabase
     .from("profiles")
     .update({
-      display_name: parsed.data.display_name,
-      etransfer_names: names.length ? names : [parsed.data.display_name],
-      onboarded_at: profile.onboarded_at ?? new Date().toISOString(),
+      first_name: f.first_name,
+      last_name: f.last_name,
+      display_name: f.display_name,
+      phone: f.phone,
+      skill_level: f.skill_level,
+      attended_before: f.attended_before === "yes",
+      learning_goals: f.learning_goals || null,
+      hype_song: f.hype_song || null,
+      heard_about: f.heard_about ?? null,
+      heard_about_other: f.heard_about === "other" ? f.heard_about_other || null : null,
+      media_consent: consent,
+      media_consent_at: profile.media_consent === consent ? profile.media_consent_at : now,
+      waiver_accepted_at: waiverIsCurrent ? profile.waiver_accepted_at : now,
+      waiver_version: WAIVER_VERSION,
+      etransfer_names: names.length ? names : [`${f.first_name} ${f.last_name}`],
+      onboarded_at: profile.onboarded_at ?? now,
     })
     .eq("id", profile.id);
   if (error) redirect(withParams(returnTo, { error: error.message }));
 
   revalidatePath("/", "layout");
-  redirect(localPath(parsed.data.next, "/"));
+  redirect(localPath(f.next, "/"));
 }
