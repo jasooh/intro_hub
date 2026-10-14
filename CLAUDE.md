@@ -38,7 +38,7 @@ Light only. A community-centre gym, not a SaaS template.
 - **Palette** (`src/app/globals.css`, Tailwind tokens): `maple` #F2E3C6 background with faint plank lines + grain, `maple-deep`, `ink` #1B1612 text/rules, `ink-soft`, `line` #E8541E (the one sharp accent: CTAs, active, focus), `mat` #1E3A8A (waitlist / instructional / secondary), `board` #141210 + `led` #FF6A2B (scoreboard), `ok` / `warn` / `bad`.
 - **Fonts:** `font-display` Big Shoulders (condensed caps headings, buttons, labels), `font-score` Doto (dot-matrix numbers: prices, counts, ref codes), `font-sans` Atkinson Hyperlegible Next (body).
 - **Shared components (`src/components/ui.tsx`):**
-  - `Sheet`: heavy ink top rule + spaced caps label, instead of cards
+  - `Sheet`: section label as a dark ink tab (orange square + maple caps) sitting on a heavy ink rule, instead of cards
   - `Mark` / `StatusMark`: a court-dot glyph + small caps, instead of pills
   - `SpotDots`: one dot per spot
   - `Scoreboard`: LED panel with an orange offset shadow
@@ -49,4 +49,5 @@ Light only. A community-centre gym, not a SaaS template.
 - **Lists are ruled rows** (`divide-y divide-ink/20`), with dates as a `DateBlock` (SAT / 17 / OCT).
 - **Motion:** CSS only (`.reveal` stagger, scoreboard flicker, dot fill), disabled under `prefers-reduced-motion`.
 - **Banned:** rounded card grids / three-card heroes, icons in tinted square containers, generic pill badges, purple gradients, Inter/Roboto/system fonts.
-- The page header has an orange 3px "court line"; the footer has Instagram + email. The account dropdown (avatar) holds Account / Admin (hosts) / Sign out.
+- **Dark (`board`/`ink`) + orange is for anchors:** section tabs, the admin nav bar (active tab = orange block), the scoreboard, the ref-code panel, the playlist panel and the footer band. Keep content areas light.
+- The page header has an orange 3px "court line"; the footer is a dark band (orange top line) with About, Instagram + email. The account dropdown (avatar) holds Account / Admin (hosts) / Sign out.

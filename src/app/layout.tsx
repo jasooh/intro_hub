@@ -48,37 +48,40 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <div className="h-[3px] bg-line" />
         </header>
         <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-8 sm:py-10">{children}</main>
-        <footer className="mx-auto w-full max-w-4xl px-4 pb-8">
-          <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 border-t-2 border-ink pt-3 font-display text-sm font-semibold tracking-widest text-ink-soft uppercase">
-            <span>Intro 2 Volleyball · Aaniin CC · Markham</span>
-            <span className="flex flex-wrap gap-x-5 gap-y-1">
-              <Link href="/about" className="text-ink hover:text-line">
-                About
-              </Link>
+        <footer className="mt-6 bg-board text-maple">
+          <div className="h-[3px] bg-line" />
+          <div className="mx-auto w-full max-w-4xl space-y-4 px-4 py-6">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 font-display text-sm font-semibold tracking-widest uppercase">
+              <span className="text-maple/60">Intro 2 Volleyball · Aaniin CC · Markham</span>
+              <span className="flex flex-wrap gap-x-5 gap-y-1">
+                <Link href="/about" className="hover:text-line">
+                  About
+                </Link>
+                <a
+                  href="https://www.instagram.com/intro2volleyball/"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="hover:text-line"
+                >
+                  Instagram @intro2volleyball
+                </a>
+                <a href="mailto:intro2volleyball@gmail.com" className="normal-case tracking-wide hover:text-line">
+                  intro2volleyball@gmail.com
+                </a>
+              </span>
+            </div>
+            <p className="text-xs text-maple/50">
+              Made with &lt;3 by{" "}
               <a
-                href="https://www.instagram.com/intro2volleyball/"
+                href="https://justin-abuyuan.xyz/"
                 target="_blank"
                 rel="noreferrer"
-                className="text-ink hover:text-line"
+                className="underline decoration-maple/30 underline-offset-2 hover:text-line hover:decoration-line"
               >
-                Instagram @intro2volleyball
+                one of the players
               </a>
-              <a href="mailto:intro2volleyball@gmail.com" className="text-ink normal-case tracking-wide hover:text-line">
-                intro2volleyball@gmail.com
-              </a>
-            </span>
+            </p>
           </div>
-          <p className="mt-3 text-xs text-ink-soft/70">
-            Made with &lt;3 by{" "}
-            <a
-              href="https://justin-abuyuan.xyz/"
-              target="_blank"
-              rel="noreferrer"
-              className="underline decoration-ink/30 underline-offset-2 hover:text-line hover:decoration-line"
-            >
-              one of the players
-            </a>
-          </p>
         </footer>
       </body>
     </html>

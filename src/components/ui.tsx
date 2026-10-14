@@ -53,7 +53,10 @@ export function BackLink({ href, children }: { href: string; children: ReactNode
 // Layout: sheets and rules instead of rounded cards.
 // ---------------------------------------------------------------------------
 
-/** A scoresheet section: heavy ink rule, optional caps label and action, then content. */
+/**
+ * A scoresheet section. With a label, the heading is a dark tab sitting on a
+ * heavy ink rule so sections stand apart at a glance; without one, just the rule.
+ */
 export function Sheet({
   label,
   action,
@@ -61,14 +64,26 @@ export function Sheet({
   children,
   ...props
 }: Omit<ComponentProps<"section">, "title"> & { label?: ReactNode; action?: ReactNode }) {
+  if (!label && !action) {
+    return (
+      <section className={cn("border-t-2 border-ink pt-3", className)} {...props}>
+        {children}
+      </section>
+    );
+  }
   return (
-    <section className={cn("border-t-2 border-ink pt-3", className)} {...props}>
-      {(label || action) && (
-        <div className="mb-4 flex items-baseline justify-between gap-3">
-          {label && <h2 className="font-display text-sm font-bold tracking-[0.2em] text-ink-soft uppercase">{label}</h2>}
-          {action}
-        </div>
-      )}
+    <section className={className} {...props}>
+      <div className="mb-5 flex items-end justify-between gap-3 border-b-2 border-ink">
+        {label ? (
+          <h2 className="inline-flex items-center gap-2.5 bg-ink px-3 pt-1.5 pb-1 font-display text-sm font-bold tracking-[0.2em] text-maple uppercase">
+            <span aria-hidden className="size-1.5 shrink-0 bg-line" />
+            {label}
+          </h2>
+        ) : (
+          <span />
+        )}
+        {action && <div className="pb-1.5">{action}</div>}
+      </div>
       {children}
     </section>
   );

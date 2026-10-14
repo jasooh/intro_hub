@@ -14,8 +14,8 @@ const links = [
 ] as const;
 
 /**
- * The pathname is request-time data, so the active underline streams in behind
- * Suspense; the prerendered fallback is the same tabs with nothing underlined.
+ * The pathname is request-time data, so the active tab streams in behind
+ * Suspense; the prerendered fallback is the same tabs with none highlighted.
  */
 export function AdminNav() {
   return (
@@ -34,13 +34,14 @@ function Tabs({ path }: { path: string | null }) {
     path !== null &&
     (href === "/admin" ? path === "/admin" || path.startsWith("/admin/sessions") : path.startsWith(href));
   return (
-    <nav className="-mx-4 flex gap-6 overflow-x-auto overflow-y-hidden px-4 shadow-[inset_0_-2px_0_var(--ink)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <nav className="flex gap-1 overflow-x-auto overflow-y-hidden bg-board p-1.5 shadow-[4px_4px_0_var(--line)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {links.map((l) => (
         <Link
           key={l.href}
           href={l.href}
-          className={`border-b-4 pb-2 font-display text-lg font-bold tracking-wide whitespace-nowrap uppercase transition-colors ${
-            active(l.href) ? "border-line text-ink" : "border-transparent text-ink-soft hover:text-ink"
+          aria-current={active(l.href) ? "page" : undefined}
+          className={`px-3 py-1.5 font-display text-lg font-bold tracking-wide whitespace-nowrap uppercase transition-colors ${
+            active(l.href) ? "bg-line text-board" : "text-maple/70 hover:bg-maple/10 hover:text-maple"
           }`}
         >
           {l.label}
