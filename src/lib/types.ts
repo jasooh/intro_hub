@@ -87,6 +87,7 @@ export type Registration = {
   cancelled_at: string | null;
   refund_owed: boolean;
   refunded_at: string | null;
+  refund_waived_at: string | null;
   created_at: string;
   option: SignupOption;
   amount_cents: number;

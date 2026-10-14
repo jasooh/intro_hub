@@ -169,10 +169,14 @@ export async function setRefunded(registrationId: string, refunded: boolean) {
   revalidatePath("/admin/refunds");
 }
 
-export async function waiveRefund(registrationId: string) {
+/** Decide not to refund (kept on the Waived tab), or undo that. */
+export async function setRefundWaived(registrationId: string, waived: boolean) {
   await requireAdmin();
   const supabase = await createClient();
-  const { error } = await supabase.from("registrations").update({ refund_owed: false }).eq("id", registrationId);
+  const { error } = await supabase
+    .from("registrations")
+    .update({ refund_waived_at: waived ? new Date().toISOString() : null })
+    .eq("id", registrationId);
   if (error) fail("/admin/refunds", error.message);
   revalidatePath("/admin/refunds");
 }

@@ -112,7 +112,11 @@ function RegistrationRow({ reg }: { reg: Registration & { session: Session } }) 
       {reg.status === "pending_payment" && <PaymentInstructions registration={reg} />}
       {reg.refund_owed && (
         <p className="text-sm text-ink-soft">
-          {reg.refunded_at ? "Refunded." : "Refund owed. The host will e-Transfer it back."}
+          {reg.refunded_at
+            ? "Refunded."
+            : reg.refund_waived_at
+              ? "No refund for this one. Contact the host if you have questions."
+              : "Refund owed. The host will e-Transfer it back."}
         </p>
       )}
       {active && (

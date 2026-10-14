@@ -39,7 +39,8 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/admin">["
       .from("registrations")
       .select("id", { count: "exact", head: true })
       .eq("refund_owed", true)
-      .is("refunded_at", null),
+      .is("refunded_at", null)
+      .is("refund_waived_at", null),
   ]);
   const counts = await getCounts(sessions.map((s) => s.id));
   const pad = (n: number) => String(n).padStart(2, "0");
