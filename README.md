@@ -69,8 +69,10 @@ There are two Supabase projects, so testing never touches real players' data:
 - Work happens on `dev`. It's merged into `main` to release.
 - Each project has its own accounts, sessions, payments and admins. Sign in once on each to create your account there.
 - **Every database change has to be applied to both projects**: add a new file in `supabase/migrations/` and run it on dev first, then on prod after merging.
-- The every-minute cron job (`supabase/setup/cron.sql`) only runs on prod. On dev, trigger a tick by hand when testing holds or the waitlist:
-  `curl -X POST -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/tick`
+- Both projects run an every-minute job:
+  - **Prod** (`supabase/setup/cron.sql`) calls the live site's `/api/cron/tick`, which does the timed work and sends the emails.
+  - **Dev** (`supabase/setup/cron-dev.sql`) runs the same timed work directly in the database, because it can't reach localhost or the login-protected previews. No emails are produced for those automatic events on dev. To see them, trigger a tick through the app instead:
+    `curl -X POST -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/tick`
 
 ---
 
