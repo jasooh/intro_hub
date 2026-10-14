@@ -46,7 +46,10 @@ export function TeamsBoard({ session, players, teams }: { session: Session; play
             />
           </label>
           {players.length > 0 ? (
-            <SubmitButton>Make teams</SubmitButton>
+            <span className="flex items-center gap-2">
+              <SubmitButton>Make teams</SubmitButton>
+              <BalanceHelp />
+            </span>
           ) : (
             <span className="pb-2 text-ink-soft">Teams can be made once players sign up.</span>
           )}
@@ -123,7 +126,7 @@ export function TeamsBoard({ session, players, teams }: { session: Session; play
               {published ? "Hide from players" : "Show teams to players"}
             </SubmitButton>
           </form>
-          <form action={makeTeams.bind(null, session.id)}>
+          <form action={makeTeams.bind(null, session.id)} className="flex items-center gap-2">
             <input type="hidden" name="count" value={teams.length} />
             <SubmitButton
               size="sm"
@@ -136,6 +139,7 @@ export function TeamsBoard({ session, players, teams }: { session: Session; play
             >
               Re-balance
             </SubmitButton>
+            <BalanceHelp />
           </form>
           <form action={removeTeams.bind(null, session.id)}>
             <SubmitButton
@@ -165,5 +169,30 @@ function TeamMember({ reg, sessionId, teams }: { reg: TeamRow; sessionId: string
       )}
       <TeamSelect action={moveToTeam.bind(null, reg.id, sessionId)} teams={teams} current={reg.team_id} />
     </li>
+  );
+}
+
+/** "?" that explains how auto-balancing works (hover, focus or tap). */
+function BalanceHelp() {
+  return (
+    <span className="group relative inline-flex">
+      <button
+        type="button"
+        aria-label="How are teams balanced?"
+        className="inline-flex size-6 items-center justify-center rounded-full border-2 border-ink font-display text-sm font-black text-ink hover:border-line hover:text-line focus:border-line focus:text-line focus:outline-none"
+      >
+        ?
+      </button>
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-3 w-72 -translate-x-1/2 border-2 border-ink bg-[#f7ecd6] p-3 text-left text-sm text-ink opacity-0 shadow-[4px_4px_0_var(--ink)] transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
+      >
+        <b className="mb-1 block font-display tracking-wide uppercase">How balancing works</b>
+        Players are ranked by the skill level they picked (experienced → some → prefer not to say → never played),
+        shuffled within each level, then dealt out snake-style (1-2-3, 3-2-1, …) so every team gets a similar mix and
+        sizes differ by at most one. Instructional-only players aren&apos;t included. Re-balancing reshuffles, so you get a
+        new mix each time.
+      </span>
+    </span>
   );
 }
