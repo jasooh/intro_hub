@@ -5,7 +5,7 @@ import { SessionCard } from "@/components/session-card";
 import { buttonClass, EmptyState, PageSpinner, reveal, Scoreboard, Sheet } from "@/components/ui";
 import { env } from "@/lib/env";
 import { dateParts } from "@/lib/format";
-import { getCounts, getUpcomingSessions, spotsLeft } from "@/lib/queries";
+import { getCounts, getUpcomingSessions } from "@/lib/queries";
 
 const STEPS = [
   { title: "Grab a spot", body: "Sign in with Google and tap Sign up. If there's room, your spot is held while you pay." },
@@ -93,12 +93,13 @@ export default function Home() {
 
 async function NextScoreboard() {
   const next = await getNext();
-  if (!next) return <Scoreboard value="--" label="No session yet" size="lg" />;
-  const left = spotsLeft(next.session, next.counts);
+  if (!next) return <Scoreboard value="--/--" label="No session yet" size="lg" />;
+  const taken = (next.counts?.confirmed ?? 0) + (next.counts?.holding ?? 0);
+  const pad = (n: number) => String(n).padStart(2, "0");
   const { weekday, day, month } = dateParts(next.session.starts_at);
-  const when = `Spots · ${weekday} ${month} ${day}`;
-  if (left > 0) return <Scoreboard value={`${String(left).padStart(2, "0")} LEFT`} label={when} size="lg" />;
-  return <Scoreboard value={(next.counts?.waitlisted ?? 0) > 0 ? "WAITLIST" : "FULL"} label={when} size="lg" />;
+  return (
+    <Scoreboard value={`${pad(taken)}/${pad(next.session.capacity)}`} label={`Taken · ${weekday} ${month} ${day}`} size="lg" />
+  );
 }
 
 async function NextSession() {
