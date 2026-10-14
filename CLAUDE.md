@@ -48,5 +48,5 @@ Light only. A community-centre gym, not a SaaS template.
   - `Notice`, `BackLink`, `EmptyState`, `reveal(i)` (staggered fade-up)
 - **Lists are ruled rows** (`divide-y divide-ink/20`), with dates as a `DateBlock` (SAT / 17 / OCT).
 - **Motion:** CSS only (`.reveal` stagger, scoreboard flicker, dot fill), disabled under `prefers-reduced-motion`.
-- **Banned (the user dislikes these):** rounded card grids / three-card heroes, icons in tinted square containers, generic pill badges, purple gradients, Inter/Roboto/system fonts.
+- **Banned:** rounded card grids / three-card heroes, icons in tinted square containers, generic pill badges, purple gradients, Inter/Roboto/system fonts.
 - The page header has an orange 3px "court line"; the footer has Instagram + email. The account dropdown (avatar) holds Account / Admin (hosts) / Sign out.
