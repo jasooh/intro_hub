@@ -8,7 +8,12 @@ export const env = {
   supabaseUrl: () => required("NEXT_PUBLIC_SUPABASE_URL"),
   supabasePublishableKey: () => required("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"),
   supabaseServiceRoleKey: () => required("SUPABASE_SERVICE_ROLE_KEY"),
-  appUrl: () => (process.env.APP_URL ?? "http://localhost:3000").replace(/\/$/, ""),
+  // APP_URL is set for production; Vercel preview deployments fall back to their own branch URL.
+  appUrl: () =>
+    (
+      process.env.APP_URL ??
+      (process.env.VERCEL_BRANCH_URL ? `https://${process.env.VERCEL_BRANCH_URL}` : "http://localhost:3000")
+    ).replace(/\/$/, ""),
   timezone: () => process.env.APP_TIMEZONE ?? "America/Toronto",
   adminEmails: () =>
     (process.env.ADMIN_EMAILS ?? "")
