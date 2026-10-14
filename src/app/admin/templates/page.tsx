@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { deleteTemplate, setTemplateActive } from "@/app/admin/actions";
 import { SubmitButton } from "@/components/submit-button";
-import { buttonClass, EmptyState, Mark, Notice, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
+import { buttonClass, EmptyState, Mark, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { env } from "@/lib/env";
 import { formatMoney } from "@/lib/format";
@@ -11,27 +11,21 @@ import { createClient } from "@/lib/supabase/server";
 import type { SessionTemplate } from "@/lib/types";
 import { clockAfter, WEEKDAYS } from "./template-form";
 
-const SAVED: Record<string, string> = {
-  created: "Weekly session created. Its next session has been added.",
-  updated: "Weekly session saved. Changes apply to sessions created from now on.",
-  deleted: "Weekly session deleted. Sessions it already created are unchanged.",
-};
 
 export const metadata: Metadata = {
   title: "Weekly schedule",
 };
 
-export default function TemplatesPage(props: PageProps<"/admin/templates">) {
+export default function TemplatesPage() {
   return (
     <Suspense fallback={<PageSpinner />}>
-      <Templates searchParams={props.searchParams} />
+      <Templates />
     </Suspense>
   );
 }
 
-async function Templates({ searchParams }: { searchParams: PageProps<"/admin/templates">["searchParams"] }) {
+async function Templates() {
   await requireAdmin();
-  const { error, saved } = await searchParams;
   const supabase = await createClient();
   const { data } = await supabase.from("session_templates").select("*").order("weekday").order("start_time");
   const templates = (data ?? []) as SessionTemplate[];
@@ -48,8 +42,6 @@ async function Templates({ searchParams }: { searchParams: PageProps<"/admin/tem
           + New weekly session
         </Link>
       </div>
-      {typeof error === "string" && <Notice tone="bad">{error}</Notice>}
-      {typeof saved === "string" && SAVED[saved] && <Notice tone="ok">{SAVED[saved]}</Notice>}
 
       <Sheet label={`Weekly sessions · ${templates.length}`} className="reveal" style={reveal(1)}>
         {templates.length === 0 ? (

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ListFilters } from "@/components/list-filters";
-import { EmptyState, Notice, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
+import { EmptyState, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { METHOD_LABELS, type PaymentMethod, paymentMatches, paymentMethod, paymentStatus, type PaymentStatus } from "@/lib/payments";
 import { paymentWindowStart } from "@/lib/queries";
@@ -38,7 +38,6 @@ export default function PaymentsPage(props: PageProps<"/admin/payments">) {
 async function Payments({ searchParams }: { searchParams: PageProps<"/admin/payments">["searchParams"] }) {
   await requireAdmin();
   const params = await searchParams;
-  const error = typeof params.error === "string" ? params.error : null;
   const view = STATUS_TABS.some((t) => t.key === params.view) ? (params.view as PaymentStatus | "all") : "attention";
   const method = METHOD_CHIPS.some((c) => c.key === params.method) ? (params.method as PaymentMethod | "any") : "any";
   const q = typeof params.q === "string" ? params.q : "";
@@ -79,7 +78,6 @@ async function Payments({ searchParams }: { searchParams: PageProps<"/admin/paym
       <PageTitle sub="Every e-Transfer that reaches your Gmail shows up here within minutes. It's linked to a sign-up by the code in its message (or, with no code, the sender's name and the exact amount owed), and that player is marked paid. Anything that couldn't be linked is left for you to sort out.">
         Payments
       </PageTitle>
-      {error && <Notice tone="bad">{error}</Notice>}
 
       <Sheet label="Payments" className="reveal" style={reveal(1)}>
         <ListFilters

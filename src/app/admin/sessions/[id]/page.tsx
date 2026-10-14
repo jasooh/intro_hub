@@ -17,7 +17,6 @@ import {
   buttonClass,
   inputClass,
   Mark,
-  Notice,
   PageSpinner,
   reveal,
   Scoreboard,
@@ -43,21 +42,18 @@ export const metadata: Metadata = {
 export default function AdminSessionPage(props: PageProps<"/admin/sessions/[id]">) {
   return (
     <Suspense fallback={<PageSpinner />}>
-      <AdminSession params={props.params} searchParams={props.searchParams} />
+      <AdminSession params={props.params} />
     </Suspense>
   );
 }
 
 async function AdminSession({
   params,
-  searchParams,
 }: {
   params: PageProps<"/admin/sessions/[id]">["params"];
-  searchParams: PageProps<"/admin/sessions/[id]">["searchParams"];
 }) {
   await requireAdmin();
   const { id } = await params;
-  const { error } = await searchParams;
   const supabase = await createClient();
 
   const [{ data: session }, { data: regs }, { data: teamRows }] = await Promise.all([
@@ -123,8 +119,6 @@ async function AdminSession({
         </div>
       </div>
       </div>
-
-      {typeof error === "string" && <Notice tone="bad">{error}</Notice>}
 
       <div className="reveal space-y-4" style={reveal(1)}>
         <div className="flex flex-wrap gap-4">

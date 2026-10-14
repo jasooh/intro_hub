@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ListFilters } from "@/components/list-filters";
-import { EmptyState, Notice, PageSpinner, PageTitle, reveal, Scoreboard, Sheet } from "@/components/ui";
+import { EmptyState, PageSpinner, PageTitle, reveal, Scoreboard, Sheet } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { formatMoney } from "@/lib/format";
 import { paymentMatches } from "@/lib/payments";
@@ -43,7 +43,6 @@ export default function RefundsPage(props: PageProps<"/admin/refunds">) {
 async function Refunds({ searchParams }: { searchParams: PageProps<"/admin/refunds">["searchParams"] }) {
   await requireAdmin();
   const params = await searchParams;
-  const error = typeof params.error === "string" ? params.error : null;
   const view = STATUS_TABS.some((t) => t.key === params.view) ? (params.view as RefundStatus | "all") : "to_refund";
   const reason = REASON_CHIPS.some((c) => c.key === params.reason) ? (params.reason as RefundReason | "any") : "any";
   const q = typeof params.q === "string" ? params.q : "";
@@ -88,7 +87,6 @@ async function Refunds({ searchParams }: { searchParams: PageProps<"/admin/refun
           <Scoreboard value={formatMoney(owedTotal)} label={`To refund · ${statusCount("to_refund")}`} />
         </div>
       </div>
-      {error && <Notice tone="bad">{error}</Notice>}
 
       <Sheet label="Refunds" className="reveal" style={reveal(2)}>
         <ListFilters

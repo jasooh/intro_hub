@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ProfileForm } from "@/components/profile-form";
-import { Avatar, Notice, PageSpinner, reveal } from "@/components/ui";
+import { Avatar, PageSpinner, reveal } from "@/components/ui";
 import { requireProfile } from "@/lib/auth";
 
 export const metadata: Metadata = {
@@ -21,7 +21,6 @@ async function Onboarding({ searchParams }: { searchParams: PageProps<"/onboardi
   const profile = await requireProfile("/onboarding");
   const params = await searchParams;
   const next = typeof params.next === "string" ? params.next : "/";
-  const error = typeof params.error === "string" ? params.error : null;
   const name = profile.display_name ?? profile.full_name ?? "";
 
   return (
@@ -37,7 +36,6 @@ async function Onboarding({ searchParams }: { searchParams: PageProps<"/onboardi
         </div>
       </div>
       <div className="reveal space-y-5 border-t-2 border-ink pt-5" style={reveal(1)}>
-        {error && <Notice tone="bad">{error}</Notice>}
         <ProfileForm
           profile={profile}
           next={next}

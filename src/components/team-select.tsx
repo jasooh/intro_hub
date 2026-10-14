@@ -1,5 +1,6 @@
 "use client";
 
+import { FlashOnSettle } from "@/components/flash-toaster";
 import type { Team } from "@/lib/types";
 
 /** Team dropdown that saves as soon as the host picks a team. */
@@ -28,6 +29,7 @@ export function TeamSelect({
           </option>
         ))}
       </select>
+      <FlashOnSettle />
     </form>
   );
 }

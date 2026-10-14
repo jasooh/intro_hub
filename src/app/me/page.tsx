@@ -6,7 +6,7 @@ import { PaymentInstructions } from "@/components/payment-instructions";
 import { ProfileForm } from "@/components/profile-form";
 import { DateBlock } from "@/components/session-card";
 import { SubmitButton } from "@/components/submit-button";
-import { Avatar, EmptyState, Mark, Notice, PageSpinner, reveal, Sheet, StatusMark } from "@/components/ui";
+import { Avatar, EmptyState, Mark, PageSpinner, reveal, Sheet, StatusMark } from "@/components/ui";
 import { requireProfile } from "@/lib/auth";
 import { formatDateTime, formatMoney, formatTime } from "@/lib/format";
 import { getMyRegistrations } from "@/lib/queries";
@@ -17,17 +17,16 @@ export const metadata: Metadata = {
   robots: { index: false },
 };
 
-export default function MePage(props: PageProps<"/me">) {
+export default function MePage() {
   return (
     <Suspense fallback={<PageSpinner />}>
-      <Account searchParams={props.searchParams} />
+      <Account />
     </Suspense>
   );
 }
 
-async function Account({ searchParams }: { searchParams: PageProps<"/me">["searchParams"] }) {
+async function Account() {
   const profile = await requireProfile("/me");
-  const { error, saved } = await searchParams;
   const { upcoming, past } = await getMyRegistrations(profile.id);
   const name = profile.display_name ?? profile.full_name ?? profile.email;
 
@@ -42,12 +41,10 @@ async function Account({ searchParams }: { searchParams: PageProps<"/me">["searc
           <p className="truncate text-ink-soft">{profile.email}</p>
         </div>
       </div>
-      {typeof error === "string" && <Notice tone="bad">{error}</Notice>}
 
       <Sheet label="Profile" className="reveal max-w-xl" style={reveal(1)}>
         <div className="space-y-5">
-          {saved === "1" && <Notice tone="ok">Profile saved.</Notice>}
-          <ProfileForm profile={profile} next="/me?saved=1" returnTo="/me" submitLabel="Save changes" />
+          <ProfileForm profile={profile} next="/me" returnTo="/me" submitLabel="Save changes" />
         </div>
       </Sheet>
 

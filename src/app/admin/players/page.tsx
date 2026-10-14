@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ListFilters } from "@/components/list-filters";
-import { EmptyState, Notice, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
+import { EmptyState, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { profileComplete } from "@/lib/profile";
 import { createClient } from "@/lib/supabase/server";
@@ -42,7 +42,6 @@ export default function PlayersPage(props: PageProps<"/admin/players">) {
 async function Players({ searchParams }: { searchParams: PageProps<"/admin/players">["searchParams"] }) {
   const me = await requireAdmin();
   const params = await searchParams;
-  const error = typeof params.error === "string" ? params.error : null;
   const segment = SEGMENTS.some((s) => s.key === params.view) ? (params.view as Segment) : "all";
   const sort = SORTS.some((s) => s.key === params.sort) ? (params.sort as Sort) : "recent";
   const q = (typeof params.q === "string" ? params.q : "").trim().toLowerCase();
@@ -96,8 +95,6 @@ async function Players({ searchParams }: { searchParams: PageProps<"/admin/playe
       <PageTitle sub="Everyone who has signed in with Google, whether or not they've played yet. Click a name for their details, e-Transfer names and host access.">
         Players
       </PageTitle>
-      {error && <Notice tone="bad">{error}</Notice>}
-      {params.deleted === "1" && <Notice tone="ok">Account deleted.</Notice>}
 
       <Sheet label={`Players · ${players.length}`} className="reveal" style={reveal(1)}>
         <ListFilters

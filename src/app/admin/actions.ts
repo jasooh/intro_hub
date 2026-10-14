@@ -6,6 +6,7 @@ import { after } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
 import { env } from "@/lib/env";
+import { flash } from "@/lib/flash";
 import { zonedLocalToUtc } from "@/lib/format";
 import { dispatchEvents, parseEvents } from "@/lib/registrations";
 import { balanceTeams } from "@/lib/teams";
@@ -16,13 +17,14 @@ function fail(path: string, message: string): never {
   redirect(`${path}?error=${encodeURIComponent(message)}`);
 }
 
-async function rpc(fn: string, args: Record<string, unknown>, path: string) {
+async function rpc(fn: string, args: Record<string, unknown>, path: string, success?: string) {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc(fn, args);
   if (error) fail(path, error.message);
   const events = parseEvents(data);
   after(() => dispatchEvents(events));
   revalidatePath(path);
+  if (success) await flash("success", success);
 }
 
 // ---------------------------------------------------------------------------
@@ -95,6 +97,7 @@ export async function createSession(formData: FormData) {
   const { data, error } = await supabase.from("sessions").insert(row).select("id").single();
   if (error) fail("/admin/sessions/new", error.message);
   revalidatePath("/", "layout");
+  await flash("success", "Session created");
   redirect(`/admin/sessions/${data.id}`);
 }
 
@@ -106,14 +109,19 @@ export async function updateSession(sessionId: string, formData: FormData) {
   const { error } = await supabase.from("sessions").update(row).eq("id", sessionId);
   if (error) fail(path, error.message);
   // Capacity may have gone up: pull people off the waitlist.
-  await rpc("admin_promote", { p_session_id: sessionId }, path);
+  await rpc("admin_promote", { p_session_id: sessionId }, path, "Session saved");
   revalidatePath("/", "layout");
 }
 
 export async function cancelSession(sessionId: string, formData: FormData) {
   await requireAdmin();
   const reason = String(formData.get("reason") ?? "").trim().slice(0, 500);
-  await rpc("admin_cancel_session", { p_session_id: sessionId, p_reason: reason || null }, `/admin/sessions/${sessionId}`);
+  await rpc(
+    "admin_cancel_session",
+    { p_session_id: sessionId, p_reason: reason || null },
+    `/admin/sessions/${sessionId}`,
+    "Session cancelled. Everyone signed up is being emailed.",
+  );
   revalidatePath("/", "layout");
 }
 
@@ -123,12 +131,17 @@ export async function cancelSession(sessionId: string, formData: FormData) {
 
 export async function markPaid(registrationId: string, sessionId: string) {
   await requireAdmin();
-  await rpc("admin_mark_paid", { p_registration_id: registrationId }, `/admin/sessions/${sessionId}`);
+  await rpc("admin_mark_paid", { p_registration_id: registrationId }, `/admin/sessions/${sessionId}`, "Marked as paid");
 }
 
 export async function removeRegistration(registrationId: string, sessionId: string) {
   await requireAdmin();
-  await rpc("cancel_registration", { p_registration_id: registrationId }, `/admin/sessions/${sessionId}`);
+  await rpc(
+    "cancel_registration",
+    { p_registration_id: registrationId },
+    `/admin/sessions/${sessionId}`,
+    "Removed from the session",
+  );
 }
 
 export async function moveWaitlist(registrationId: string, direction: -1 | 1, sessionId: string) {
@@ -137,6 +150,7 @@ export async function moveWaitlist(registrationId: string, direction: -1 | 1, se
     "admin_move_waitlist",
     { p_registration_id: registrationId, p_direction: direction },
     `/admin/sessions/${sessionId}`,
+    "Waitlist order updated",
   );
 }
 
@@ -148,7 +162,12 @@ export async function assignPayment(paymentId: string, formData: FormData) {
   await requireAdmin();
   const registrationId = formData.get("registration_id");
   if (typeof registrationId !== "string" || !registrationId) fail("/admin/payments", "Pick a player first");
-  await rpc("admin_assign_payment", { p_payment_id: paymentId, p_registration_id: registrationId }, "/admin/payments");
+  await rpc(
+    "admin_assign_payment",
+    { p_payment_id: paymentId, p_registration_id: registrationId },
+    "/admin/payments",
+    "Payment assigned. The player is confirmed.",
+  );
 }
 
 export async function setPaymentDismissed(paymentId: string, dismissed: boolean) {
@@ -157,6 +176,7 @@ export async function setPaymentDismissed(paymentId: string, dismissed: boolean)
   const { error } = await supabase.from("payments").update({ dismissed }).eq("id", paymentId);
   if (error) fail("/admin/payments", error.message);
   revalidatePath("/admin/payments");
+  await flash("success", dismissed ? "Payment dismissed" : "Payment restored");
 }
 
 export async function setRefunded(registrationId: string, refunded: boolean) {
@@ -168,6 +188,7 @@ export async function setRefunded(registrationId: string, refunded: boolean) {
     .eq("id", registrationId);
   if (error) fail("/admin/refunds", error.message);
   revalidatePath("/admin/refunds");
+  await flash("success", refunded ? "Marked as refunded" : "Moved back to To refund");
 }
 
 /** Decide not to refund (kept on the Waived tab), or undo that. */
@@ -180,6 +201,7 @@ export async function setRefundWaived(registrationId: string, waived: boolean) {
     .eq("id", registrationId);
   if (error) fail("/admin/refunds", error.message);
   revalidatePath("/admin/refunds");
+  await flash("success", waived ? "Refund waived" : "Moved back to To refund");
 }
 
 // ---------------------------------------------------------------------------
@@ -192,6 +214,7 @@ export async function setRole(profileId: string, role: "player" | "admin") {
   const { error } = await supabase.rpc("admin_set_role", { p_profile_id: profileId, p_role: role });
   if (error) fail("/admin/players", error.message);
   revalidatePath("/admin/players");
+  await flash("success", role === "admin" ? "Now a host" : "Host access removed");
 }
 
 export async function updateEtransferNames(profileId: string, formData: FormData) {
@@ -205,6 +228,7 @@ export async function updateEtransferNames(profileId: string, formData: FormData
   const { error } = await supabase.from("profiles").update({ etransfer_names: names }).eq("id", profileId);
   if (error) fail("/admin/players", error.message);
   revalidatePath("/admin/players");
+  await flash("success", "e-Transfer names saved");
 }
 
 /**
@@ -224,7 +248,8 @@ export async function deleteAccount(profileId: string) {
   if (error) fail("/admin/players", error.message);
   // Freed spots are filled from the waitlist by the every-minute job.
   revalidatePath("/", "layout");
-  redirect("/admin/players?deleted=1");
+  await flash("success", "Account deleted");
+  redirect("/admin/players");
 }
 
 // ---------------------------------------------------------------------------
@@ -294,7 +319,13 @@ export async function saveTemplate(templateId: string | null, formData: FormData
   // Create the next session right away instead of waiting for the cron tick.
   await createAdminClient().rpc("create_sessions_from_templates");
   revalidatePath("/", "layout");
-  redirect(`/admin/templates?saved=${templateId ? "updated" : "created"}`);
+  await flash(
+    "success",
+    templateId
+      ? "Weekly session saved. Changes apply to sessions created from now on."
+      : "Weekly session created. The next one is posted.",
+  );
+  redirect("/admin/templates");
 }
 
 /** Pause or resume a weekly session (paused templates stop creating new sessions). */
@@ -305,6 +336,7 @@ export async function setTemplateActive(templateId: string, active: boolean) {
   if (error) fail("/admin/templates", error.message);
   if (active) await createAdminClient().rpc("create_sessions_from_templates");
   revalidatePath("/", "layout");
+  await flash("success", active ? "Weekly session resumed" : "Weekly session paused");
 }
 
 /** Deletes a weekly session. Sessions it already created stay (cancel those separately). */
@@ -314,7 +346,8 @@ export async function deleteTemplate(templateId: string) {
   const { error } = await supabase.from("session_templates").delete().eq("id", templateId);
   if (error) fail("/admin/templates", error.message);
   revalidatePath("/", "layout");
-  redirect("/admin/templates?saved=deleted");
+  await flash("success", "Weekly session deleted. Sessions it already created are unchanged.");
+  redirect("/admin/templates");
 }
 
 // ---------------------------------------------------------------------------
@@ -368,6 +401,7 @@ export async function makeTeams(sessionId: string, formData: FormData) {
     if (error) fail(path, error.message);
   }
   revalidateTeams(sessionId);
+  await flash("success", `${teams.length} teams made, balanced by skill`);
 }
 
 export async function renameTeam(teamId: string, sessionId: string, formData: FormData) {
@@ -378,6 +412,7 @@ export async function renameTeam(teamId: string, sessionId: string, formData: Fo
   const { error } = await supabase.from("session_teams").update({ name: name.data }).eq("id", teamId);
   if (error) fail(`/admin/sessions/${sessionId}`, error.message);
   revalidateTeams(sessionId);
+  await flash("success", `Team renamed to ${name.data}`);
 }
 
 export async function moveToTeam(registrationId: string, sessionId: string, formData: FormData) {
@@ -387,6 +422,7 @@ export async function moveToTeam(registrationId: string, sessionId: string, form
   const { error } = await supabase.from("registrations").update({ team_id: teamId }).eq("id", registrationId);
   if (error) fail(`/admin/sessions/${sessionId}`, error.message);
   revalidateTeams(sessionId);
+  await flash("success", teamId ? "Player moved" : "Player taken off their team");
 }
 
 export async function setTeamsPublished(sessionId: string, published: boolean) {
@@ -398,6 +434,7 @@ export async function setTeamsPublished(sessionId: string, published: boolean) {
     .eq("id", sessionId);
   if (error) fail(`/admin/sessions/${sessionId}`, error.message);
   revalidateTeams(sessionId);
+  await flash("success", published ? "Teams are now visible to players" : "Teams hidden from players");
 }
 
 export async function removeTeams(sessionId: string) {
@@ -407,4 +444,5 @@ export async function removeTeams(sessionId: string) {
   if (!error) await supabase.from("sessions").update({ teams_published_at: null }).eq("id", sessionId);
   if (error) fail(`/admin/sessions/${sessionId}`, error.message);
   revalidateTeams(sessionId);
+  await flash("success", "Teams removed");
 }

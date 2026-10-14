@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { signInWithGoogle } from "@/app/auth/actions";
 import { SubmitButton } from "@/components/submit-button";
-import { Notice, reveal } from "@/components/ui";
+import { reveal } from "@/components/ui";
 
 export const metadata: Metadata = {
   title: "Sign in",
@@ -31,11 +31,9 @@ export default function LoginPage(props: PageProps<"/login">) {
 async function LoginForm({ searchParams }: { searchParams: PageProps<"/login">["searchParams"] }) {
   const params = await searchParams;
   const next = typeof params.next === "string" ? params.next : "/";
-  const error = typeof params.error === "string" ? params.error : null;
   return (
     <form action={signInWithGoogle} className="space-y-4">
       <input type="hidden" name="next" value={next} />
-      {error && <Notice tone="bad">{error}</Notice>}
       <SubmitButton variant="secondary" className="w-full bg-[#fff8ee]">
         <GoogleIcon /> Continue with Google
       </SubmitButton>

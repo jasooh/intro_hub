@@ -3,6 +3,7 @@ import { Atkinson_Hyperlegible_Next, Big_Shoulders, Doto } from "next/font/googl
 import Link from "next/link";
 import { Suspense } from "react";
 import { AsciiBall } from "@/components/ascii-ball";
+import { FlashToaster } from "@/components/flash-toaster";
 import { UserMenu } from "@/components/user-menu";
 import { env } from "@/lib/env";
 import { SITE } from "@/lib/site";
@@ -35,6 +36,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="flex min-h-full flex-col font-sans">
         {/* Lowkey spinning ASCII volleyball behind every page. */}
         <AsciiBall />
+        <FlashToaster />
         <header className="sticky top-0 z-20 bg-maple/90 backdrop-blur-sm">
           <div className="mx-auto flex h-16 max-w-4xl items-center justify-between gap-4 px-4">
             <nav className="flex items-baseline gap-3 sm:gap-6">

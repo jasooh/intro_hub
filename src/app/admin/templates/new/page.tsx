@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { saveTemplate } from "@/app/admin/actions";
-import { BackLink, Notice, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
+import { BackLink, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { TemplateForm } from "../template-form";
 
@@ -9,17 +9,16 @@ export const metadata: Metadata = {
   title: "New weekly session",
 };
 
-export default function NewTemplatePage(props: PageProps<"/admin/templates/new">) {
+export default function NewTemplatePage() {
   return (
     <Suspense fallback={<PageSpinner />}>
-      <NewTemplate searchParams={props.searchParams} />
+      <NewTemplate />
     </Suspense>
   );
 }
 
-async function NewTemplate({ searchParams }: { searchParams: PageProps<"/admin/templates/new">["searchParams"] }) {
+async function NewTemplate() {
   await requireAdmin();
-  const { error } = await searchParams;
   return (
     <div className="space-y-10">
       <div>
@@ -28,7 +27,6 @@ async function NewTemplate({ searchParams }: { searchParams: PageProps<"/admin/t
           New weekly session
         </PageTitle>
       </div>
-      {typeof error === "string" && <Notice tone="bad">{error}</Notice>}
       <Sheet label="Details" className="reveal" style={reveal(1)}>
         <TemplateForm action={saveTemplate.bind(null, null)} submitLabel="Create weekly session" />
       </Sheet>

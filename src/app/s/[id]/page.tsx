@@ -16,7 +16,6 @@ import {
   Field,
   inputClass,
   Mark,
-  Notice,
   PageSpinner,
   reveal,
   Scoreboard,
@@ -52,20 +51,17 @@ export async function generateMetadata({ params }: PageProps<"/s/[id]">): Promis
 export default function SessionPage(props: PageProps<"/s/[id]">) {
   return (
     <Suspense fallback={<PageSpinner />}>
-      <SessionView params={props.params} searchParams={props.searchParams} />
+      <SessionView params={props.params} />
     </Suspense>
   );
 }
 
 async function SessionView({
   params,
-  searchParams,
 }: {
   params: PageProps<"/s/[id]">["params"];
-  searchParams: PageProps<"/s/[id]">["searchParams"];
 }) {
   const { id } = await params;
-  const { error } = await searchParams;
   const supabase = await createClient();
 
   const { data: session } = await supabase.from("sessions").select("*").eq("id", id).maybeSingle<Session>();
@@ -180,8 +176,6 @@ async function SessionView({
           {session.notes}
         </p>
       )}
-
-      {typeof error === "string" && <Notice tone="bad">{error}</Notice>}
 
       <div className="reveal" style={reveal(4)}>
         {cancelled ? (

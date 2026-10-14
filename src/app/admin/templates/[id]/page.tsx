@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { deleteTemplate, saveTemplate } from "@/app/admin/actions";
 import { SubmitButton } from "@/components/submit-button";
-import { BackLink, Notice, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
+import { BackLink, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type { SessionTemplate } from "@/lib/types";
@@ -16,21 +16,18 @@ export const metadata: Metadata = {
 export default function EditTemplatePage(props: PageProps<"/admin/templates/[id]">) {
   return (
     <Suspense fallback={<PageSpinner />}>
-      <EditTemplate params={props.params} searchParams={props.searchParams} />
+      <EditTemplate params={props.params} />
     </Suspense>
   );
 }
 
 async function EditTemplate({
   params,
-  searchParams,
 }: {
   params: PageProps<"/admin/templates/[id]">["params"];
-  searchParams: PageProps<"/admin/templates/[id]">["searchParams"];
 }) {
   await requireAdmin();
   const { id } = await params;
-  const { error } = await searchParams;
   const supabase = await createClient();
   const { data: template } = await supabase.from("session_templates").select("*").eq("id", id).maybeSingle<SessionTemplate>();
   if (!template) notFound();
@@ -46,7 +43,6 @@ async function EditTemplate({
           {template.title}
         </PageTitle>
       </div>
-      {typeof error === "string" && <Notice tone="bad">{error}</Notice>}
       <Sheet label="Details" className="reveal" style={reveal(1)}>
         <TemplateForm action={saveTemplate.bind(null, template.id)} template={template} submitLabel="Save changes" />
       </Sheet>

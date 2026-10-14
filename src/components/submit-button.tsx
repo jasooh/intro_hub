@@ -12,6 +12,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useFlashOnSettle } from "@/components/flash-toaster";
 import { buttonClass, type ButtonVariant } from "@/components/ui";
 
 /** A confirmation step before submitting. A plain string is used as the title. */
@@ -31,6 +32,7 @@ export function SubmitButton({
   className?: string;
 }) {
   const { pending } = useFormStatus();
+  useFlashOnSettle();
   const [open, setOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
 

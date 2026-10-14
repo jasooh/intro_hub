@@ -6,8 +6,9 @@ import { after } from "next/server";
 import { z } from "zod";
 import { WAIVER_VERSION } from "@/lib/agreements";
 import { requireProfile } from "@/lib/auth";
+import { flash } from "@/lib/flash";
 import { cleanName, cleanNameList, cleanText, normalizePhone } from "@/lib/input";
-import { profileComplete } from "@/lib/profile";
+import { OPTION_LABELS, profileComplete } from "@/lib/profile";
 import { dispatchEvents, parseEvents } from "@/lib/registrations";
 import { createClient } from "@/lib/supabase/server";
 
@@ -53,7 +54,14 @@ export async function registerForSession(sessionId: string, formData: FormData) 
   const events = parseEvents(data);
   after(() => dispatchEvents(events));
   revalidatePath(path);
+  await flash("success", SIGNED_UP[events[0]?.event ?? ""] ?? "You're already signed up for this session.");
 }
+
+const SIGNED_UP: Record<string, string> = {
+  signed_up: "You're signed up! Send the e-Transfer to lock in your spot.",
+  waitlisted: "You're on the waitlist. We'll email you if a spot opens up.",
+  confirmed: "You're in! See you on court.",
+};
 
 export async function changeOption(registrationId: string, option: "full" | "instructional", returnTo: string) {
   await requireProfile(returnTo);
@@ -67,6 +75,7 @@ export async function changeOption(registrationId: string, option: "full" | "ins
   const events = parseEvents(data);
   after(() => dispatchEvents(events));
   revalidatePath(returnTo);
+  await flash("success", `Switched to ${OPTION_LABELS[option]}`);
 }
 
 export async function cancelRegistration(registrationId: string, returnTo: string) {
@@ -78,6 +87,7 @@ export async function cancelRegistration(registrationId: string, returnTo: strin
   const events = parseEvents(data);
   after(() => dispatchEvents(events));
   revalidatePath(returnTo);
+  await flash("success", "Your spot is cancelled.");
 }
 
 const text = (max: number) => z.string().transform(cleanText).pipe(z.string().max(max, `Please keep it under ${max} characters`));
@@ -173,5 +183,6 @@ export async function saveProfile(formData: FormData) {
   if (error) redirect(withParams(returnTo, { error: error.message }));
 
   revalidatePath("/", "layout");
+  await flash("success", "Profile saved");
   redirect(localPath(f.next, "/"));
 }

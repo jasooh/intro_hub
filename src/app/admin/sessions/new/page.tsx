@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { createSession } from "@/app/admin/actions";
-import { BackLink, Notice, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
+import { BackLink, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { SessionForm } from "../session-form";
 
@@ -10,17 +10,16 @@ export const metadata: Metadata = {
   title: "New session",
 };
 
-export default function NewSessionPage(props: PageProps<"/admin/sessions/new">) {
+export default function NewSessionPage() {
   return (
     <Suspense fallback={<PageSpinner />}>
-      <NewSession searchParams={props.searchParams} />
+      <NewSession />
     </Suspense>
   );
 }
 
-async function NewSession({ searchParams }: { searchParams: PageProps<"/admin/sessions/new">["searchParams"] }) {
+async function NewSession() {
   await requireAdmin();
-  const { error } = await searchParams;
   return (
     <div className="space-y-10">
       <div>
@@ -39,7 +38,6 @@ async function NewSession({ searchParams }: { searchParams: PageProps<"/admin/se
           One-off session
         </PageTitle>
       </div>
-      {typeof error === "string" && <Notice tone="bad">{error}</Notice>}
       <Sheet label="Details" className="reveal" style={reveal(1)}>
         <SessionForm action={createSession} submitLabel="Create session" />
       </Sheet>
