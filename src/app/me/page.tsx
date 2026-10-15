@@ -59,7 +59,7 @@ async function Account() {
       )}
 
       <Sheet label="Profile" className="reveal max-w-xl" style={reveal(2)}>
-        <ProfileForm profile={profile} next="/me" returnTo="/me" submitLabel="Save changes" requireChange />
+        <ProfileForm profile={profile} next="/me" submitLabel="Save changes" requireChange />
       </Sheet>
     </div>
   );

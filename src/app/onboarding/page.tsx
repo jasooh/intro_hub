@@ -39,7 +39,6 @@ async function Onboarding({ searchParams }: { searchParams: PageProps<"/onboardi
         <ProfileForm
           profile={profile}
           next={next}
-          returnTo={`/onboarding?next=${encodeURIComponent(next)}`}
           submitLabel={profile.onboarded_at ? "Save" : "Continue"}
           submitClassName="w-full"
         />

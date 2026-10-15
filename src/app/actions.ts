@@ -191,7 +191,8 @@ const ProfileForm = z
     display_name: required("Display name", 60).transform((v) => v.replace(/\n/g, " ")),
     phone,
     skill_level: z.enum(["never", "some", "experienced", "prefer_not"], { message: "Please pick your skill level" }),
-    attended_before: z.enum(["yes", "no"], { message: "Please say whether you've attended before" }),
+    // Asked once (it decides Bring a Friend); not sent again after it's answered.
+    attended_before: z.enum(["yes", "no"]).optional(),
     learning_goals: text(500),
     hype_song: text(200),
     heard_about: z.enum(["word_of_mouth", "instagram", "javelin", "other"]).optional(),
@@ -207,22 +208,21 @@ const ProfileForm = z
 
 const localPath = (p: string, fallback: string) => (p.startsWith("/") && !p.startsWith("//") ? p : fallback);
 
-/** `path` with `params` added to its query string. */
-function withParams(path: string, params: Record<string, string>) {
-  const url = new URL(path, "http://x");
-  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
-  return `${url.pathname}${url.search}`;
-}
+/**
+ * What the profile form gets back when a save fails: the message, plus what
+ * was typed so the form can put it back (instead of starting over).
+ */
+export type ProfileFormState = { error: string; values: Record<string, string>; at: number } | null;
 
-export async function saveProfile(formData: FormData) {
+export async function saveProfile(_prev: ProfileFormState, formData: FormData): Promise<ProfileFormState> {
   const profile = await requireProfile("/onboarding");
   const raw = Object.fromEntries(formData);
-  const returnTo = localPath(typeof raw.return_to === "string" ? raw.return_to : "", "/onboarding");
+  const values = Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, typeof v === "string" ? v : ""]));
+  const failed = (error: string): ProfileFormState => ({ error, values, at: Date.now() });
   const parsed = ProfileForm.safeParse(raw);
-  if (!parsed.success) {
-    redirect(withParams(returnTo, { error: parsed.error.issues[0].message }));
-  }
+  if (!parsed.success) return failed(parsed.error.issues[0].message);
   const f = parsed.data;
+  if (profile.attended_before == null && !f.attended_before) return failed("Please say whether you've attended before");
   const names = cleanNameList(f.etransfer_names, 5);
   const consent = f.media_consent === "agree";
   const now = new Date().toISOString();
@@ -237,7 +237,7 @@ export async function saveProfile(formData: FormData) {
       display_name: f.display_name,
       phone: f.phone,
       skill_level: f.skill_level,
-      attended_before: f.attended_before === "yes",
+      attended_before: profile.attended_before ?? f.attended_before === "yes",
       learning_goals: f.learning_goals || null,
       hype_song: f.hype_song || null,
       heard_about: f.heard_about ?? null,
@@ -251,7 +251,7 @@ export async function saveProfile(formData: FormData) {
       onboarded_at: profile.onboarded_at ?? now,
     })
     .eq("id", profile.id);
-  if (error) redirect(withParams(returnTo, { error: error.message }));
+  if (error) return failed(error.message);
 
   revalidatePath("/", "layout");
   await flash("success", "Profile saved");

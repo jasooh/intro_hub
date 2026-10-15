@@ -1320,3 +1320,25 @@ describe("changing a session's price after sign-ups", () => {
     expect(byUser.get(b)).toMatchObject({ amount_cents: 1000, status: "pending_payment" });
   });
 });
+
+describe("attended before is asked once", () => {
+  const answer = async (id: string) =>
+    (await db.query<{ attended_before: boolean | null }>(`select attended_before from public.profiles where id = $1`, [id])).rows[0]
+      .attended_before;
+
+  it("a player can answer it once but not flip it later; a host can correct it", async () => {
+    const host = await createUser(db, "Host", { admin: true });
+    const a = await createUser(db, "A", { incomplete: true });
+    expect(await answer(a)).toBeNull();
+
+    await asUser(db, a, `update public.profiles set attended_before = false where id = $1`, [a]);
+    expect(await answer(a)).toBe(false);
+
+    // Trying to change it (e.g. to look new for Bring a Friend, or the reverse) keeps the first answer.
+    await asUser(db, a, `update public.profiles set attended_before = true where id = $1`, [a]);
+    expect(await answer(a)).toBe(false);
+
+    await asUser(db, host, `update public.profiles set attended_before = true where id = $1`, [a]);
+    expect(await answer(a)).toBe(true);
+  });
+});

@@ -1,4 +1,7 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { type ReactNode, useActionState, useEffect } from "react";
+import { toast } from "sonner";
 import { saveProfile } from "@/app/actions";
 import { SubmitButton } from "@/components/submit-button";
 import { PhoneInput } from "@/components/phone-input";
@@ -17,7 +20,6 @@ import type { Profile } from "@/lib/types";
 export function ProfileForm({
   profile,
   next,
-  returnTo,
   submitLabel,
   submitClassName,
   requireChange = false,
@@ -25,8 +27,6 @@ export function ProfileForm({
   profile: Profile;
   /** Where to go after saving. */
   next: string;
-  /** Page to show validation errors on. */
-  returnTo: string;
   submitLabel: string;
   submitClassName?: string;
   /** Editing a saved profile: Save stays disabled until something changes. */
@@ -38,10 +38,21 @@ export function ProfileForm({
   const display = profile.onboarded_at && profile.display_name ? profile.display_name : defaultDisplayName(first, last);
   const waiverCurrent = Boolean(profile.waiver_accepted_at && profile.waiver_version === WAIVER_VERSION);
 
+  // A failed save hands back what was typed. The fields default to it, so the
+  // form's automatic reset after submitting puts the answers back instead of clearing them.
+  const [state, action] = useActionState(saveProfile, null);
+  const v = state?.values;
+  const text = (name: string, saved: string) => (v ? (v[name] ?? "") : saved);
+  const picked = (name: string, value: string, saved: boolean) => (v ? v[name] === value : saved);
+  const ticked = (name: string, saved: boolean) => (v ? v[name] === "on" : saved);
+
+  useEffect(() => {
+    if (state?.error) toast.error(state.error, { id: `profile-${state.at}` });
+  }, [state]);
+
   return (
-    <form action={saveProfile} className="space-y-10">
+    <form action={action} className="space-y-10">
       <input type="hidden" name="next" value={next} />
-      <input type="hidden" name="return_to" value={returnTo} />
       <p className="text-sm text-ink-soft">
         <RequiredMark /> Required
       </p>
@@ -49,16 +60,16 @@ export function ProfileForm({
       <Group title="You">
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <Field label="First name" required>
-            <input name="first_name" defaultValue={first} required maxLength={60} autoComplete="given-name" autoCapitalize="words" spellCheck={false} className={inputClass} />
+            <input name="first_name" defaultValue={text("first_name", first)} required maxLength={60} autoComplete="given-name" autoCapitalize="words" spellCheck={false} className={inputClass} />
           </Field>
           <Field label="Last name" required>
-            <input name="last_name" defaultValue={last} required maxLength={60} autoComplete="family-name" autoCapitalize="words" spellCheck={false} className={inputClass} />
+            <input name="last_name" defaultValue={text("last_name", last)} required maxLength={60} autoComplete="family-name" autoCapitalize="words" spellCheck={false} className={inputClass} />
           </Field>
           <Field label="Display name" required hint="What other players see on the team sheet.">
-            <input name="display_name" defaultValue={display} required maxLength={60} autoComplete="nickname" autoCapitalize="words" spellCheck={false} className={inputClass} />
+            <input name="display_name" defaultValue={text("display_name", display)} required maxLength={60} autoComplete="nickname" autoCapitalize="words" spellCheck={false} className={inputClass} />
           </Field>
           <Field label="Contact number" required hint="Only the hosts can see this.">
-            <PhoneInput name="phone" defaultValue={profile.phone ?? ""} required />
+            <PhoneInput name="phone" defaultValue={text("phone", profile.phone ?? "")} required />
           </Field>
         </div>
       </Group>
@@ -67,34 +78,45 @@ export function ProfileForm({
         <div className="space-y-6">
           <Choice label="What is your current skill level?" required>
             {Object.entries(SKILL_LABELS).map(([value, label]) => (
-              <Radio key={value} name="skill_level" value={value} defaultChecked={profile.skill_level === value} required>
+              <Radio key={value} name="skill_level" value={value} defaultChecked={picked("skill_level", value, profile.skill_level === value)} required>
                 {label}
               </Radio>
             ))}
           </Choice>
-          <Choice label="Have you attended this class before?" required>
-            <Radio name="attended_before" value="yes" defaultChecked={profile.attended_before === true} required>
-              Yes
-            </Radio>
-            <Radio name="attended_before" value="no" defaultChecked={profile.attended_before === false} required>
-              No, I&apos;m new
-            </Radio>
-          </Choice>
+          {profile.attended_before == null ? (
+            <Choice label="Have you attended this class before?" required>
+              <Radio name="attended_before" value="yes" defaultChecked={picked("attended_before", "yes", false)} required>
+                Yes
+              </Radio>
+              <Radio name="attended_before" value="no" defaultChecked={picked("attended_before", "no", false)} required>
+                No, I&apos;m new
+              </Radio>
+            </Choice>
+          ) : (
+            // Answered once: it decides the Bring a Friend first-timer rate, so it can't be changed here.
+            <div className="space-y-1">
+              <p className="font-display text-sm font-bold tracking-[0.15em] uppercase">Have you attended this class before?</p>
+              <p>
+                {profile.attended_before ? "Yes" : "No, I was new"}{" "}
+                <span className="text-sm text-ink-soft">(answered when you joined; ask a host if this is wrong)</span>
+              </p>
+            </div>
+          )}
           <Field label="What do you most want to learn or improve? (optional)">
-            <textarea name="learning_goals" defaultValue={profile.learning_goals ?? ""} rows={2} maxLength={500} autoCapitalize="sentences" className={inputClass} />
+            <textarea name="learning_goals" defaultValue={text("learning_goals", profile.learning_goals ?? "")} rows={2} maxLength={500} autoCapitalize="sentences" className={inputClass} />
           </Field>
           <Field label="Your hype song (optional)" hint="The song that gets your adrenaline pumping. It goes on the session playlist.">
-            <input name="hype_song" defaultValue={profile.hype_song ?? ""} maxLength={200} placeholder="Song – Artist" autoComplete="off" className={inputClass} />
+            <input name="hype_song" defaultValue={text("hype_song", profile.hype_song ?? "")} maxLength={200} placeholder="Song – Artist" autoComplete="off" className={inputClass} />
           </Field>
           <Choice label="How did you hear about us? (optional)">
             {Object.entries(HEARD_LABELS).map(([value, label]) => (
-              <Radio key={value} name="heard_about" value={value} defaultChecked={profile.heard_about === value}>
+              <Radio key={value} name="heard_about" value={value} defaultChecked={picked("heard_about", value, profile.heard_about === value)}>
                 {label}
               </Radio>
             ))}
             <input
               name="heard_about_other"
-              defaultValue={profile.heard_about_other ?? ""}
+              defaultValue={text("heard_about_other", profile.heard_about_other ?? "")}
               maxLength={100}
               autoComplete="off"
               placeholder="If other, where?"
@@ -111,7 +133,7 @@ export function ProfileForm({
         >
           <input
             name="etransfer_names"
-            defaultValue={profile.etransfer_names.join(", ") || `${first} ${last}`.trim()}
+            defaultValue={text("etransfer_names", profile.etransfer_names.join(", ") || `${first} ${last}`.trim())}
             maxLength={300}
             autoComplete="off"
             autoCapitalize="characters"
@@ -127,10 +149,10 @@ export function ProfileForm({
             <Legal summary="Read the media release">
               <p>{MEDIA_RELEASE}</p>
             </Legal>
-            <Radio name="media_consent" value="agree" defaultChecked={profile.media_consent === true} required>
+            <Radio name="media_consent" value="agree" defaultChecked={picked("media_consent", "agree", profile.media_consent === true)} required>
               I agree to be photographed and filmed
             </Radio>
-            <Radio name="media_consent" value="disagree" defaultChecked={profile.media_consent === false} required>
+            <Radio name="media_consent" value="disagree" defaultChecked={picked("media_consent", "disagree", profile.media_consent === false)} required>
               I don&apos;t agree. Please keep me out of photos and videos
             </Radio>
           </Choice>
@@ -154,7 +176,7 @@ export function ProfileForm({
               <input
                 type="checkbox"
                 name="waiver"
-                defaultChecked={waiverCurrent}
+                defaultChecked={ticked("waiver", waiverCurrent)}
                 required
                 className="mt-1 size-5 shrink-0 accent-[var(--line)]"
               />
@@ -172,7 +194,7 @@ export function ProfileForm({
           <input
             type="checkbox"
             name="announcement_emails"
-            defaultChecked={profile.announcement_emails ?? true}
+            defaultChecked={ticked("announcement_emails", profile.announcement_emails ?? true)}
             className="mt-1 size-5 shrink-0 accent-[var(--line)]"
           />
           <span>
