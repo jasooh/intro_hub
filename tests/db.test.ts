@@ -846,3 +846,66 @@ describe("owner tools", () => {
     expect((await db.query(`select 1 from public.email_log`)).rows).toHaveLength(0);
   });
 });
+
+describe("rejoining after a paid cancel", () => {
+  async function payAndCancel(userId: string, sessionId: string) {
+    const host = await createUser(db, `Host ${userId.slice(-4)}`, { admin: true });
+    const reg = await regOf(userId, sessionId);
+    await asUser(db, host, `select public.admin_mark_paid($1)`, [reg.id]);
+    await asUser(db, userId, `select public.cancel_registration($1)`, [reg.id]);
+    return reg.id;
+  }
+  const paymentsOf = async (regId: string) =>
+    (await db.query<{ n: number }>(`select count(*)::int as n from public.payments where registration_id = $1`, [regId])).rows[0].n;
+
+  it("confirms right away using the earlier payment, which stops being a refund owed", async () => {
+    const sid = await createSession(db);
+    const a = await createUser(db, "A");
+    await register(a, sid);
+    const oldId = await payAndCancel(a, sid);
+    expect((await regOf(a, sid)).refund_owed).toBe(true);
+
+    const events = await register(a, sid);
+    expect(events.map((e) => e.event)).toEqual(["confirmed"]);
+    const fresh = await regOf(a, sid);
+    expect(fresh.status).toBe("confirmed");
+    expect(await paymentsOf(fresh.id)).toBe(1);
+    expect(await paymentsOf(oldId)).toBe(0);
+    const old = await db.query<{ refund_owed: boolean }>(`select refund_owed from public.registrations where id = $1`, [oldId]);
+    expect(old.rows[0].refund_owed).toBe(false);
+  });
+
+  it("does nothing once the refund was sent, or for a different option's price", async () => {
+    const sid = await createSession(db, { instructionalPriceCents: 500 });
+    const [a, b] = [await createUser(db, "A"), await createUser(db, "B")];
+
+    await register(a, sid);
+    const refunded = await payAndCancel(a, sid);
+    await db.query(`update public.registrations set refunded_at = now() where id = $1`, [refunded]);
+    expect((await register(a, sid))[0].event).toBe("signed_up");
+
+    await register(b, sid);
+    await payAndCancel(b, sid);
+    await asUser(db, b, `select public.register_for_session($1, 'instructional')`, [sid]);
+    expect((await regOf(b, sid)).status).toBe("pending_payment");
+    // Switching back to the option they paid for uses it.
+    const res = await asUser<{ events: Event[] }>(db, b, `select public.change_registration_option($1, 'full') as events`, [
+      (await regOf(b, sid)).id,
+    ]);
+    expect(res.rows[0].events.map((e) => e.event)).toEqual(["confirmed"]);
+    expect((await regOf(b, sid)).status).toBe("confirmed");
+  });
+
+  it("applies when they come off the waitlist", async () => {
+    const sid = await createSession(db, { capacity: 1 });
+    const [a, b] = [await createUser(db, "A"), await createUser(db, "B")];
+    await register(a, sid);
+    await payAndCancel(a, sid);
+    await register(b, sid); // takes the freed spot
+    expect((await register(a, sid))[0].event).toBe("waitlisted");
+
+    const res = await asUser<{ events: Event[] }>(db, b, `select public.cancel_registration($1) as events`, [(await regOf(b, sid)).id]);
+    expect(res.rows[0].events).toEqual([{ event: "confirmed", registration_id: (await regOf(a, sid)).id }]);
+    expect((await regOf(a, sid)).status).toBe("confirmed");
+  });
+});
