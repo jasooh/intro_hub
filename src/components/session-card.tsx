@@ -16,8 +16,31 @@ export function DateBlock({ iso, className }: { iso: string; className?: string 
   );
 }
 
-/** A session as one row on the roster sheet. */
+/** True while the session is on (started, not ended, not cancelled). */
+export function isLive(session: Pick<Session, "starts_at" | "ends_at" | "status">, now = Date.now()) {
+  return (
+    session.status !== "cancelled" &&
+    new Date(session.starts_at).getTime() <= now &&
+    now < new Date(session.ends_at).getTime()
+  );
+}
+
+/** Small LED tag with a pulsing dot for a session that's on right now. */
+export function LiveBadge({ label = "Live · on court now" }: { label?: string }) {
+  return (
+    <span className="inline-flex items-center gap-2 bg-board px-2 pt-1 pb-0.5 font-display text-xs font-bold tracking-[0.2em] whitespace-nowrap text-led uppercase">
+      <span aria-hidden className="relative flex size-2">
+        <span className="absolute inline-flex size-full animate-ping rounded-full bg-led opacity-75" />
+        <span className="relative inline-flex size-2 rounded-full bg-led" />
+      </span>
+      {label}
+    </span>
+  );
+}
+
+/** A session as one row on the roster sheet. Sessions on right now get a live look. */
 export function SessionCard({ session, counts, href }: { session: Session; counts?: SessionCounts; href: string }) {
+  const live = isLive(session);
   const left = spotsLeft(session, counts);
   const confirmed = counts?.confirmed ?? 0;
   const holding = counts?.holding ?? 0;
@@ -28,11 +51,14 @@ export function SessionCard({ session, counts, href }: { session: Session; count
   return (
     <Link
       href={href}
-      className="group grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-4 py-5 transition-colors hover:bg-maple-deep/50 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-x-6 sm:gap-y-2 sm:px-2 sm:py-4"
+      className={`group grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-4 py-5 transition-colors hover:bg-maple-deep/50 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-x-6 sm:gap-y-2 sm:px-2 sm:py-4 ${
+        live ? "border-l-4 border-line bg-line/[0.06] pl-3 sm:pl-4" : ""
+      }`}
     >
       <DateBlock iso={session.starts_at} className="sm:row-span-2" />
 
       <div className="min-w-0 space-y-1">
+        {live && <LiveBadge />}
         <p className={`font-display text-2xl leading-tight font-extrabold uppercase ${cancelled ? "line-through" : ""}`}>
           {session.title}
         </p>
@@ -42,9 +68,9 @@ export function SessionCard({ session, counts, href }: { session: Session; count
         <p className="text-sm leading-snug text-ink-soft">{session.location}</p>
       </div>
 
-      {/* Desktop: price and arrow on the right. */}
+      {/* Desktop: price and arrow on the right (no price once it's on: sign-ups are closed). */}
       <div className="hidden flex-col items-end gap-1 sm:row-span-2 sm:flex">
-        <span className="font-score text-2xl font-black">{formatMoney(session.price_cents)}</span>
+        {!live && <span className="font-score text-2xl font-black">{formatMoney(session.price_cents)}</span>}
         <span aria-hidden className="font-display text-3xl font-black text-line transition-transform group-hover:translate-x-1.5">
           →
         </span>
@@ -60,7 +86,11 @@ export function SessionCard({ session, counts, href }: { session: Session; count
             </Mark>
           ) : (
             <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-              {left > 0 ? (
+              {live ? (
+                <Mark tone="line" glyph="●">
+                  {confirmed} on court · until {formatTime(session.ends_at)}
+                </Mark>
+              ) : left > 0 ? (
                 <Mark tone="ok" glyph="●">
                   {left} open
                 </Mark>
@@ -77,7 +107,7 @@ export function SessionCard({ session, counts, href }: { session: Session; count
             </div>
           )}
           <span className="flex shrink-0 items-baseline gap-2 sm:hidden">
-            <span className="font-score text-xl font-black">{formatMoney(session.price_cents)}</span>
+            {!live && <span className="font-score text-xl font-black">{formatMoney(session.price_cents)}</span>}
             <span aria-hidden className="font-display text-2xl font-black text-line">
               →
             </span>

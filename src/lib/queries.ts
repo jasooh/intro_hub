@@ -19,8 +19,8 @@ export async function getCounts(sessionIds: string[]): Promise<Map<string, Sessi
 export async function getUpcomingSessions(limit = 10, { includeCancelled = true } = {}): Promise<Session[]> {
   await connection(); // "now" must be read per request, not at prerender time
   const supabase = await createClient();
-  const since = new Date(Date.now() - 3 * 3600 * 1000).toISOString();
-  let query = supabase.from("sessions").select("*").gte("starts_at", since);
+  // Still listed while it's on: until it ends, not just until it starts.
+  let query = supabase.from("sessions").select("*").gt("ends_at", new Date().toISOString());
   if (!includeCancelled) query = query.neq("status", "cancelled");
   const { data } = await query.order("starts_at").limit(limit);
   return (data ?? []) as Session[];

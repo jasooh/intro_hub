@@ -2,7 +2,7 @@ import Link from "next/link";
 import { cache, Suspense } from "react";
 import { FeaturedPost } from "@/components/featured-post";
 import { LiveRefresh } from "@/components/live-refresh";
-import { SessionCard } from "@/components/session-card";
+import { isLive, SessionCard } from "@/components/session-card";
 import { buttonClass, EmptyState, PageSpinner, reveal, Scoreboard, Sheet } from "@/components/ui";
 import { env } from "@/lib/env";
 import { dateParts, pad2 } from "@/lib/format";
@@ -82,8 +82,12 @@ async function NextScoreboard() {
   if (!next) return <Scoreboard value="--/--" label="No session yet" />;
   const taken = (next.counts?.confirmed ?? 0) + (next.counts?.holding ?? 0);
   const { weekday, day, month } = dateParts(next.session.starts_at);
+  const live = isLive(next.session);
   return (
-    <Scoreboard value={`${pad2(taken)}/${pad2(next.session.capacity)}`} label={`Taken · ${weekday} ${month} ${day}`} />
+    <Scoreboard
+      value={`${pad2(taken)}/${pad2(next.session.capacity)}`}
+      label={live ? "● Live now · on court" : `Taken · ${weekday} ${month} ${day}`}
+    />
   );
 }
 
