@@ -26,7 +26,7 @@ export async function requireAdmin(): Promise<Profile> {
   return profile;
 }
 
-/** The site owner, who gets /owner. Must match public.is_owner() (supabase/migrations/20261023000000_owner_tools.sql). */
+/** The site owner, who gets /dev-tools. Must match public.is_owner() (supabase/migrations/20261023000000_owner_tools.sql). */
 export const OWNER_EMAIL = "abuyuanjustin@gmail.com";
 
 /** Whether the signed-in user is the owner, from the email in their auth token. Cached per request. */
@@ -37,7 +37,7 @@ export const getIsOwner = cache(async (): Promise<boolean> => {
   return typeof email === "string" && email.toLowerCase() === OWNER_EMAIL;
 });
 
-/** Owner pages 404 for everyone else (hosts included), so they don't advertise themselves. */
+/** Dev tools pages 404 for everyone else (hosts included), so they don't advertise themselves. */
 export async function requireOwner(): Promise<void> {
   if (!(await getIsOwner())) notFound();
 }

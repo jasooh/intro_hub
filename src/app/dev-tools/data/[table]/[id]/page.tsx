@@ -5,7 +5,7 @@ import { Suspense } from "react";
 import { SubmitButton } from "@/components/submit-button";
 import { BackLink, inputClass, PageSpinner, PageTitle, reveal, Sheet, StatusMark } from "@/components/ui";
 import { requireOwner } from "@/lib/auth";
-import { isOwnerTable, OWNER_TABLES, type OwnerColumn } from "@/lib/owner";
+import { isEditableTable, EDITABLE_TABLES, type ColumnInfo } from "@/lib/dev-tools";
 import { createClient } from "@/lib/supabase/server";
 import type { RegistrationStatus } from "@/lib/types";
 import { deleteRow, forceStatus, saveRow } from "../../../actions";
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 
 const STATUSES: RegistrationStatus[] = ["pending_payment", "confirmed", "waitlisted", "expired", "cancelled"];
 
-export default function OwnerRowPage(props: PageProps<"/owner/data/[table]/[id]">) {
+export default function DevToolsRowPage(props: PageProps<"/dev-tools/data/[table]/[id]">) {
   return (
     <Suspense fallback={<PageSpinner />}>
       <RowView params={props.params} />
@@ -25,10 +25,10 @@ export default function OwnerRowPage(props: PageProps<"/owner/data/[table]/[id]"
   );
 }
 
-async function RowView({ params }: { params: PageProps<"/owner/data/[table]/[id]">["params"] }) {
+async function RowView({ params }: { params: PageProps<"/dev-tools/data/[table]/[id]">["params"] }) {
   await requireOwner();
   const { table, id } = await params;
-  if (!isOwnerTable(table)) notFound();
+  if (!isEditableTable(table)) notFound();
 
   const supabase = await createClient();
   const [{ data: columns, error: colError }, { data: row, error: rowError }] = await Promise.all([
@@ -41,24 +41,24 @@ async function RowView({ params }: { params: PageProps<"/owner/data/[table]/[id]
 
   // Shortcuts to the rows this one points at.
   const links: { href: string; label: string }[] = [];
-  if (table === "profiles") links.push({ href: `/owner/players/${id}`, label: "View as player" });
+  if (table === "profiles") links.push({ href: `/dev-tools/players/${id}`, label: "View as player" });
   if (table === "sessions") links.push({ href: `/admin/sessions/${id}`, label: "Session in admin" });
   if (typeof r.profile_id === "string") {
-    links.push({ href: `/owner/data/profiles/${r.profile_id}`, label: "Player row" });
-    links.push({ href: `/owner/players/${r.profile_id}`, label: "View as player" });
+    links.push({ href: `/dev-tools/data/profiles/${r.profile_id}`, label: "Player row" });
+    links.push({ href: `/dev-tools/players/${r.profile_id}`, label: "View as player" });
   }
   if (typeof r.session_id === "string") {
-    links.push({ href: `/owner/data/sessions/${r.session_id}`, label: "Session row" });
+    links.push({ href: `/dev-tools/data/sessions/${r.session_id}`, label: "Session row" });
     links.push({ href: `/admin/sessions/${r.session_id}`, label: "Session in admin" });
   }
   if (typeof r.registration_id === "string") {
-    links.push({ href: `/owner/data/registrations/${r.registration_id}`, label: "Sign-up row" });
+    links.push({ href: `/dev-tools/data/registrations/${r.registration_id}`, label: "Sign-up row" });
   }
 
   return (
     <div className="space-y-10">
       <div className="space-y-4">
-        <BackLink href={`/owner/data?table=${table}`}>{OWNER_TABLES[table].label}</BackLink>
+        <BackLink href={`/dev-tools/data?table=${table}`}>{EDITABLE_TABLES[table].label}</BackLink>
         <PageTitle eyebrow={table} sub={<span className="font-score text-sm break-all">{id}</span>}>
           Edit row
         </PageTitle>
@@ -104,7 +104,7 @@ async function RowView({ params }: { params: PageProps<"/owner/data/[table]/[id]
 
       <Sheet label="Fields" className="reveal" style={reveal(2)}>
         <form action={saveRow.bind(null, table, id)} className="space-y-6">
-          <RowFields columns={columns as OwnerColumn[]} row={r} />
+          <RowFields columns={columns as ColumnInfo[]} row={r} />
           <div className="border-t-2 border-ink pt-5">
             <SubmitButton
               requireChange

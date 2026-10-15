@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { requireOwner } from "@/lib/auth";
 import { flash } from "@/lib/flash";
-import { BACKUP_COOKIE, buildPatch, databaseName, isOwnerTable, type OwnerColumn } from "@/lib/owner";
+import { BACKUP_COOKIE, buildPatch, databaseName, isEditableTable, type ColumnInfo } from "@/lib/dev-tools";
 import { dispatchEvents, parseEvents } from "@/lib/registrations";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import type { RegistrationEvent, RegistrationStatus } from "@/lib/types";
@@ -26,8 +26,8 @@ const EMAIL_EVENTS = new Set<string>(["signed_up", "waitlisted", "promoted", "co
 
 export async function saveRow(table: string, id: string, formData: FormData) {
   await requireOwner();
-  const path = `/owner/data/${table}/${id}`;
-  if (!isOwnerTable(table)) fail("/owner/data", "Unknown table");
+  const path = `/dev-tools/data/${table}/${id}`;
+  if (!isEditableTable(table)) fail("/dev-tools/data", "Unknown table");
 
   const supabase = await createClient();
   const [{ data: columns, error: colError }, { data: row, error: rowError }] = await Promise.all([
@@ -35,11 +35,11 @@ export async function saveRow(table: string, id: string, formData: FormData) {
     supabase.rpc("owner_get_row", { p_table: table, p_id: id }),
   ]);
   if (colError || rowError) fail(path, (colError ?? rowError)!.message);
-  if (!row) fail("/owner/data", "That row doesn't exist any more");
+  if (!row) fail("/dev-tools/data", "That row doesn't exist any more");
 
   let patch: Record<string, unknown>;
   try {
-    patch = buildPatch(columns as OwnerColumn[], row as Record<string, unknown>, formData);
+    patch = buildPatch(columns as ColumnInfo[], row as Record<string, unknown>, formData);
   } catch (err) {
     fail(path, (err as Error).message);
   }
@@ -56,18 +56,18 @@ export async function saveRow(table: string, id: string, formData: FormData) {
 
 export async function deleteRow(table: string, id: string) {
   await requireOwner();
-  if (!isOwnerTable(table)) fail("/owner/data", "Unknown table");
+  if (!isEditableTable(table)) fail("/dev-tools/data", "Unknown table");
   const supabase = await createClient();
   const { error } = await supabase.rpc("owner_delete_row", { p_table: table, p_id: id });
-  if (error) fail(`/owner/data/${table}/${id}`, error.message);
+  if (error) fail(`/dev-tools/data/${table}/${id}`, error.message);
   revalidatePath("/", "layout");
   await flash("success", table === "profiles" ? "Account deleted" : "Row deleted");
-  redirect(`/owner/data?table=${table}`);
+  redirect(`/dev-tools/data?table=${table}`);
 }
 
 export async function forceStatus(registrationId: string, formData: FormData) {
   await requireOwner();
-  const path = `/owner/data/registrations/${registrationId}`;
+  const path = `/dev-tools/data/registrations/${registrationId}`;
   const status = String(formData.get("status"));
   if (!STATUSES.includes(status as RegistrationStatus)) fail(path, "Pick a status");
 
@@ -94,7 +94,7 @@ export async function forceStatus(registrationId: string, formData: FormData) {
 export async function runTickNow() {
   await requireOwner();
   const { data, error } = await createAdminClient().rpc("run_tick");
-  if (error) fail("/owner", error.message);
+  if (error) fail("/dev-tools", error.message);
   const events = parseEvents(data);
   await dispatchEvents(events);
   revalidatePath("/", "layout");
@@ -104,7 +104,7 @@ export async function runTickNow() {
 export async function createFromTemplates() {
   await requireOwner();
   const { data, error } = await createAdminClient().rpc("create_sessions_from_templates");
-  if (error) fail("/owner", error.message);
+  if (error) fail("/dev-tools", error.message);
   revalidatePath("/", "layout");
   await flash("success", `${data ?? 0} new session(s) created`);
 }
@@ -114,11 +114,11 @@ export async function resendEmail(emailId: number) {
   await requireOwner();
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("owner_release_email", { p_email_id: emailId });
-  if (error) fail("/owner", error.message);
+  if (error) fail("/dev-tools", error.message);
   const row = data as { kind: string; registration_id: string | null };
-  if (!row.registration_id || !EMAIL_EVENTS.has(row.kind)) fail("/owner", "Only sign-up emails can be re-sent here");
+  if (!row.registration_id || !EMAIL_EVENTS.has(row.kind)) fail("/dev-tools", "Only sign-up emails can be re-sent here");
   await dispatchEvents([{ event: row.kind as RegistrationEvent["event"], registration_id: row.registration_id }]);
-  revalidatePath("/owner");
+  revalidatePath("/dev-tools");
   await flash("success", `Re-sent the ${row.kind.replace(/_/g, " ")} email`);
 }
 
@@ -129,7 +129,7 @@ export async function setMaintenance(formData: FormData) {
     p_on: formData.get("on") === "on",
     p_message: String(formData.get("message") ?? ""),
   });
-  if (error) fail("/owner", error.message);
+  if (error) fail("/dev-tools", error.message);
   revalidatePath("/", "layout");
   await flash("success", formData.get("on") === "on" ? "Maintenance mode is on" : "Maintenance mode is off");
 }
@@ -148,10 +148,10 @@ const CLEAR_LABELS: Record<string, string> = {
 export async function clearData(formData: FormData) {
   await requireOwner();
   const scope = String(formData.get("scope"));
-  if (!(scope in CLEAR_LABELS)) fail("/owner/danger", "Unknown clean-up");
+  if (!(scope in CLEAR_LABELS)) fail("/dev-tools/danger", "Unknown clean-up");
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("owner_clear", { p_scope: scope });
-  if (error) fail("/owner/danger", error.message);
+  if (error) fail("/dev-tools/danger", error.message);
   revalidatePath("/", "layout");
   await flash("success", `Cleared ${CLEAR_LABELS[scope]} (${data ?? 0} rows)`);
 }
@@ -160,16 +160,16 @@ export async function resetDatabase(formData: FormData) {
   await requireOwner();
   const db = databaseName();
   if (String(formData.get("confirm") ?? "").trim() !== `RESET ${db}`) {
-    fail("/owner/danger", `Type RESET ${db} exactly to reset`);
+    fail("/dev-tools/danger", `Type RESET ${db} exactly to reset`);
   }
-  if (!(await cookies()).get(BACKUP_COOKIE)) fail("/owner/danger", "Download a backup first (it unlocks Reset for an hour)");
+  if (!(await cookies()).get(BACKUP_COOKIE)) fail("/dev-tools/danger", "Download a backup first (it unlocks Reset for an hour)");
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("owner_reset", {
     p_confirm: "RESET",
     p_wipe_players: formData.get("wipe_players") === "on",
   });
-  if (error) fail("/owner/danger", error.message);
+  if (error) fail("/dev-tools/danger", error.message);
   (await cookies()).delete(BACKUP_COOKIE);
   revalidatePath("/", "layout");
   await flash("success", `${db} database reset`);

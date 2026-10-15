@@ -11,7 +11,7 @@ import type { Registration, Session } from "@/lib/types";
 /**
  * One of the player's sign-ups. `actionable` (upcoming sessions) adds payment
  * instructions and the cancel button; past/cancelled ones are just a record.
- * `preview` (owner's view-as-player) shows what the player sees, minus the cancel button.
+ * `preview` (dev tools' view-as-player) shows what the player sees, minus the cancel button.
  */
 export function SignupRow({
   reg,

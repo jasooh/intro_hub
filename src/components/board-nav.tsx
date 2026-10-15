@@ -7,7 +7,7 @@ import { Suspense } from "react";
 export type BoardLink = { href: string; label: string };
 
 /**
- * Dark tab bar (admin, owner tools); the active tab is an orange block.
+ * Dark tab bar (admin, dev tools); the active tab is an orange block.
  * `root` is the section's home tab, active only on its exact path unless
  * `rootAlso` prefixes match. The pathname is request-time data, so the
  * active tab streams in behind Suspense; the fallback highlights nothing.

@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   title: "View as player",
 };
 
-export default function OwnerPlayersPage(props: PageProps<"/owner/players">) {
+export default function DevToolsPlayersPage(props: PageProps<"/dev-tools/players">) {
   return (
     <Suspense fallback={<PageSpinner />}>
       <PlayerList searchParams={props.searchParams} />
@@ -18,7 +18,7 @@ export default function OwnerPlayersPage(props: PageProps<"/owner/players">) {
   );
 }
 
-async function PlayerList({ searchParams }: { searchParams: PageProps<"/owner/players">["searchParams"] }) {
+async function PlayerList({ searchParams }: { searchParams: PageProps<"/dev-tools/players">["searchParams"] }) {
   await requireOwner();
   const params = await searchParams;
   const q = typeof params.q === "string" ? params.q.trim() : "";
@@ -29,7 +29,7 @@ async function PlayerList({ searchParams }: { searchParams: PageProps<"/owner/pl
 
   return (
     <div className="space-y-10">
-      <PageTitle eyebrow="Owner" sub="See a player's account the way it looks to them: sign-ups, holds, ref codes and emails. Read-only.">
+      <PageTitle eyebrow="Dev tools" sub="See a player's account the way it looks to them: sign-ups, holds, ref codes and emails. Read-only.">
         View as player
       </PageTitle>
 
@@ -47,7 +47,7 @@ async function PlayerList({ searchParams }: { searchParams: PageProps<"/owner/pl
               const name = p.display_name ?? p.full_name ?? p.email;
               return (
                 <li key={p.id}>
-                  <Link href={`/owner/players/${p.id}`} className="flex items-center gap-3 py-2.5 hover:bg-maple-deep/50">
+                  <Link href={`/dev-tools/players/${p.id}`} className="flex items-center gap-3 py-2.5 hover:bg-maple-deep/50">
                     <Avatar name={name} src={p.avatar_url} size={32} />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-semibold">{name}</span>

@@ -4,9 +4,9 @@ import { Suspense } from "react";
 import { EmptyState, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
 import { requireOwner } from "@/lib/auth";
 import { formatDateTime } from "@/lib/format";
-import { isOwnerTable } from "@/lib/owner";
+import { isEditableTable } from "@/lib/dev-tools";
 import { createClient } from "@/lib/supabase/server";
-import { JsonBlock } from "../owner-ui";
+import { JsonBlock } from "../dev-tools-ui";
 
 export const metadata: Metadata = {
   title: "Audit log",
@@ -46,7 +46,7 @@ async function AuditView() {
 
   return (
     <div className="space-y-10">
-      <PageTitle eyebrow="Owner" sub="Everything done with these tools, newest first, with the values from before each change.">
+      <PageTitle eyebrow="Dev tools" sub="Everything done with these tools, newest first, with the values from before each change.">
         Audit log
       </PageTitle>
 
@@ -57,7 +57,7 @@ async function AuditView() {
           <ul className="divide-y divide-ink/20 border-b border-ink/20">
             {rows.map((a) => {
               const changed = changedFields(a);
-              const canOpen = a.target_table && a.target_id && isOwnerTable(a.target_table) && a.action !== "delete_row";
+              const canOpen = a.target_table && a.target_id && isEditableTable(a.target_table) && a.action !== "delete_row";
               return (
                 <li key={a.id} className="py-3">
                   <details className="group">
@@ -74,7 +74,7 @@ async function AuditView() {
                     <div className="mt-3 space-y-3 pl-5">
                       {canOpen && (
                         <Link
-                          href={`/owner/data/${a.target_table}/${a.target_id}`}
+                          href={`/dev-tools/data/${a.target_table}/${a.target_id}`}
                           className="underline decoration-line decoration-2 underline-offset-4"
                         >
                           Open this row

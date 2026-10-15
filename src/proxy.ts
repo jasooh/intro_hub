@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const SIGNED_IN_ONLY = ["/me", "/onboarding", "/admin", "/owner"];
+const SIGNED_IN_ONLY = ["/me", "/onboarding", "/admin", "/dev-tools"];
 // Admin pages that show their own "Admin only" screen instead of redirecting.
 const SELF_GATED = ["/admin/demo"];
 

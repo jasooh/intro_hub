@@ -23,7 +23,7 @@ function splitUpcoming<T extends Registration & { session: Session }>(regs: T[])
   };
 }
 
-export default function OwnerPlayerPage(props: PageProps<"/owner/players/[id]">) {
+export default function DevToolsPlayerPage(props: PageProps<"/dev-tools/players/[id]">) {
   return (
     <Suspense fallback={<PageSpinner />}>
       <PlayerView params={props.params} />
@@ -31,7 +31,7 @@ export default function OwnerPlayerPage(props: PageProps<"/owner/players/[id]">)
   );
 }
 
-async function PlayerView({ params }: { params: PageProps<"/owner/players/[id]">["params"] }) {
+async function PlayerView({ params }: { params: PageProps<"/dev-tools/players/[id]">["params"] }) {
   await requireOwner();
   const { id } = await params;
 
@@ -82,7 +82,7 @@ async function PlayerView({ params }: { params: PageProps<"/owner/players/[id]">
   return (
     <div className="space-y-10">
       <div className="space-y-5">
-        <BackLink href="/owner/players">All players</BackLink>
+        <BackLink href="/dev-tools/players">All players</BackLink>
         <div className="reveal flex items-center gap-4" style={reveal(0)}>
           <Avatar name={name} src={p.avatar_url} size={64} />
           <div className="min-w-0">
@@ -105,7 +105,7 @@ async function PlayerView({ params }: { params: PageProps<"/owner/players/[id]">
               Profile incomplete: can&apos;t sign up
             </Mark>
           )}
-          <Link href={`/owner/data/profiles/${p.id}`} className="underline decoration-line decoration-2 underline-offset-4">
+          <Link href={`/dev-tools/data/profiles/${p.id}`} className="underline decoration-line decoration-2 underline-offset-4">
             Edit profile row
           </Link>
         </p>
@@ -129,8 +129,8 @@ async function PlayerView({ params }: { params: PageProps<"/owner/players/[id]">
           <div className="divide-y divide-ink/20">
             {upcoming.map((r) => (
               <div key={r.id}>
-                <ul><SignupRow reg={r} actionable preview returnTo={`/owner/players/${id}`} /></ul>
-                <OwnerLine reg={r} />
+                <ul><SignupRow reg={r} actionable preview returnTo={`/dev-tools/players/${id}`} /></ul>
+                <DevToolsLine reg={r} />
               </div>
             ))}
           </div>
@@ -144,8 +144,8 @@ async function PlayerView({ params }: { params: PageProps<"/owner/players/[id]">
           <div className="divide-y divide-ink/20">
             {history.map((r) => (
               <div key={r.id}>
-                <ul><SignupRow reg={r} actionable={false} returnTo={`/owner/players/${id}`} /></ul>
-                <OwnerLine reg={r} />
+                <ul><SignupRow reg={r} actionable={false} returnTo={`/dev-tools/players/${id}`} /></ul>
+                <DevToolsLine reg={r} />
               </div>
             ))}
           </div>
@@ -191,13 +191,13 @@ async function PlayerView({ params }: { params: PageProps<"/owner/players/[id]">
   );
 }
 
-/** The bits only the owner sees under each sign-up: hold deadline and a jump to the raw row. */
-function OwnerLine({ reg }: { reg: Registration }) {
+/** The bits only dev tools show under each sign-up: hold deadline and a jump to the raw row. */
+function DevToolsLine({ reg }: { reg: Registration }) {
   return (
     <p className="-mt-3 flex flex-wrap gap-x-4 pb-4 text-sm text-ink-soft">
       {reg.status === "pending_payment" && reg.hold_expires_at && <span>Hold ends {formatDateTime(reg.hold_expires_at)}</span>}
       {reg.status === "waitlisted" && reg.queued_at && <span>Queued {formatDateTime(reg.queued_at)}</span>}
-      <Link href={`/owner/data/registrations/${reg.id}`} className="underline decoration-line decoration-2 underline-offset-4">
+      <Link href={`/dev-tools/data/registrations/${reg.id}`} className="underline decoration-line decoration-2 underline-offset-4">
         Edit sign-up row
       </Link>
     </p>

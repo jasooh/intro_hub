@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-/** Profile picture in the header that opens Account / Admin (hosts only) / Owner (the owner only) / Sign out. */
+/** Profile picture in the header that opens Account / Admin (hosts only) / Dev tools (the owner only) / Sign out. */
 export function AccountMenu({
   name,
   email,
@@ -67,9 +67,9 @@ export function AccountMenu({
         )}
         {isOwner && (
           <DropdownMenuItem asChild>
-            <Link href="/owner">
+            <Link href="/dev-tools">
               <Wrench />
-              Owner tools
+              Dev tools
             </Link>
           </DropdownMenuItem>
         )}

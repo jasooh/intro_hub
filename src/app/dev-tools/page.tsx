@@ -5,10 +5,10 @@ import { SubmitButton } from "@/components/submit-button";
 import { inputClass, Mark, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
 import { requireOwner } from "@/lib/auth";
 import { formatDateTime } from "@/lib/format";
-import { ENV_CHECKS, OWNER_TABLES } from "@/lib/owner";
+import { ENV_CHECKS, EDITABLE_TABLES } from "@/lib/dev-tools";
 import { createClient } from "@/lib/supabase/server";
 import { createFromTemplates, resendEmail, runTickNow, setMaintenance } from "./actions";
-import { Check } from "./owner-ui";
+import { Check } from "./dev-tools-ui";
 
 export const metadata: Metadata = {
   title: "Health",
@@ -26,7 +26,7 @@ type Health = {
 
 const minutesSince = (iso: string) => (Date.now() - new Date(iso).getTime()) / 60000;
 
-export default function OwnerHealthPage() {
+export default function DevToolsHealthPage() {
   return (
     <Suspense fallback={<PageSpinner />}>
       <HealthView />
@@ -47,7 +47,7 @@ async function HealthView() {
 
   return (
     <div className="space-y-12">
-      <PageTitle eyebrow="Owner" sub="What's running, what's stuck, and buttons to nudge it.">
+      <PageTitle eyebrow="Dev tools" sub="What's running, what's stuck, and buttons to nudge it.">
         Health
       </PageTitle>
 
@@ -159,8 +159,8 @@ async function HealthView() {
           <ul className="divide-y divide-ink/20 border-b border-ink/20">
             {Object.entries(h.counts).map(([table, n]) => (
               <li key={table} className="flex items-center justify-between gap-3 py-1.5">
-                {table in OWNER_TABLES ? (
-                  <Link href={`/owner/data?table=${table}`} className="underline decoration-line decoration-2 underline-offset-4">
+                {table in EDITABLE_TABLES ? (
+                  <Link href={`/dev-tools/data?table=${table}`} className="underline decoration-line decoration-2 underline-offset-4">
                     {table}
                   </Link>
                 ) : (

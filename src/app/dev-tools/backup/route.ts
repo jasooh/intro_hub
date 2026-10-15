@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getIsOwner } from "@/lib/auth";
-import { BACKUP_COOKIE, databaseName } from "@/lib/owner";
+import { BACKUP_COOKIE, databaseName } from "@/lib/dev-tools";
 import { createClient } from "@/lib/supabase/server";
 
 // Every table as one JSON file. Downloading it unlocks Reset for an hour.
@@ -13,7 +13,7 @@ export async function GET() {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-  (await cookies()).set(BACKUP_COOKIE, stamp, { path: "/owner", maxAge: 3600, httpOnly: true, sameSite: "lax" });
+  (await cookies()).set(BACKUP_COOKIE, stamp, { path: "/dev-tools", maxAge: 3600, httpOnly: true, sameSite: "lax" });
   return new NextResponse(JSON.stringify({ database: databaseName(), takenAt: new Date().toISOString(), tables: data }, null, 2), {
     headers: {
       "content-type": "application/json; charset=utf-8",

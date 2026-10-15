@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { buildPatch, databaseName, type OwnerColumn } from "@/lib/owner";
+import { buildPatch, databaseName, type ColumnInfo } from "@/lib/dev-tools";
 
-const col = (name: string, type: string, extra: Partial<OwnerColumn> = {}): OwnerColumn => ({
+const col = (name: string, type: string, extra: Partial<ColumnInfo> = {}): ColumnInfo => ({
   name,
   type,
   nullable: true,

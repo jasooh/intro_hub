@@ -7,7 +7,7 @@ import { buttonClass } from "@/components/ui";
 export function BackupLink() {
   const router = useRouter();
   return (
-    <a href="/owner/backup" download className={buttonClass("secondary")} onClick={() => setTimeout(() => router.refresh(), 2000)}>
+    <a href="/dev-tools/backup" download className={buttonClass("secondary")} onClick={() => setTimeout(() => router.refresh(), 2000)}>
       Download backup
     </a>
   );

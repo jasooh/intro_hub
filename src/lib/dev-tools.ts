@@ -1,8 +1,8 @@
-// Owner tools (/owner): table editor config and helpers. The database does the
+// Dev tools (/dev-tools): table editor config and helpers. The database does the
 // real checks (owner_* functions in supabase/migrations/20261023000000_owner_tools.sql).
 
 /** Tables the editor can open, with the columns shown in its row list. */
-export const OWNER_TABLES = {
+export const EDITABLE_TABLES = {
   profiles: { label: "Players", summary: ["display_name", "email", "role"] },
   sessions: { label: "Sessions", summary: ["title", "starts_at", "status"] },
   registrations: { label: "Sign-ups", summary: ["ref_code", "status", "option", "amount_cents"] },
@@ -13,13 +13,13 @@ export const OWNER_TABLES = {
   email_log: { label: "Email log", summary: ["kind", "dedupe_key", "sent_at"] },
 } as const;
 
-export type OwnerTable = keyof typeof OWNER_TABLES;
+export type EditableTable = keyof typeof EDITABLE_TABLES;
 
-export function isOwnerTable(t: unknown): t is OwnerTable {
-  return typeof t === "string" && Object.hasOwn(OWNER_TABLES, t);
+export function isEditableTable(t: unknown): t is EditableTable {
+  return typeof t === "string" && Object.hasOwn(EDITABLE_TABLES, t);
 }
 
-export type OwnerColumn = { name: string; type: string; nullable: boolean; editable: boolean; enum: string[] | null };
+export type ColumnInfo = { name: string; type: string; nullable: boolean; editable: boolean; enum: string[] | null };
 
 /** Which database this deployment talks to. Reset asks you to type it. */
 export function databaseName(supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""): "PROD" | "DEV" {
@@ -27,7 +27,7 @@ export function databaseName(supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL 
 }
 
 /** Set by the backup download; Reset stays locked without a fresh one (1 hour). */
-export const BACKUP_COOKIE = "owner_backup_at";
+export const BACKUP_COOKIE = "devtools_backup_at";
 
 /** Settings the site reads; the health page shows whether each is set (never the value). */
 export const ENV_CHECKS: { name: string; why: string; required: boolean }[] = [
@@ -50,7 +50,7 @@ export const ENV_CHECKS: { name: string; why: string; required: boolean }[] = [
 
 export type InputKind = "bool" | "enum" | "number" | "json" | "text" | "long";
 
-export function inputKind(col: OwnerColumn): InputKind {
+export function inputKind(col: ColumnInfo): InputKind {
   if (col.enum) return "enum";
   if (col.type === "boolean") return "bool";
   if (/^(smallint|integer|bigint|numeric|real|double precision)/.test(col.type)) return "number";
@@ -60,14 +60,14 @@ export function inputKind(col: OwnerColumn): InputKind {
 }
 
 /** How a stored value appears in its input ("" = null). */
-export function toInputValue(col: OwnerColumn, value: unknown): string {
+export function toInputValue(col: ColumnInfo, value: unknown): string {
   if (value === null || value === undefined) return "";
   if (inputKind(col) === "json") return JSON.stringify(value, null, 2);
   return String(value);
 }
 
 /** Turns a submitted input back into the JSON value for owner_update_row. Throws on bad input. */
-export function fromInputValue(col: OwnerColumn, raw: string): unknown {
+export function fromInputValue(col: ColumnInfo, raw: string): unknown {
   const kind = inputKind(col);
   if (raw.trim() === "" && kind !== "long" && kind !== "text") {
     if (!col.nullable) throw new Error(`${col.name} can't be empty`);
@@ -99,7 +99,7 @@ export function fromInputValue(col: OwnerColumn, raw: string): unknown {
  * The columns whose submitted value differs from the stored one, parsed.
  * Inputs are named `c:<column>`.
  */
-export function buildPatch(columns: OwnerColumn[], row: Record<string, unknown>, form: FormData) {
+export function buildPatch(columns: ColumnInfo[], row: Record<string, unknown>, form: FormData) {
   const patch: Record<string, unknown> = {};
   for (const col of columns) {
     if (!col.editable) continue;

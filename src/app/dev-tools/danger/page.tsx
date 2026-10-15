@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { SubmitButton } from "@/components/submit-button";
 import { inputClass, Mark, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
 import { requireOwner } from "@/lib/auth";
-import { BACKUP_COOKIE, databaseName } from "@/lib/owner";
+import { BACKUP_COOKIE, databaseName } from "@/lib/dev-tools";
 import { clearData, resetDatabase } from "../actions";
 import { BackupLink } from "../backup-link";
 
@@ -42,7 +42,7 @@ async function DangerView() {
 
   return (
     <div className="space-y-12">
-      <PageTitle eyebrow="Owner" sub="Clean-ups and the reset button. Each asks you to confirm first, and each is written to the audit log.">
+      <PageTitle eyebrow="Dev tools" sub="Clean-ups and the reset button. Each asks you to confirm first, and each is written to the audit log.">
         Danger zone
       </PageTitle>
 

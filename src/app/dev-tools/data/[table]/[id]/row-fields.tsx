@@ -1,8 +1,8 @@
 import { Field, inputClass } from "@/components/ui";
-import { inputKind, toInputValue, type OwnerColumn } from "@/lib/owner";
+import { inputKind, toInputValue, type ColumnInfo } from "@/lib/dev-tools";
 
 /** One input per column, named `c:<column>`; read-only columns are shown as text. */
-export function RowFields({ columns, row }: { columns: OwnerColumn[]; row: Record<string, unknown> }) {
+export function RowFields({ columns, row }: { columns: ColumnInfo[]; row: Record<string, unknown> }) {
   return (
     <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
       {columns.map((col) => {

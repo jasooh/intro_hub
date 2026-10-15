@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { buttonClass, EmptyState, inputClass, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
 import { requireOwner } from "@/lib/auth";
-import { cellText, isOwnerTable, OWNER_TABLES, type OwnerTable } from "@/lib/owner";
+import { cellText, isEditableTable, EDITABLE_TABLES, type EditableTable } from "@/lib/dev-tools";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 
 const PAGE_SIZE = 50;
 
-export default function OwnerDataPage(props: PageProps<"/owner/data">) {
+export default function DevToolsDataPage(props: PageProps<"/dev-tools/data">) {
   return (
     <Suspense fallback={<PageSpinner />}>
       <DataView searchParams={props.searchParams} />
@@ -20,10 +20,10 @@ export default function OwnerDataPage(props: PageProps<"/owner/data">) {
   );
 }
 
-async function DataView({ searchParams }: { searchParams: PageProps<"/owner/data">["searchParams"] }) {
+async function DataView({ searchParams }: { searchParams: PageProps<"/dev-tools/data">["searchParams"] }) {
   await requireOwner();
   const params = await searchParams;
-  const table: OwnerTable = isOwnerTable(params.table) ? params.table : "registrations";
+  const table: EditableTable = isEditableTable(params.table) ? params.table : "registrations";
   const q = typeof params.q === "string" ? params.q.trim() : "";
   const page = Math.max(0, Number(params.page) || 0);
 
@@ -36,27 +36,27 @@ async function DataView({ searchParams }: { searchParams: PageProps<"/owner/data
   });
   if (error) throw error;
   const { rows, total } = data as { rows: Record<string, unknown>[]; total: number };
-  const summary = OWNER_TABLES[table].summary as readonly string[];
-  const href = (p: number) => `/owner/data?${new URLSearchParams({ table, ...(q ? { q } : {}), page: String(p) })}`;
+  const summary = EDITABLE_TABLES[table].summary as readonly string[];
+  const href = (p: number) => `/dev-tools/data?${new URLSearchParams({ table, ...(q ? { q } : {}), page: String(p) })}`;
 
   return (
     <div className="space-y-10">
-      <PageTitle eyebrow="Owner" sub="Find a row and fix it. Every change is saved to the audit log with the old values.">
+      <PageTitle eyebrow="Dev tools" sub="Find a row and fix it. Every change is saved to the audit log with the old values.">
         Data
       </PageTitle>
 
       <div className="reveal space-y-4" style={reveal(1)}>
         <nav aria-label="Tables" className="flex flex-wrap gap-x-5 gap-y-2">
-          {(Object.keys(OWNER_TABLES) as OwnerTable[]).map((t) => (
+          {(Object.keys(EDITABLE_TABLES) as EditableTable[]).map((t) => (
             <Link
               key={t}
-              href={`/owner/data?table=${t}`}
+              href={`/dev-tools/data?table=${t}`}
               aria-current={t === table ? "page" : undefined}
               className={`font-display text-lg font-bold tracking-wide uppercase underline-offset-[6px] ${
                 t === table ? "text-ink underline decoration-line decoration-[3px]" : "text-ink-soft hover:text-ink"
               }`}
             >
-              {OWNER_TABLES[t].label}
+              {EDITABLE_TABLES[t].label}
             </Link>
           ))}
         </nav>
@@ -77,7 +77,7 @@ async function DataView({ searchParams }: { searchParams: PageProps<"/owner/data
         label={`${table} · ${total}`}
         action={
           q ? (
-            <Link href={`/owner/data?table=${table}`} className="text-sm text-ink-soft underline">
+            <Link href={`/dev-tools/data?table=${table}`} className="text-sm text-ink-soft underline">
               Clear search
             </Link>
           ) : undefined
@@ -92,7 +92,7 @@ async function DataView({ searchParams }: { searchParams: PageProps<"/owner/data
             {rows.map((row) => (
               <li key={String(row.id)}>
                 <Link
-                  href={`/owner/data/${table}/${row.id}`}
+                  href={`/dev-tools/data/${table}/${row.id}`}
                   className="flex flex-wrap items-baseline gap-x-4 gap-y-0.5 py-2.5 hover:bg-maple-deep/50"
                 >
                   <span className="w-20 shrink-0 font-score text-sm text-ink-soft">{String(row.id).slice(0, 8)}</span>
