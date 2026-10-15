@@ -4,6 +4,7 @@ import { MapLink } from "@/components/map-link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { cancelRegistration, changeOption, registerForSession, setBroughtBy, setTeammates } from "@/app/actions";
+import { BringAFriendField } from "@/components/bring-a-friend-field";
 import { LiveRefresh } from "@/components/live-refresh";
 import { PaymentInstructions } from "@/components/payment-instructions";
 import { DateBlock } from "@/components/session-card";
@@ -307,19 +308,12 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
           </div>
 
           {friendRate && buddyOptions.length > 0 && (
-            <Field
-              label="Did a friend bring you? (optional)"
-              hint="First time here? Pick the player who brought you and you both pay half (Bring a Friend)."
-            >
-              <select name="brought_by" defaultValue="" className={inputClass}>
-                <option value="">No</option>
-                {buddyOptions.map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
+            <BringAFriendField
+              id="signup-brought-by"
+              optional
+              options={buddyOptions}
+              hint="First time here? Pick the player who brought you and you both pay half."
+            />
           )}
 
           <Field label="Note to the host (optional)" hint="Questions, comments, or if you're bringing a team.">
@@ -379,23 +373,16 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
         )}
         {active && deposit == null && !started && (reg.brought_by || friendRate) && buddyOptions.length > 0 && (
           <form action={setBroughtBy.bind(null, reg.id, session.id)} className="space-y-2 border-t border-ink/20 pt-4">
-            <Field
-              label="Did a friend bring you?"
+            <BringAFriendField
+              id="spot-brought-by"
+              options={buddyOptions}
+              defaultValue={reg.brought_by ?? ""}
               hint={
                 broughtByName
-                  ? `You came with ${broughtByName}, so you both pay half (Bring a Friend).`
+                  ? `You came with ${broughtByName}, so you both pay half.`
                   : "First time here? Pick the player who brought you and you both pay half."
               }
-            >
-              <select name="brought_by" defaultValue={reg.brought_by ?? ""} className={inputClass}>
-                <option value="">No</option>
-                {buddyOptions.map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
+            />
             <SubmitButton size="sm" variant="secondary" requireChange>
               Save
             </SubmitButton>

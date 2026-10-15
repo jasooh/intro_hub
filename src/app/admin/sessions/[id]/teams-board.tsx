@@ -1,4 +1,5 @@
 import { makeTeams, moveToTeam, removeTeams, renameTeam, setTeamsPublished } from "@/app/admin/actions";
+import { InfoTip } from "@/components/info-tip";
 import { GroupTag, TeamBlocks } from "@/components/team-blocks";
 import { SubmitButton } from "@/components/submit-button";
 import { TeamSelect } from "@/components/team-select";
@@ -300,36 +301,17 @@ function RenameTeam({ team, sessionId }: { team: Team; sessionId: string }) {
 /** "How balancing works ?" (hover, focus or tap). With `label`, it shows the words too. */
 function BalanceHelp({ label = false }: { label?: boolean }) {
   return (
-    <span className="group relative inline-flex">
-      <button
-        type="button"
-        aria-label="How are teams balanced?"
-        className="inline-flex items-center gap-1.5 text-ink-soft hover:text-line focus:text-line focus:outline-none"
-      >
-        {label && <span className="underline decoration-dotted underline-offset-2">How balancing works</span>}
-        <span
-          aria-hidden
-          className="inline-flex size-5 items-center justify-center rounded-full border-2 border-current font-display text-xs font-black"
-        >
-          ?
-        </span>
-      </button>
-      <span
-        role="tooltip"
-        className="pointer-events-none fixed inset-x-4 bottom-4 z-30 border-2 border-ink bg-[#f7ecd6] p-3 text-left text-sm text-ink opacity-0 shadow-[4px_4px_0_var(--ink)] transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 sm:absolute sm:inset-x-auto sm:bottom-full sm:left-0 sm:mb-3 sm:w-80"
-      >
-        <b className="mb-1 block font-display tracking-wide uppercase">How balancing works</b>
-        <span className="block">
-          <b>Requests first:</b> players who asked to play together (same letter) are always placed together. Groups
-          are never split.
-        </span>
-        <span className="mt-1.5 block">
-          <b>Then everyone else:</b> players who didn&apos;t ask for teammates are ranked by the skill level they picked (experienced → some → prefer not to
-          say → never played), shuffled within each level, and added to the team with the fewest players, then the
-          lowest skill. Instructional-only players aren&apos;t included. Re-balancing reshuffles, so you get a new mix each
-          time.
-        </span>
+    <InfoTip title="How balancing works" label={label ? "How balancing works" : undefined}>
+      <span className="block">
+        <b>Requests first:</b> players who asked to play together (same letter) are always placed together. Groups
+        are never split.
       </span>
-    </span>
+      <span className="mt-1.5 block">
+        <b>Then everyone else:</b> players who didn&apos;t ask for teammates are ranked by the skill level they picked (experienced → some → prefer not to
+        say → never played), shuffled within each level, and added to the team with the fewest players, then the
+        lowest skill. Instructional-only players aren&apos;t included. Re-balancing reshuffles, so you get a new mix each
+        time.
+      </span>
+    </InfoTip>
   );
 }
