@@ -56,6 +56,7 @@ function ingestInteracPayments() {
   if (!appUrl || !secret) throw new Error('Set APP_URL and INGEST_SECRET in Script properties');
 
   var query = gmailQuery(props.getProperty('TEST_SENDER'));
+  var me = Session.getEffectiveUser().getEmail();
   var processed = JSON.parse(props.getProperty(PROCESSED_KEY) || '[]');
   var seen = {};
   processed.forEach(function (id) { seen[id] = true; });
@@ -65,7 +66,12 @@ function ingestInteracPayments() {
     thread.getMessages().forEach(function (msg) {
       var id = msg.getId();
       if (seen[id]) return;
-      if (!isPaymentSender(msg.getFrom(), msg.getSubject(), props.getProperty('TEST_SENDER'))) return;
+      if (!isPaymentSender(msg.getFrom(), msg.getSubject(), props.getProperty('TEST_SENDER'), msg.getHeader('Authentication-Results'), me)) {
+        console.warn('Ignored (sender not verified): ' + msg.getFrom() + ' / ' + msg.getSubject());
+        seen[id] = true;
+        processed.push(id);
+        return;
+      }
       var parsed = parseInteracEmail(msg.getSubject(), msg.getPlainBody());
       if (!parsed) {
         seen[id] = true; // not an incoming payment; don't look at it again
@@ -104,13 +110,53 @@ function ingestInteracPayments() {
 }
 
 /**
- * Only Interac itself, or (in test mode) the test sender with the test subject.
+ * Only real email from Interac, or (in test mode) the test sender with the test subject.
+ *
+ * Anyone can put "notify@payments.interac.ca" in their display name, so this
+ * compares the actual address and requires Gmail's authentication result
+ * (DMARC or DKIM pass for that address's domain): a forged sender can't pass.
+ * `authResults` is the message's Authentication-Results header. Email sent from
+ * this Gmail account to itself (sendTestEmail) has none, so in test mode it's
+ * accepted only when it's from `ownAddress`, this account.
  * Gmail search matches whole threads, so each message is checked again here.
  */
-function isPaymentSender(from, subject, testSender) {
-  from = (from || '').toLowerCase();
-  if (from.indexOf(INTERAC_SENDER) !== -1) return true;
-  return Boolean(testSender) && from.indexOf(testSender.toLowerCase()) !== -1 && (subject || '').indexOf(TEST_SUBJECT) === 0;
+function isPaymentSender(from, subject, testSender, authResults, ownAddress) {
+  var address = addressOf(from);
+  if (address === INTERAC_SENDER) return isAuthenticated(authResults, address);
+  if (!testSender || address !== testSender.toLowerCase() || (subject || '').indexOf(TEST_SUBJECT) !== 0) return false;
+  if (authResults) return isAuthenticated(authResults, address);
+  return Boolean(ownAddress) && address === ownAddress.toLowerCase();
+}
+
+/** The bare address from a From header: `"Name" <a@b.c>` -> `a@b.c`. */
+function addressOf(from) {
+  var m = /<([^<>\s]+@[^<>\s]+)>\s*$/.exec(from || '');
+  return (m ? m[1] : (from || '')).trim().toLowerCase();
+}
+
+/**
+ * True when Gmail's Authentication-Results show DMARC pass for the address's
+ * domain, or a DKIM pass signed by that domain or a parent of it (e.g. a
+ * signature from interac.ca for payments.interac.ca).
+ * e.g. "mx.google.com; dkim=pass header.i=@payments.interac.ca ...; dmarc=pass (p=REJECT) header.from=payments.interac.ca"
+ */
+function isAuthenticated(authResults, address) {
+  var domain = address.split('@')[1] || '';
+  if (!authResults || !domain) return false;
+  return authResults.split(';').some(function (clause) {
+    clause = clause.trim().toLowerCase();
+    if (/^dmarc=pass\b/.test(clause)) {
+      var from = /header\.from=([^\s;]+)/.exec(clause);
+      return Boolean(from) && from[1] === domain;
+    }
+    if (/^dkim=pass\b/.test(clause)) {
+      var signer = /header\.(?:i|d)=@?([^\s;]+)/.exec(clause);
+      if (!signer) return false;
+      var d = signer[1].replace(/^.*@/, '');
+      return d.indexOf('.') !== -1 && (domain === d || domain.slice(-(d.length + 1)) === '.' + d);
+    }
+    return false;
+  });
 }
 
 /**
@@ -131,13 +177,21 @@ function sendTestEmail() {
   console.log('Sent a test payment email to ' + me + '. It will be picked up on the next run.');
 }
 
-/** Logs what the parser extracts from recent Interac emails, without sending anything. */
+/**
+ * Logs, for recent Interac (and test) emails, whether the sender is verified
+ * and what the parser extracts, without sending anything.
+ */
 function testParseRecent() {
   var testSender = PropertiesService.getScriptProperties().getProperty('TEST_SENDER');
+  var me = Session.getEffectiveUser().getEmail();
   GmailApp.search(gmailQuery(testSender), 0, 10).forEach(function (thread) {
     thread.getMessages().forEach(function (msg) {
-      if (!isPaymentSender(msg.getFrom(), msg.getSubject(), testSender)) return;
-      console.log(msg.getSubject() + '\n  -> ' + JSON.stringify(parseInteracEmail(msg.getSubject(), msg.getPlainBody())));
+      var auth = msg.getHeader('Authentication-Results');
+      if (!isPaymentSender(msg.getFrom(), msg.getSubject(), testSender, auth, me)) {
+        console.log('IGNORED (sender not verified): ' + msg.getFrom() + ' / ' + msg.getSubject() + '\n  auth: ' + (auth || '(none)'));
+        return;
+      }
+      console.log('VERIFIED: ' + msg.getSubject() + '\n  -> ' + JSON.stringify(parseInteracEmail(msg.getSubject(), msg.getPlainBody())));
     });
   });
 }

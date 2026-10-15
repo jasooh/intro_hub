@@ -131,6 +131,8 @@ Edit the two placeholders in `supabase/setup/cron.sql` (app URL and `CRON_SECRET
 
 **Testing without a bank:** add a Script property `TEST_SENDER` set to your own address. An email from that address whose subject starts with `TEST INTERAC e-Transfer:` is then treated like a real notification (other mail from it is ignored). Edit the name/amount/code in `sendTestEmail` and run it, or send the email yourself. Use the code from your own test sign-up, since the app treats it as a real payment. Remove `TEST_SENDER` when you're done.
 
+The script only trusts an email whose actual address is Interac's **and** that Gmail verified (DMARC/DKIM pass), so nobody can fake a payment by putting Interac's address in their display name or forging the sender. `testParseRecent` logs VERIFIED or IGNORED for each recent email. After updating `scripts/gmail-ingest.gs`, paste the new version into the Apps Script project.
+
 Keep **Autodeposit** on for the host's email so money lands without anyone answering security questions. Anything the matcher can't place shows up under **Admin → Payments**.
 
 ### 7. Set the weekly schedule

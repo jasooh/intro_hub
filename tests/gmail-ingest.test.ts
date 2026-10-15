@@ -9,8 +9,23 @@ const { parseInteracEmail, gmailQuery, isPaymentSender } = new Function(
 )() as {
   parseInteracEmail: (subject: string, body: string) => { senderName: string | null; amountCents: number; memo: string | null } | null;
   gmailQuery: (testSender: string | null) => string;
-  isPaymentSender: (from: string, subject: string, testSender: string | null) => boolean;
+  isPaymentSender: (
+    from: string,
+    subject: string,
+    testSender: string | null,
+    authResults: string | null,
+    ownAddress: string | null,
+  ) => boolean;
 };
+
+// Authentication-Results headers as Gmail writes them.
+const INTERAC_AUTH =
+  "mx.google.com; dkim=pass header.i=@payments.interac.ca header.s=s1 header.b=abc123; spf=pass (google.com: domain of bounce@payments.interac.ca designates 1.2.3.4 as permitted sender) smtp.mailfrom=bounce@payments.interac.ca; dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=payments.interac.ca";
+const GMAIL_AUTH = "mx.google.com; dkim=pass header.i=@gmail.com header.s=20230601 header.b=xyz; spf=pass smtp.mailfrom=me@gmail.com; dmarc=pass (p=NONE sp=QUARANTINE dis=NONE) header.from=gmail.com";
+const ATTACKER_AUTH = "mx.google.com; dkim=pass header.i=@gmail.com header.s=20230601 header.b=evil; dmarc=pass (p=NONE sp=QUARANTINE dis=NONE) header.from=gmail.com";
+const SPOOFED_AUTH = "mx.google.com; spf=fail smtp.mailfrom=notify@payments.interac.ca; dmarc=fail (p=REJECT sp=REJECT dis=QUARANTINE) header.from=payments.interac.ca";
+const PAYMENT_SUBJECT = "INTERAC e-Transfer: JANE sent you money.";
+const TEST = "TEST INTERAC e-Transfer: JANE DOE sent you money.";
 
 describe("parseInteracEmail", () => {
   it("parses the 'sent you money' format", () => {
@@ -63,15 +78,51 @@ describe("test mode", () => {
     );
   });
 
-  it("accepts Interac always, and the test sender only with the test subject", () => {
-    const interac = "Interac e-Transfer <notify@payments.interac.ca>";
-    expect(isPaymentSender(interac, "INTERAC e-Transfer: JANE sent you money.", null)).toBe(true);
-    expect(isPaymentSender("Justin <Me@Gmail.com>", "TEST INTERAC e-Transfer: JANE DOE sent you money.", "me@gmail.com")).toBe(true);
-    expect(isPaymentSender("Justin <me@gmail.com>", "Re: lunch?", "me@gmail.com")).toBe(false);
-    expect(isPaymentSender("Justin <me@gmail.com>", "TEST INTERAC e-Transfer: JANE DOE sent you money.", null)).toBe(false);
-    expect(isPaymentSender("someone@else.com", "TEST INTERAC e-Transfer: JANE DOE sent you money.", "me@gmail.com")).toBe(false);
+  it("accepts the test sender only with the test subject, and only when verified", () => {
+    // Delivered from outside: needs a passing DMARC/DKIM result.
+    expect(isPaymentSender("Justin <Me@Gmail.com>", TEST, "me@gmail.com", GMAIL_AUTH, "host@gmail.com")).toBe(true);
+    expect(isPaymentSender("Justin <me@gmail.com>", "Re: lunch?", "me@gmail.com", GMAIL_AUTH, "host@gmail.com")).toBe(false);
+    expect(isPaymentSender("Justin <me@gmail.com>", TEST, null, GMAIL_AUTH, "host@gmail.com")).toBe(false);
+    expect(isPaymentSender("someone@else.com", TEST, "me@gmail.com", GMAIL_AUTH, "host@gmail.com")).toBe(false);
+    // sendTestEmail(): this account to itself, so no Authentication-Results at all.
+    expect(isPaymentSender("Host <host@gmail.com>", TEST, "host@gmail.com", "", "host@gmail.com")).toBe(true);
+    expect(isPaymentSender("Justin <me@gmail.com>", TEST, "me@gmail.com", "", "host@gmail.com")).toBe(false);
+  });
+});
+
+describe("sender verification (no faking a payment email)", () => {
+  it("accepts real Interac email", () => {
+    expect(isPaymentSender("Interac e-Transfer <notify@payments.interac.ca>", PAYMENT_SUBJECT, null, INTERAC_AUTH, "host@gmail.com")).toBe(true);
+    // A DKIM signature from the parent domain also counts.
+    const parentDkim = "mx.google.com; dkim=pass header.i=@interac.ca header.s=s1 header.b=x; spf=neutral";
+    expect(isPaymentSender("<notify@payments.interac.ca>", PAYMENT_SUBJECT, null, parentDkim, "host@gmail.com")).toBe(true);
   });
 
+  it("rejects Interac's address used as a display name", () => {
+    expect(isPaymentSender('"notify@payments.interac.ca" <attacker@gmail.com>', PAYMENT_SUBJECT, null, ATTACKER_AUTH, "host@gmail.com")).toBe(
+      false,
+    );
+    expect(isPaymentSender("notify@payments.interac.ca <attacker@gmail.com>", PAYMENT_SUBJECT, null, ATTACKER_AUTH, "host@gmail.com")).toBe(
+      false,
+    );
+  });
+
+  it("rejects a forged From address that fails authentication", () => {
+    expect(isPaymentSender("Interac e-Transfer <notify@payments.interac.ca>", PAYMENT_SUBJECT, null, SPOOFED_AUTH, "host@gmail.com")).toBe(false);
+    // No Authentication-Results means it didn't arrive from outside; never trusted for Interac.
+    expect(isPaymentSender("Interac e-Transfer <notify@payments.interac.ca>", PAYMENT_SUBJECT, null, "", "host@gmail.com")).toBe(false);
+    // A pass for some other domain doesn't count.
+    expect(isPaymentSender("Interac e-Transfer <notify@payments.interac.ca>", PAYMENT_SUBJECT, null, ATTACKER_AUTH, "host@gmail.com")).toBe(false);
+    // Look-alike domains don't count either.
+    const lookalike = "mx.google.com; dkim=pass header.i=@evilinterac.ca; dmarc=pass header.from=payments.interac.ca.evil.com";
+    expect(isPaymentSender("<notify@payments.interac.ca>", PAYMENT_SUBJECT, null, lookalike, "host@gmail.com")).toBe(false);
+  });
+
+  it("rejects someone faking the test sender while test mode is on", () => {
+    expect(isPaymentSender('"me@gmail.com" <attacker@gmail.com>', TEST, "me@gmail.com", ATTACKER_AUTH, "host@gmail.com")).toBe(false);
+    const forged = "mx.google.com; dmarc=fail (p=NONE) header.from=gmail.com";
+    expect(isPaymentSender("Justin <me@gmail.com>", TEST, "me@gmail.com", forged, "host@gmail.com")).toBe(false);
+  });
   it("parses the test email exactly like a real one", () => {
     // Same text sendTestEmail() produces.
     const body = `Hi,
