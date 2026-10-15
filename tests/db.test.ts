@@ -583,3 +583,52 @@ describe("editing a session updates existing holds", () => {
     expect(await holdOf(regB.id)).toEqual({ hours: null, status: "confirmed" });
   });
 });
+
+describe("updates board posts", () => {
+  async function addPost(published: boolean, featured = false) {
+    const res = await asService<{ id: string }>(
+      db,
+      `insert into public.posts (title, body_html, published_at, featured)
+       values ('Hello', '<p>Hi</p>', $1, $2) returning id`,
+      [published ? new Date().toISOString() : null, featured],
+    );
+    return res.rows[0].id;
+  }
+
+  it("shows published posts to everyone, drafts only to hosts", async () => {
+    await addPost(true);
+    await addPost(false);
+    const player = await createUser(db, "P");
+    const host = await createUser(db, "H", { admin: true });
+    const count = async (who: string | null) =>
+      (await asUser<{ n: number }>(db, who, `select count(*)::int as n from public.posts`)).rows[0].n;
+    expect(await count(null)).toBe(1);
+    expect(await count(player)).toBe(1);
+    expect(await count(host)).toBe(2);
+  });
+
+  it("only hosts can write posts", async () => {
+    const player = await createUser(db, "P");
+    const host = await createUser(db, "H", { admin: true });
+    await expect(
+      asUser(db, player, `insert into public.posts (title) values ('Nope')`),
+    ).rejects.toThrow();
+    await asUser(db, host, `insert into public.posts (title) values ('Yes')`);
+    const n = await db.query<{ n: number }>(`select count(*)::int as n from public.posts`);
+    expect(n.rows[0].n).toBe(1);
+  });
+
+  it("allows only one featured post", async () => {
+    await addPost(true, true);
+    await expect(addPost(true, true)).rejects.toThrow(/posts_one_featured/);
+  });
+
+  it("players get announcement emails by default and can opt out", async () => {
+    const player = await createUser(db, "P");
+    const before = await db.query<{ on: boolean }>(`select announcement_emails as on from public.profiles where id = $1`, [player]);
+    expect(before.rows[0].on).toBe(true);
+    await asUser(db, player, `update public.profiles set announcement_emails = false where id = auth.uid()`);
+    const after = await db.query<{ on: boolean }>(`select announcement_emails as on from public.profiles where id = $1`, [player]);
+    expect(after.rows[0].on).toBe(false);
+  });
+});

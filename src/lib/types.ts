@@ -28,6 +28,8 @@ export type Profile = {
   heard_about: HeardAbout | null;
   heard_about_other: string | null;
   media_consent: boolean | null;
+  /** Host announcement emails (opt-out). Sign-up/payment emails are always sent. */
+  announcement_emails: boolean;
   media_consent_at: string | null;
   waiver_accepted_at: string | null;
   waiver_version: string | null;
@@ -75,6 +77,19 @@ export type Session = {
 };
 
 export type Team = { id: string; session_id: string; name: string; position: number };
+
+/** A host post on the Updates board. body_html is sanitized (src/lib/rich-text.ts). */
+export type Post = {
+  id: string;
+  title: string;
+  body_html: string;
+  published_at: string | null;
+  featured: boolean;
+  emailed_at: string | null;
+  author_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
 
 export type Registration = {
   id: string;

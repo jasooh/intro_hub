@@ -50,10 +50,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 Sessions
               </Link>
               <Link
-                href="/about"
+                href="/updates"
                 className="font-display text-base max-[359px]:hidden sm:text-lg font-bold tracking-wide text-ink-soft uppercase underline-offset-[6px] hover:text-ink hover:underline hover:decoration-line hover:decoration-2"
               >
-                About
+                Updates
               </Link>
             </nav>
             <Suspense>
@@ -70,6 +70,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 font-display text-sm font-semibold tracking-widest uppercase">
               <span className="text-maple/60">Intro 2 Volleyball · Aaniin CC · Markham</span>
               <span className="flex flex-wrap gap-x-5 gap-y-1">
+                <Link href="/updates" className="hover:text-line">
+                  Updates
+                </Link>
                 <Link href="/about" className="hover:text-line">
                   About
                 </Link>

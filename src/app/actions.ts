@@ -129,6 +129,7 @@ const ProfileForm = z
     heard_about_other: text(100),
     media_consent: z.enum(["agree", "disagree"], { message: "Please answer the media release" }),
     waiver: z.literal("on", { message: "Please accept the waiver to play" }),
+    announcement_emails: z.literal("on").optional(),
     etransfer_names: z.string().max(300).default(""),
     next: z.string().default("/"),
     return_to: z.string().default("/onboarding"),
@@ -177,6 +178,7 @@ export async function saveProfile(formData: FormData) {
       waiver_accepted_at: waiverIsCurrent ? profile.waiver_accepted_at : now,
       waiver_version: WAIVER_VERSION,
       etransfer_names: names.length ? names : [`${f.first_name} ${f.last_name}`],
+      announcement_emails: f.announcement_emails === "on",
       onboarded_at: profile.onboarded_at ?? now,
     })
     .eq("id", profile.id);

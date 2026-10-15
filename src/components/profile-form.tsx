@@ -164,6 +164,23 @@ export function ProfileForm({
         </div>
       </Group>
 
+      <Group title="Emails">
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            name="announcement_emails"
+            defaultChecked={profile.announcement_emails ?? true}
+            className="mt-1 size-5 shrink-0 accent-[var(--line)]"
+          />
+          <span>
+            Email me announcements from the hosts
+            <span className="block text-sm text-ink-soft">
+              News and updates. You&apos;ll always get emails about your own sign-ups and payments.
+            </span>
+          </span>
+        </label>
+      </Group>
+
       <SubmitButton className={submitClassName} requireChange={requireChange}>
         {submitLabel}
       </SubmitButton>

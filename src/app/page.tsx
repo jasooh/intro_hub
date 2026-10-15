@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { cache, Suspense } from "react";
+import { FeaturedPost } from "@/components/featured-post";
 import { LiveRefresh } from "@/components/live-refresh";
 import { SessionCard } from "@/components/session-card";
 import { buttonClass, EmptyState, PageSpinner, reveal, Scoreboard, Sheet } from "@/components/ui";
 import { env } from "@/lib/env";
 import { dateParts } from "@/lib/format";
-import { getCounts, getUpcomingSessions } from "@/lib/queries";
+import { getCounts, getFeaturedPost, getUpcomingSessions } from "@/lib/queries";
 
 // Shared by the hero scoreboard and the "Next session" row within one request.
 const getNext = cache(async () => {
@@ -51,6 +52,10 @@ export default function Home() {
         </div>
       </section>
 
+      <Suspense fallback={null}>
+        <Featured />
+      </Suspense>
+
       <Sheet
         label="Next session"
         action={
@@ -80,6 +85,17 @@ async function NextScoreboard() {
   const { weekday, day, month } = dateParts(next.session.starts_at);
   return (
     <Scoreboard value={`${pad(taken)}/${pad(next.session.capacity)}`} label={`Taken · ${weekday} ${month} ${day}`} />
+  );
+}
+
+/** The host's featured post, if any: an announcement panel with no section divider. */
+async function Featured() {
+  const post = await getFeaturedPost();
+  if (!post) return null;
+  return (
+    <div className="reveal" style={reveal(5)}>
+      <FeaturedPost post={post} />
+    </div>
   );
 }
 

@@ -4,11 +4,13 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { z } from "zod";
+import { announcementRecipients, sendPostToPlayers } from "@/lib/announcements";
 import { requireAdmin } from "@/lib/auth";
 import { env } from "@/lib/env";
 import { flash } from "@/lib/flash";
 import { zonedLocalToUtc } from "@/lib/format";
 import { dispatchEvents, parseEvents } from "@/lib/registrations";
+import { isEmptyPost, sanitizePostHtml } from "@/lib/rich-text";
 import { balanceTeams } from "@/lib/teams";
 import type { SkillLevel } from "@/lib/types";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
@@ -445,4 +447,95 @@ export async function removeTeams(sessionId: string) {
   if (error) fail(`/admin/sessions/${sessionId}`, error.message);
   revalidateTeams(sessionId);
   await flash("success", "Teams removed");
+}
+
+// ---------------------------------------------------------------------------
+// Updates board
+// ---------------------------------------------------------------------------
+
+const PostForm = z.object({
+  title: z.string().trim().min(1, "Give the post a title").max(120, "Titles can be up to 120 characters"),
+  body_html: z.string().max(50_000, "That post is too long").default(""),
+  featured: z.literal("on").optional(),
+  email: z.literal("on").optional(),
+  intent: z.enum(["draft", "publish", "save"]).default("save"),
+});
+
+function revalidatePosts() {
+  revalidatePath("/");
+  revalidatePath("/updates");
+  revalidatePath("/admin/updates");
+}
+
+/** Make `postId` the one featured post (or un-feature it). */
+async function setFeatured(supabase: Awaited<ReturnType<typeof createClient>>, postId: string, featured: boolean) {
+  if (featured) {
+    await supabase.from("posts").update({ featured: false }).eq("featured", true).neq("id", postId);
+  }
+  return supabase.from("posts").update({ featured }).eq("id", postId);
+}
+
+export async function savePost(postId: string | null, formData: FormData) {
+  const me = await requireAdmin();
+  const formPath = postId ? `/admin/updates/${postId}` : "/admin/updates/new";
+  const parsed = PostForm.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) fail(formPath, parsed.error.issues[0].message);
+  const f = parsed.data;
+  const body = sanitizePostHtml(f.body_html);
+  if (f.intent === "publish" && isEmptyPost(body)) fail(formPath, "Write something before publishing");
+
+  const supabase = await createClient();
+  const existing = postId
+    ? (await supabase.from("posts").select("published_at, emailed_at").eq("id", postId).maybeSingle()).data
+    : null;
+  if (postId && !existing) fail("/admin/updates", "That post no longer exists");
+
+  const publishedAt = existing?.published_at ?? (f.intent === "publish" ? new Date().toISOString() : null);
+  const row = { title: f.title, body_html: body, published_at: publishedAt, updated_at: new Date().toISOString() };
+  const { data: saved, error } = postId
+    ? await supabase.from("posts").update(row).eq("id", postId).select("id").single()
+    : await supabase.from("posts").insert({ ...row, author_id: me.id }).select("id").single();
+  if (error || !saved) fail(formPath, error?.message ?? "Couldn't save the post");
+
+  const { error: featureError } = await setFeatured(supabase, saved.id, Boolean(publishedAt) && f.featured === "on");
+  if (featureError) fail(formPath, featureError.message);
+
+  // Email once: claim emailed_at first so a double submit can't send twice.
+  let emailing = 0;
+  if (publishedAt && f.email === "on" && !existing?.emailed_at) {
+    const { data: claimed } = await supabase
+      .from("posts")
+      .update({ emailed_at: new Date().toISOString() })
+      .eq("id", saved.id)
+      .is("emailed_at", null)
+      .select("id");
+    if (claimed?.length) {
+      emailing = (await announcementRecipients()).length;
+      after(() => sendPostToPlayers(saved.id).catch((err) => console.error("Announcement send failed", err)));
+    }
+  }
+
+  revalidatePosts();
+  const verb = !publishedAt ? "Draft saved" : existing?.published_at ? "Post saved" : "Post published";
+  await flash("success", emailing ? `${verb}. Emailing ${emailing} player${emailing === 1 ? "" : "s"}.` : verb);
+  redirect("/admin/updates");
+}
+
+export async function setPostFeatured(postId: string, featured: boolean) {
+  await requireAdmin();
+  const supabase = await createClient();
+  const { error } = await setFeatured(supabase, postId, featured);
+  if (error) fail("/admin/updates", error.message);
+  revalidatePosts();
+  await flash("success", featured ? "Now shown on the home page" : "Removed from the home page");
+}
+
+export async function deletePost(postId: string) {
+  await requireAdmin();
+  const supabase = await createClient();
+  const { error } = await supabase.from("posts").delete().eq("id", postId);
+  if (error) fail("/admin/updates", error.message);
+  revalidatePosts();
+  await flash("success", "Post deleted");
+  redirect("/admin/updates");
 }

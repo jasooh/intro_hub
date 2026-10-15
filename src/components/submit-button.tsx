@@ -74,6 +74,8 @@ export function SubmitButton({
   confirm,
   requireChange = false,
   bare = false,
+  name,
+  value,
   className,
 }: {
   children: ReactNode;
@@ -84,6 +86,9 @@ export function SubmitButton({
   requireChange?: boolean;
   /** Skip the standard button styles (style it entirely with className). */
   bare?: boolean;
+  /** Like a native submit button: sent with the form when this button submits it. */
+  name?: string;
+  value?: string;
   className?: string;
 }) {
   const { pending } = useFormStatus();
@@ -96,6 +101,8 @@ export function SubmitButton({
     <button
       ref={buttonRef}
       type={confirm ? "button" : "submit"}
+      name={confirm ? undefined : name}
+      value={confirm ? undefined : value}
       disabled={pending || !changed}
       title={changed ? undefined : "No changes to save"}
       className={`${bare ? "disabled:pointer-events-none disabled:opacity-40" : buttonClass(variant, size)} ${className ?? ""}`}

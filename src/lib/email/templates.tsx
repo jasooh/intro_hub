@@ -121,7 +121,21 @@ function Title({ children }: { children: ReactNode }) {
   );
 }
 
-function Layout({ preview, children, ctx }: { preview: string; children: ReactNode; ctx: EmailContext }) {
+function Layout({
+  preview,
+  children,
+  ctx,
+  eyebrow,
+  footerNote,
+}: {
+  preview: string;
+  children: ReactNode;
+  /** Session emails: adds the session line, map link and cancel link. */
+  ctx?: EmailContext;
+  eyebrow?: string;
+  footerNote?: ReactNode;
+}) {
+  const top = eyebrow ?? (ctx ? `${ctx.sessionTitle} · ${ctx.when}` : null);
   return (
     <Html lang="en">
       <Head>
@@ -138,25 +152,26 @@ function Layout({ preview, children, ctx }: { preview: string; children: ReactNo
           </Section>
 
           <Section style={s.content}>
-            <Text style={s.eyebrow}>
-              {ctx.sessionTitle} · {ctx.when}
-            </Text>
+            {top && <Text style={s.eyebrow}>{top}</Text>}
             {children}
           </Section>
 
           <Section style={s.footer}>
-            <Text style={s.footerText}>
-              {ctx.sessionTitle} · {ctx.when} ·{" "}
-              <Link href={mapUrl(ctx.location)} style={s.footerLink}>
-                {ctx.location}
-              </Link>
-              <br />
-              Can&apos;t make it? Cancel from{" "}
-              <Link href={ctx.myUrl} style={s.footerLink}>
-                your sign-ups
-              </Link>{" "}
-              so someone on the waitlist gets your spot.
-            </Text>
+            {ctx && (
+              <Text style={s.footerText}>
+                {ctx.sessionTitle} · {ctx.when} ·{" "}
+                <Link href={mapUrl(ctx.location)} style={s.footerLink}>
+                  {ctx.location}
+                </Link>
+                <br />
+                Can&apos;t make it? Cancel from{" "}
+                <Link href={ctx.myUrl} style={s.footerLink}>
+                  your sign-ups
+                </Link>{" "}
+                so someone on the waitlist gets your spot.
+              </Text>
+            )}
+            {footerNote && <Text style={s.footerText}>{footerNote}</Text>}
             <Text style={s.disclaimer}>
               Please do not reply. This inbox is not monitored for replies. Questions? Message us on Instagram{" "}
               <Link href="https://www.instagram.com/intro2volleyball/" style={s.footerLink}>
@@ -312,4 +327,72 @@ export function buildEmail(kind: RegistrationEvent["event"], ctx: EmailContext):
         ),
       };
   }
+}
+
+// ---------------------------------------------------------------------------
+// Host announcements (Updates board posts emailed to players)
+// ---------------------------------------------------------------------------
+
+const POST_STYLES: Record<string, CSSProperties> = {
+  p: { ...s.text },
+  h2: { fontFamily: display, fontSize: 26, lineHeight: "28px", fontWeight: 900, textTransform: "uppercase", color: c.ink, margin: "20px 0 10px" },
+  h3: { fontFamily: display, fontSize: 21, lineHeight: "24px", fontWeight: 900, textTransform: "uppercase", color: c.ink, margin: "18px 0 8px" },
+  ul: { fontFamily: sans, fontSize: 16, lineHeight: "25px", color: c.ink, margin: "0 0 16px", paddingLeft: 22 },
+  ol: { fontFamily: sans, fontSize: 16, lineHeight: "25px", color: c.ink, margin: "0 0 16px", paddingLeft: 22 },
+  li: { margin: "0 0 4px" },
+  blockquote: { borderLeft: `4px solid ${c.ink}`, margin: "0 0 16px", padding: "2px 0 2px 14px", color: c.inkSoft },
+  a: { color: c.ink, textDecoration: "underline", textDecorationColor: c.line },
+};
+
+const cssText = (style: CSSProperties) =>
+  Object.entries(style)
+    .map(([k, v]) => `${k.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`)}:${typeof v === "number" ? `${v}px` : v}`)
+    .join(";");
+
+/** Inline the email styles onto sanitized post HTML (email clients ignore <style> rules). */
+export function inlinePostStyles(html: string): string {
+  return html.replace(/<(p|h2|h3|ul|ol|li|blockquote|a)(\s[^>]*)?>/g, (_m, tag: string, attrs = "") => {
+    return `<${tag}${attrs} style="${cssText(POST_STYLES[tag])}">`;
+  });
+}
+
+export function buildAnnouncementEmail({
+  title,
+  bodyHtml,
+  playerName,
+  postUrl,
+  profileUrl,
+}: {
+  title: string;
+  /** Already sanitized (sanitizePostHtml). */
+  bodyHtml: string;
+  playerName: string;
+  postUrl: string;
+  profileUrl: string;
+}): Built {
+  return {
+    subject: `${title} · Intro 2 Volleyball`,
+    element: (
+      <Layout
+        preview={title}
+        eyebrow="Update from the hosts"
+        footerNote={
+          <>
+            Don&apos;t want these? Turn off announcement emails in{" "}
+            <Link href={profileUrl} style={s.footerLink}>
+              your profile
+            </Link>
+            . You&apos;ll still get emails about your own sign-ups.
+          </>
+        }
+      >
+        <Title>{title.replace(/[.!?]$/, "")}</Title>
+        <Text style={s.text}>Hi {playerName},</Text>
+        <div dangerouslySetInnerHTML={{ __html: inlinePostStyles(bodyHtml) }} />
+        <Button href={postUrl} style={s.button}>
+          Read on the site
+        </Button>
+      </Layout>
+    ),
+  };
 }

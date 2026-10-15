@@ -75,7 +75,7 @@ async function sendForEvent(event: RegistrationEvent, reg: Loaded) {
     waitlistPosition,
     etransferEmail: env.etransferEmail(),
     sessionUrl: `${appUrl}/s/${reg.session_id}`,
-    myUrl: `${appUrl}/me`,
+    myUrl: `${appUrl}/me/signups`,
     cancelReason: reg.session.cancel_reason,
   });
 

@@ -9,6 +9,7 @@ Sign-up site for **Intro 2 Volleyball**, a beginner-friendly drop-in at Aaniin C
 - **Options per sign-up:** *Instructional + Drop-in* (full price, uses a spot) or *Instructional only* (cheaper, **doesn't use a spot**, never waitlisted). Players can switch before paying.
 - **Payment:** Interac e-Transfer with a ref code (`VB-XXXX`). A Gmail Apps Script (`scripts/gmail-ingest.gs`) posts notifications to `/api/payments/ingest`; `src/lib/matcher.ts` matches by ref code or name + exact amount owed.
 - **Holds & waitlist:** a spot is held for N hours while unpaid; expired holds free the spot and the waitlist auto-promotes.
+- **Updates board:** hosts write posts in a Tiptap rich text editor (`/admin/updates`); HTML is sanitized with `sanitizePostHtml` (`src/lib/rich-text.ts`) on save and render. Published posts show at `/updates` (public). One post can be featured on the home page (`FeaturedPost`, above the next session, no divider; DB enforces one). A per-post checkbox emails it once to players with `profiles.announcement_emails` (opt-out on the profile form) via `src/lib/announcements.ts`.
 - **Hosts (`/admin`):** roster with a player-details modal, mark paid, waitlist order, teams (auto-balanced by skill, publish to players), payments inbox, refunds, players/roles, weekly schedule, songs (players' hype songs for the Spotify playlist), CSV export.
 
 ## Stack
