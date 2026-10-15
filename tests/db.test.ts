@@ -1087,3 +1087,37 @@ describe("partial payments", () => {
     expect(mine.rows[0].paid_cents).toBe(1000);
   });
 });
+
+describe("assigning a payment by hand", () => {
+  it("goes to the player's current sign-up when picked on an old one they've replaced", async () => {
+    const sid = await createSession(db);
+    const host = await createUser(db, "Host", { admin: true });
+    const a = await createUser(db, "A");
+    await register(a, sid);
+    const old = (await regOf(a, sid)).id;
+    await db.query(`update public.registrations set status = 'expired', hold_expires_at = null where id = $1`, [old]);
+    await register(a, sid); // signs up again
+    const current = (await regOf(a, sid)).id;
+
+    const p = await db.query<{ id: string }>(`insert into public.payments (sender_name, amount_cents) values ('A', 1000) returning id`);
+    await asUser(db, host, `select public.admin_assign_payment($1, $2)`, [p.rows[0].id, old]);
+
+    const linked = await db.query<{ registration_id: string }>(`select registration_id from public.payments where id = $1`, [p.rows[0].id]);
+    expect(linked.rows[0].registration_id).toBe(current);
+    expect((await regOf(a, sid)).status).toBe("confirmed");
+    const oldRow = await db.query<{ status: string }>(`select status::text from public.registrations where id = $1`, [old]);
+    expect(oldRow.rows[0].status).toBe("expired");
+  });
+
+  it("still revives an old sign-up when the player has no other spot", async () => {
+    const sid = await createSession(db);
+    const host = await createUser(db, "Host", { admin: true });
+    const a = await createUser(db, "A");
+    await register(a, sid);
+    const old = (await regOf(a, sid)).id;
+    await db.query(`update public.registrations set status = 'expired', hold_expires_at = null where id = $1`, [old]);
+    const p = await db.query<{ id: string }>(`insert into public.payments (sender_name, amount_cents) values ('A', 1000) returning id`);
+    await asUser(db, host, `select public.admin_assign_payment($1, $2)`, [p.rows[0].id, old]);
+    expect((await regOf(a, sid)).status).toBe("confirmed");
+  });
+});

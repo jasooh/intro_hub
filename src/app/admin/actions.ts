@@ -169,7 +169,7 @@ export async function assignPayment(paymentId: string, formData: FormData) {
     "admin_assign_payment",
     { p_payment_id: paymentId, p_registration_id: registrationId },
     "/admin/payments",
-    "Payment assigned. The player is confirmed.",
+    "Payment assigned to the player's current sign-up. They're confirmed.",
   );
 }
 

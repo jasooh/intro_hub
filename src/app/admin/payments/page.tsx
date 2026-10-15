@@ -60,6 +60,23 @@ async function Payments({ searchParams }: { searchParams: PageProps<"/admin/paym
       .order("created_at", { ascending: false }),
   ]);
 
+  // An expired sign-up is only worth offering if the player hasn't signed up again for that
+  // session (the database would put the money on their current sign-up anyway).
+  const active = new Set(
+    ((options ?? []) as Option[])
+      .filter((o) => o.status === "pending_payment" || o.status === "waitlisted")
+      .map((o) => `${o.session_id}:${o.profile_id}`),
+  );
+  const { data: confirmedRows } = await supabase
+    .from("registrations")
+    .select("session_id, profile_id, session:sessions!inner(starts_at)")
+    .eq("status", "confirmed")
+    .gte("session.starts_at", since);
+  for (const c of confirmedRows ?? []) active.add(`${c.session_id}:${c.profile_id}`);
+  const assignable = ((options ?? []) as Option[]).filter(
+    (o) => o.status !== "expired" || !active.has(`${o.session_id}:${o.profile_id}`),
+  );
+
   // Small data set: classify and search in memory, counting what the search leaves in each tab.
   const rows = ((payments ?? []) as Row[])
     .map((p) => ({ p, method: paymentMethod(p) }))
@@ -98,7 +115,7 @@ async function Payments({ searchParams }: { searchParams: PageProps<"/admin/paym
           ) : (
             <ul className="divide-y divide-ink/25">
               {shown.map(({ p, method: m }) => (
-                <PaymentRow key={p.id} p={p} method={m} options={(options ?? []) as Option[]} />
+                <PaymentRow key={p.id} p={p} method={m} options={assignable} />
               ))}
             </ul>
           )}
