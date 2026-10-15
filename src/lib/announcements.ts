@@ -46,7 +46,7 @@ export async function sendPostToPlayers(postId: string): Promise<void> {
       title: post.title,
       bodyHtml,
       playerName: r.display_name ?? r.full_name ?? "there",
-      postUrl: `${appUrl}/updates#post-${post.id}`,
+      postUrl: `${appUrl}/updates/${post.id}`,
       profileUrl: `${appUrl}/me`,
     });
     try {

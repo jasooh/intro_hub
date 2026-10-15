@@ -31,10 +31,10 @@ export function FeaturedPost({ post }: { post: Post }) {
         </h2>
         <PostBody html={post.body_html} className="max-w-2xl" />
         <Link
-          href={`/updates#post-${post.id}`}
+          href={`/updates/${post.id}`}
           className="group inline-flex items-center gap-2 font-display text-lg font-bold tracking-wide text-line uppercase hover:text-ink"
         >
-          All updates
+          Read the full post
           <span aria-hidden className="transition-transform group-hover:translate-x-1">
             →
           </span>

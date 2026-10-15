@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { signupView } from "@/lib/signups";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
@@ -82,6 +83,14 @@ export async function getPublishedPosts(limit = 50) {
     .limit(limit);
   return (data ?? []) as Post[];
 }
+
+/** One published post (drafts are hidden by RLS unless you're a host). Memoized per request. */
+export const getPost = cache(async (id: string) => {
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
+  const supabase = await createClient();
+  const { data } = await supabase.from("posts").select("*").eq("id", id).not("published_at", "is", null).maybeSingle<Post>();
+  return data;
+});
 
 /** The one post featured on the home page, if any. */
 export async function getFeaturedPost() {
