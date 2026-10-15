@@ -875,6 +875,22 @@ describe("rejoining after a paid cancel", () => {
     expect(old.rows[0].refund_owed).toBe(false);
   });
 
+  it("does nothing when the host waived the refund or it was a late cancel (no refund owed)", async () => {
+    const sid = await createSession(db);
+    const [a, b] = [await createUser(db, "A"), await createUser(db, "B")];
+
+    await register(a, sid);
+    const waived = await payAndCancel(a, sid);
+    await db.query(`update public.registrations set refund_waived_at = now() where id = $1`, [waived]);
+    expect((await register(a, sid))[0].event).toBe("signed_up");
+    expect((await regOf(a, sid)).status).toBe("pending_payment");
+
+    await register(b, sid);
+    const late = await payAndCancel(b, sid);
+    await db.query(`update public.registrations set refund_owed = false where id = $1`, [late]);
+    expect((await register(b, sid))[0].event).toBe("signed_up");
+  });
+
   it("does nothing once the refund was sent, or for a different option's price", async () => {
     const sid = await createSession(db, { instructionalPriceCents: 500 });
     const [a, b] = [await createUser(db, "A"), await createUser(db, "B")];

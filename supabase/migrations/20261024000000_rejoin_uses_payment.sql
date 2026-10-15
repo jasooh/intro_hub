@@ -1,6 +1,8 @@
 -- Rejoining after a paid cancel: if a player paid, cancelled, and signs up for
--- the same session again before the host refunded them, the money they already
--- sent covers the new sign-up. It's confirmed right away (no second payment),
+-- the same session again while that refund is still owed (not sent, not
+-- waived), the money they already sent covers the new sign-up. A waived refund
+-- or a cancel after the cutoff (no refund owed) means the host kept the money,
+-- so the new sign-up pays as normal. It's confirmed right away (no second payment),
 -- the payment moves to the new sign-up, and the old one stops showing as a
 -- refund owed. Applies whenever a sign-up would start holding an unpaid spot:
 -- signing up, being promoted off the waitlist, or switching option.
@@ -26,7 +28,9 @@ begin
      and o.profile_id = r.profile_id
      and o.id <> r.id
      and o.status = 'cancelled'
+     and o.refund_owed
      and o.refunded_at is null
+     and o.refund_waived_at is null
      and o.amount_cents = r.amount_cents
      and exists (select 1 from public.payments p where p.registration_id = o.id)
    order by o.cancelled_at desc nulls last
