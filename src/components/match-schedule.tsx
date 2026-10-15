@@ -51,19 +51,17 @@ export function MatchSchedule({
               {games.map((g) => {
                 const courtLabel = multiCourt ? `Court ${g.court}` : null;
                 if (renderGame) return <div key={g.id}>{renderGame(g, courtLabel)}</div>;
-                const mine = Boolean(highlightTeamId) && (g.team_a_id === highlightTeamId || g.team_b_id === highlightTeamId);
                 return (
-                  <p key={g.id} className={`flex flex-wrap items-baseline gap-x-2 ${mine ? "font-bold text-line" : ""}`}>
+                  <div key={g.id} className="space-y-1">
                     {courtLabel && (
-                      <span className="font-display text-sm font-bold tracking-[0.15em] text-ink-soft uppercase">{courtLabel}</span>
+                      <p className="font-display text-xs font-bold tracking-[0.2em] text-ink-soft uppercase">{courtLabel}</p>
                     )}
-                    {mine && <span aria-hidden className="inline-block size-2 translate-y-[-1px] rounded-full bg-line" />}
-                    <span className="[overflow-wrap:anywhere]">
-                      {nameOf.get(g.team_a_id)} <span className="font-display text-sm font-bold text-ink-soft uppercase">vs</span>{" "}
-                      {nameOf.get(g.team_b_id)}
-                    </span>
-                    {mine && <span className="sr-only">(your game)</span>}
-                  </p>
+                    <p className="grid max-w-lg grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-3">
+                      <TeamPlate name={nameOf.get(g.team_a_id)} mine={g.team_a_id === highlightTeamId} align="end" />
+                      <span className="font-display text-sm font-black tracking-wide text-ink-soft uppercase">vs</span>
+                      <TeamPlate name={nameOf.get(g.team_b_id)} mine={g.team_b_id === highlightTeamId} align="start" />
+                    </p>
+                  </div>
                 );
               })}
               {twice.length > 0 && (
@@ -82,5 +80,21 @@ export function MatchSchedule({
         );
       })}
     </ol>
+  );
+}
+
+/** One side of a matchup; the viewer's own team is an orange block (like the active nav tab). */
+function TeamPlate({ name, mine, align }: { name?: string; mine: boolean; align: "start" | "end" }) {
+  return (
+    <span className={`flex min-w-0 ${align === "end" ? "justify-end text-right" : "justify-start text-left"}`}>
+      <span
+        className={`font-display text-base leading-tight font-bold tracking-wide uppercase [overflow-wrap:break-word] sm:text-lg ${
+          mine ? "bg-line px-2 py-0.5 text-board" : "py-0.5"
+        }`}
+      >
+        {name}
+        {mine && <span className="sr-only"> (your team)</span>}
+      </span>
+    </span>
   );
 }
