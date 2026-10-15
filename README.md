@@ -123,6 +123,8 @@ Edit the two placeholders in `supabase/setup/cron.sql` (app URL and `CRON_SECRET
 3. Run `testParseRecent` and check the log. It shows what the parser extracts from your recent Interac emails. Banks word these emails slightly differently, so adjust the regexes in `parseInteracEmail` if something comes out `null`.
 4. Run `setup` once and approve the permissions. The script then checks Gmail every 5 minutes.
 
+**Testing without a bank:** add a Script property `TEST_SENDER` set to your own address. An email from that address whose subject starts with `TEST INTERAC e-Transfer:` is then treated like a real notification (other mail from it is ignored). Edit the name/amount/code in `sendTestEmail` and run it, or send the email yourself. Use the code from your own test sign-up, since the app treats it as a real payment. Remove `TEST_SENDER` when you're done.
+
 Keep **Autodeposit** on for the host's email so money lands without anyone answering security questions. Anything the matcher can't place shows up under **Admin → Payments**.
 
 ### 7. Set the weekly schedule
