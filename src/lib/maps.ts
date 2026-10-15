@@ -49,7 +49,7 @@ type PhotonProps = {
 };
 
 /** "Aaniin Community Centre, 5665 14th Avenue, Markham" from a Photon result. */
-export function formatPlace(p: PhotonProps): string {
+function formatPlace(p: PhotonProps): string {
   const street = [p.housenumber, p.street].filter(Boolean).join(" ");
   const parts = [p.name, street, p.city ?? p.state].filter((x): x is string => Boolean(x));
   return [...new Set(parts)].join(", ");

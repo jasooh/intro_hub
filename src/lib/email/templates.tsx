@@ -350,7 +350,7 @@ const cssText = (style: CSSProperties) =>
     .join(";");
 
 /** Inline the email styles onto sanitized post HTML (email clients ignore <style> rules). */
-export function inlinePostStyles(html: string): string {
+function inlinePostStyles(html: string): string {
   return html.replace(/<(p|h2|h3|ul|ol|li|blockquote|a)(\s[^>]*)?>/g, (_m, tag: string, attrs = "") => {
     return `<${tag}${attrs} style="${cssText(POST_STYLES[tag])}">`;
   });

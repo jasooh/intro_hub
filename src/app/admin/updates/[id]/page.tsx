@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { deletePost, savePost } from "@/app/admin/actions";
 import { SubmitButton } from "@/components/submit-button";
 import { BackLink, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
-import { announcementRecipients } from "@/lib/announcements";
+import { countAnnouncementRecipients } from "@/lib/announcements";
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type { Post } from "@/lib/types";
@@ -28,7 +28,7 @@ async function EditPost({ params }: { params: PageProps<"/admin/updates/[id]">["
   const supabase = await createClient();
   const { data: post } = await supabase.from("posts").select("*").eq("id", id).maybeSingle<Post>();
   if (!post) notFound();
-  const recipients = (await announcementRecipients()).length;
+  const recipients = await countAnnouncementRecipients();
 
   return (
     <div className="space-y-10">

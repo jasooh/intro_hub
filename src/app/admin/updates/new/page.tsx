@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { savePost } from "@/app/admin/actions";
 import { BackLink, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
-import { announcementRecipients } from "@/lib/announcements";
+import { countAnnouncementRecipients } from "@/lib/announcements";
 import { requireAdmin } from "@/lib/auth";
 import { PostForm } from "../post-form";
 
@@ -20,7 +20,7 @@ export default function NewPostPage() {
 
 async function NewPost() {
   await requireAdmin();
-  const recipients = (await announcementRecipients()).length;
+  const recipients = await countAnnouncementRecipients();
   return (
     <div className="space-y-10">
       <BackLink href="/admin/updates">All posts</BackLink>

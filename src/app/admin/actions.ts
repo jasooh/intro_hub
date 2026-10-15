@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { z } from "zod";
-import { announcementRecipients, sendPostToPlayers } from "@/lib/announcements";
+import { countAnnouncementRecipients, sendPostToPlayers } from "@/lib/announcements";
 import { requireAdmin } from "@/lib/auth";
 import { env } from "@/lib/env";
 import { flash } from "@/lib/flash";
@@ -510,7 +510,7 @@ export async function savePost(postId: string | null, formData: FormData) {
       .is("emailed_at", null)
       .select("id");
     if (claimed?.length) {
-      emailing = (await announcementRecipients()).length;
+      emailing = await countAnnouncementRecipients();
       after(() => sendPostToPlayers(saved.id).catch((err) => console.error("Announcement send failed", err)));
     }
   }

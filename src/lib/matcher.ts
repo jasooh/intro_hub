@@ -35,7 +35,7 @@ export function extractRefCode(...texts: (string | null | undefined)[]): string 
   return null;
 }
 
-export function normalizeName(name: string) {
+function normalizeName(name: string) {
   return name
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")

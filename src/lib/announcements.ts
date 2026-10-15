@@ -10,14 +10,25 @@ import type { Post, Profile } from "@/lib/types";
 type Recipient = Pick<Profile, "id" | "email" | "display_name" | "full_name">;
 
 /** Players who'll get a host announcement: finished their profile and haven't opted out. */
-export async function announcementRecipients(): Promise<Recipient[]> {
-  const { data, error } = await createAdminClient()
+function recipientsQuery<T extends string>(columns: T, head = false) {
+  return createAdminClient()
     .from("profiles")
-    .select("id, email, display_name, full_name")
+    .select(columns, head ? { count: "exact", head: true } : undefined)
     .eq("announcement_emails", true)
     .not("onboarded_at", "is", null);
+}
+
+async function announcementRecipients(): Promise<Recipient[]> {
+  const { data, error } = await recipientsQuery("id, email, display_name, full_name");
   if (error) throw error;
-  return (data ?? []) as Recipient[];
+  return (data ?? []) as unknown as Recipient[];
+}
+
+/** How many players an announcement would reach (for the form and the toast). */
+export async function countAnnouncementRecipients(): Promise<number> {
+  const { count, error } = await recipientsQuery("id", true);
+  if (error) throw error;
+  return count ?? 0;
 }
 
 const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));

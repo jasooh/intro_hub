@@ -314,19 +314,6 @@ export function EmptyState({ children }: { children: ReactNode }) {
   );
 }
 
-/** Notice line for errors/success: a coloured left court-line, no box. */
-export function Notice({ tone, children }: { tone: "bad" | "ok"; children: ReactNode }) {
-  return (
-    <p
-      className={cn(
-        "border-l-4 py-1 pl-3 text-sm font-semibold",
-        tone === "bad" ? "border-bad text-bad" : "border-ok text-ok",
-      )}
-    >
-      {children}
-    </p>
-  );
-}
 
 /** Big condensed page heading with an optional eyebrow and intro line. */
 export function PageTitle({ eyebrow, sub, children }: { eyebrow?: ReactNode; sub?: ReactNode; children: ReactNode }) {
