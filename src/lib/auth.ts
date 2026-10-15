@@ -26,18 +26,18 @@ export async function requireAdmin(): Promise<Profile> {
   return profile;
 }
 
-/** The site owner, who gets /dev-tools. Must match public.is_owner() (supabase/migrations/20261023000000_owner_tools.sql). */
-export const OWNER_EMAIL = "abuyuanjustin@gmail.com";
+/** The one account that gets /dev-tools. Must match public.is_devtools_user() (supabase/migrations/20261023000000_dev_tools.sql). */
+export const DEV_TOOLS_EMAIL = "abuyuanjustin@gmail.com";
 
-/** Whether the signed-in user is the owner, from the email in their auth token. Cached per request. */
-export const getIsOwner = cache(async (): Promise<boolean> => {
+/** Whether the signed-in user can use dev tools, from the email in their auth token. Cached per request. */
+export const canUseDevTools = cache(async (): Promise<boolean> => {
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
   const email = data?.claims?.email;
-  return typeof email === "string" && email.toLowerCase() === OWNER_EMAIL;
+  return typeof email === "string" && email.toLowerCase() === DEV_TOOLS_EMAIL;
 });
 
 /** Dev tools pages 404 for everyone else (hosts included), so they don't advertise themselves. */
-export async function requireOwner(): Promise<void> {
-  if (!(await getIsOwner())) notFound();
+export async function requireDevTools(): Promise<void> {
+  if (!(await canUseDevTools())) notFound();
 }

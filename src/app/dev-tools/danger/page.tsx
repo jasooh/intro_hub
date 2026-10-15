@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { Suspense } from "react";
 import { SubmitButton } from "@/components/submit-button";
 import { inputClass, Mark, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
-import { requireOwner } from "@/lib/auth";
+import { requireDevTools } from "@/lib/auth";
 import { BACKUP_COOKIE, databaseName } from "@/lib/dev-tools";
 import { clearData, resetDatabase } from "../actions";
 import { BackupLink } from "../backup-link";
@@ -36,7 +36,7 @@ export default function DangerPage() {
 }
 
 async function DangerView() {
-  await requireOwner();
+  await requireDevTools();
   const db = databaseName();
   const backedUp = Boolean((await cookies()).get(BACKUP_COOKIE));
 

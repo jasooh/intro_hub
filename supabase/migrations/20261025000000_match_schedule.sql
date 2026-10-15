@@ -39,12 +39,12 @@ create policy session_matches_admin_delete on public.session_matches for delete 
 revoke all on public.session_matches from anon;
 
 -------------------------------------------------------------------------------
--- Owner tools now know about matches (reset truncates them with sessions)
+-- Dev tools now know about matches (reset truncates them with sessions)
 -------------------------------------------------------------------------------
-create or replace function public.owner_reset(p_confirm text, p_wipe_players boolean default false) returns void
+create or replace function public.devtools_reset(p_confirm text, p_wipe_players boolean default false) returns void
 language plpgsql security definer set search_path = '' as $$
 begin
-  perform public._owner_guard();
+  perform public._devtools_guard();
   if p_confirm is distinct from 'RESET' then
     raise exception 'confirm_mismatch';
   end if;
@@ -53,35 +53,35 @@ begin
   if p_wipe_players then
     delete from auth.users where id <> (select auth.uid());
   end if;
-  perform public._owner_log('reset', null, null, null, null,
+  perform public._devtools_log('reset', null, null, null, null,
     case when p_wipe_players then 'everything + player accounts' else 'everything except accounts' end);
 end $$;
 
-create or replace function public.owner_backup() returns jsonb
+create or replace function public.devtools_backup() returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare
   v_out jsonb := '{}';
   v_table text;
   v_rows jsonb;
 begin
-  perform public._owner_guard();
+  perform public._devtools_guard();
   foreach v_table in array array[
     'profiles', 'session_templates', 'sessions', 'registrations', 'payments',
-    'session_teams', 'session_matches', 'team_requests', 'posts', 'email_log', 'app_settings', 'owner_audit'
+    'session_teams', 'session_matches', 'team_requests', 'posts', 'email_log', 'app_settings', 'devtools_audit'
   ] loop
     execute format('select coalesce(jsonb_agg(to_jsonb(t)), ''[]'') from public.%I t', v_table) into v_rows;
     v_out := v_out || jsonb_build_object(v_table, v_rows);
   end loop;
-  perform public._owner_log('backup', null, null, null, null, null);
+  perform public._devtools_log('backup', null, null, null, null, null);
   return v_out;
 end $$;
 
-create or replace function public.owner_health() returns jsonb
+create or replace function public.devtools_health() returns jsonb
 language plpgsql stable security definer set search_path = '' as $$
 declare
   v_cron jsonb := null;
 begin
-  perform public._owner_guard();
+  perform public._devtools_guard();
   -- pg_cron only exists on the hosted database (not in tests / local).
   if to_regclass('cron.job_run_details') is not null then
     execute $q$

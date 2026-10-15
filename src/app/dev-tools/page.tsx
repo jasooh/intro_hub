@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { SubmitButton } from "@/components/submit-button";
 import { inputClass, Mark, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
-import { requireOwner } from "@/lib/auth";
+import { requireDevTools } from "@/lib/auth";
 import { formatDateTime } from "@/lib/format";
 import { ENV_CHECKS, EDITABLE_TABLES } from "@/lib/dev-tools";
 import { createClient } from "@/lib/supabase/server";
@@ -35,9 +35,9 @@ export default function DevToolsHealthPage() {
 }
 
 async function HealthView() {
-  await requireOwner();
+  await requireDevTools();
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("owner_health");
+  const { data, error } = await supabase.rpc("devtools_health");
   if (error) throw error;
   const h = data as Health;
 

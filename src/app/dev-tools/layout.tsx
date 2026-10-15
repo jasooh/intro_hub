@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { getIsOwner } from "@/lib/auth";
+import { canUseDevTools } from "@/lib/auth";
 import { databaseName } from "@/lib/dev-tools";
 import { DevToolsNav } from "./dev-tools-nav";
 
@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 /** The dev tools nav, with a badge for which database these tools change. Hidden for everyone else (pages 404). */
 async function DevToolsBench() {
-  if (!(await getIsOwner())) return null;
+  if (!(await canUseDevTools())) return null;
   const db = databaseName();
   return (
     <div className="space-y-1">

@@ -1,5 +1,5 @@
 // Dev tools (/dev-tools): table editor config and helpers. The database does the
-// real checks (owner_* functions in supabase/migrations/20261023000000_owner_tools.sql).
+// real checks (devtools_* functions in supabase/migrations/20261023000000_dev_tools.sql).
 
 /** Tables the editor can open, with the columns shown in its row list. */
 export const EDITABLE_TABLES = {
@@ -66,7 +66,7 @@ export function toInputValue(col: ColumnInfo, value: unknown): string {
   return String(value);
 }
 
-/** Turns a submitted input back into the JSON value for owner_update_row. Throws on bad input. */
+/** Turns a submitted input back into the JSON value for devtools_update_row. Throws on bad input. */
 export function fromInputValue(col: ColumnInfo, raw: string): unknown {
   const kind = inputKind(col);
   if (raw.trim() === "" && kind !== "long" && kind !== "text") {

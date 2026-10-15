@@ -1,15 +1,15 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { getIsOwner } from "@/lib/auth";
+import { canUseDevTools } from "@/lib/auth";
 import { BACKUP_COOKIE, databaseName } from "@/lib/dev-tools";
 import { createClient } from "@/lib/supabase/server";
 
 // Every table as one JSON file. Downloading it unlocks Reset for an hour.
 export async function GET() {
-  if (!(await getIsOwner())) return new NextResponse("Not found", { status: 404 });
+  if (!(await canUseDevTools())) return new NextResponse("Not found", { status: 404 });
 
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("owner_backup");
+  const { data, error } = await supabase.rpc("devtools_backup");
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");

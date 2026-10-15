@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { Avatar, buttonClass, EmptyState, inputClass, Mark, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
-import { requireOwner } from "@/lib/auth";
+import { requireDevTools } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type { Profile } from "@/lib/types";
 
@@ -19,11 +19,11 @@ export default function DevToolsPlayersPage(props: PageProps<"/dev-tools/players
 }
 
 async function PlayerList({ searchParams }: { searchParams: PageProps<"/dev-tools/players">["searchParams"] }) {
-  await requireOwner();
+  await requireDevTools();
   const params = await searchParams;
   const q = typeof params.q === "string" ? params.q.trim() : "";
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("owner_rows", { p_table: "profiles", p_search: q, p_limit: 100 });
+  const { data, error } = await supabase.rpc("devtools_rows", { p_table: "profiles", p_search: q, p_limit: 100 });
   if (error) throw error;
   const { rows, total } = data as { rows: Profile[]; total: number };
 

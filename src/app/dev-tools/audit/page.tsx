@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { EmptyState, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
-import { requireOwner } from "@/lib/auth";
+import { requireDevTools } from "@/lib/auth";
 import { formatDateTime } from "@/lib/format";
 import { isEditableTable } from "@/lib/dev-tools";
 import { createClient } from "@/lib/supabase/server";
@@ -38,9 +38,9 @@ export default function AuditPage() {
 }
 
 async function AuditView() {
-  await requireOwner();
+  await requireDevTools();
   const supabase = await createClient();
-  const { data, error } = await supabase.from("owner_audit").select("*").order("at", { ascending: false }).limit(200);
+  const { data, error } = await supabase.from("devtools_audit").select("*").order("at", { ascending: false }).limit(200);
   if (error) throw error;
   const rows = (data ?? []) as AuditRow[];
 

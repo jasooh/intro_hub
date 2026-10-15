@@ -26,7 +26,7 @@ Sign-ups, waitlist, e-Transfer confirmation and emails for a weekly volleyball g
    - refunds owed
    - CSV export
    - player and host management
-6. **Dev tools** (`/dev-tools`, only for the account in `OWNER_EMAIL` in `src/lib/auth.ts` and `public.is_owner()`; everyone else gets a 404):
+6. **Dev tools** (`/dev-tools`, only for the account in `DEV_TOOLS_EMAIL` in `src/lib/auth.ts` and `public.is_devtools_user()`; everyone else gets a 404):
    - health checks (cron, stuck holds, Gmail script, settings) and repair buttons (run tick, resend an email)
    - a table editor and a force-status tool for sign-ups
    - view-as-player (read-only)

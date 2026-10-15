@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { SubmitButton } from "@/components/submit-button";
 import { BackLink, inputClass, PageSpinner, PageTitle, reveal, Sheet, StatusMark } from "@/components/ui";
-import { requireOwner } from "@/lib/auth";
+import { requireDevTools } from "@/lib/auth";
 import { isEditableTable, EDITABLE_TABLES, type ColumnInfo } from "@/lib/dev-tools";
 import { createClient } from "@/lib/supabase/server";
 import type { RegistrationStatus } from "@/lib/types";
@@ -26,14 +26,14 @@ export default function DevToolsRowPage(props: PageProps<"/dev-tools/data/[table
 }
 
 async function RowView({ params }: { params: PageProps<"/dev-tools/data/[table]/[id]">["params"] }) {
-  await requireOwner();
+  await requireDevTools();
   const { table, id } = await params;
   if (!isEditableTable(table)) notFound();
 
   const supabase = await createClient();
   const [{ data: columns, error: colError }, { data: row, error: rowError }] = await Promise.all([
-    supabase.rpc("owner_table_columns", { p_table: table }),
-    supabase.rpc("owner_get_row", { p_table: table, p_id: id }),
+    supabase.rpc("devtools_table_columns", { p_table: table }),
+    supabase.rpc("devtools_get_row", { p_table: table, p_id: id }),
   ]);
   if (colError || rowError) throw colError ?? rowError;
   if (!row) notFound();

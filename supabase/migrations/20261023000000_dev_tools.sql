@@ -1,16 +1,16 @@
--- Owner tools: a repair kit for the site's owner (one Google account, not the
--- hosts). Everything goes through the owner_* functions below, which check
--- is_owner() themselves and write an owner_audit row, so the app can call them
--- with the owner's own session (no service key) and every change is traceable.
+-- Dev tools: a repair kit for one Google account (not the
+-- hosts). Everything goes through the devtools_* functions below, which check
+-- is_devtools_user() themselves and write a devtools_audit row, so the app can call them
+-- with that account's own session (no service key) and every change is traceable.
 --
 -- Also: app_settings (maintenance mode), which pauses new sign-ups and option
 -- switches for players while something gets fixed. Cancelling still works.
 
 -------------------------------------------------------------------------------
--- Who is the owner
+-- Who can use dev tools
 -------------------------------------------------------------------------------
--- OWNER_EMAIL in src/lib/auth.ts must match.
-create function public.is_owner() returns boolean
+-- DEV_TOOLS_EMAIL in src/lib/auth.ts must match.
+create function public.is_devtools_user() returns boolean
 language sql stable security definer set search_path = '' as $$
   select exists (
     select 1 from auth.users
@@ -19,13 +19,13 @@ language sql stable security definer set search_path = '' as $$
        and email_confirmed_at is not null
   );
 $$;
-revoke execute on function public.is_owner() from public, anon;
-grant execute on function public.is_owner() to authenticated;
+revoke execute on function public.is_devtools_user() from public, anon;
+grant execute on function public.is_devtools_user() to authenticated;
 
 -------------------------------------------------------------------------------
 -- Tables
 -------------------------------------------------------------------------------
-create table public.owner_audit (
+create table public.devtools_audit (
   id bigint generated always as identity primary key,
   at timestamptz not null default now(),
   actor_id uuid,
@@ -36,11 +36,11 @@ create table public.owner_audit (
   after jsonb,
   note text
 );
-create index owner_audit_at_idx on public.owner_audit (at desc);
-alter table public.owner_audit enable row level security;
-create policy owner_audit_select on public.owner_audit for select to authenticated
-  using ((select public.is_owner()));
-revoke insert, update, delete, truncate on public.owner_audit from anon, authenticated;
+create index devtools_audit_at_idx on public.devtools_audit (at desc);
+alter table public.devtools_audit enable row level security;
+create policy devtools_audit_select on public.devtools_audit for select to authenticated
+  using ((select public.is_devtools_user()));
+revoke insert, update, delete, truncate on public.devtools_audit from anon, authenticated;
 
 create table public.app_settings (
   key text primary key,
@@ -81,17 +81,17 @@ create trigger registrations_maintenance_option
 -------------------------------------------------------------------------------
 -- Helpers
 -------------------------------------------------------------------------------
-create function public._owner_guard() returns void
+create function public._devtools_guard() returns void
 language plpgsql stable security definer set search_path = '' as $$
 begin
-  if not public.is_owner() then
-    raise exception 'owner_only';
+  if not public.is_devtools_user() then
+    raise exception 'devtools_only';
   end if;
 end $$;
 
 -- Tables the editor can browse / edit. team_requests has no id (edit via the
--- player's sign-up); owner_audit and app_settings are managed separately.
-create function public._owner_table(p_table text) returns text
+-- player's sign-up); devtools_audit and app_settings are managed separately.
+create function public._devtools_table(p_table text) returns text
 language plpgsql immutable set search_path = '' as $$
 begin
   if p_table is null or not (p_table = any (array[
@@ -103,27 +103,27 @@ begin
   return p_table;
 end $$;
 
-create function public._owner_log(
+create function public._devtools_log(
   p_action text, p_table text, p_id text, p_before jsonb, p_after jsonb, p_note text default null
 ) returns void
 language sql security definer set search_path = '' as $$
-  insert into public.owner_audit (actor_id, action, target_table, target_id, before, after, note)
+  insert into public.devtools_audit (actor_id, action, target_table, target_id, before, after, note)
   values ((select auth.uid()), p_action, p_table, p_id, p_before, p_after, p_note);
 $$;
 
-revoke execute on function public._owner_guard() from public, anon, authenticated;
-revoke execute on function public._owner_table(text) from public, anon, authenticated;
-revoke execute on function public._owner_log(text, text, text, jsonb, jsonb, text) from public, anon, authenticated;
+revoke execute on function public._devtools_guard() from public, anon, authenticated;
+revoke execute on function public._devtools_table(text) from public, anon, authenticated;
+revoke execute on function public._devtools_log(text, text, text, jsonb, jsonb, text) from public, anon, authenticated;
 
 -------------------------------------------------------------------------------
 -- Table editor
 -------------------------------------------------------------------------------
 -- Column list for building the edit form.
-create function public.owner_table_columns(p_table text) returns jsonb
+create function public.devtools_table_columns(p_table text) returns jsonb
 language plpgsql stable security definer set search_path = '' as $$
 begin
-  perform public._owner_guard();
-  perform public._owner_table(p_table);
+  perform public._devtools_guard();
+  perform public._devtools_table(p_table);
   return (
     select coalesce(jsonb_agg(jsonb_build_object(
       'name', a.attname,
@@ -139,7 +139,7 @@ begin
 end $$;
 
 -- A page of rows, newest first, optionally filtered by text anywhere in the row.
-create function public.owner_rows(p_table text, p_search text default '', p_limit int default 50, p_offset int default 0)
+create function public.devtools_rows(p_table text, p_search text default '', p_limit int default 50, p_offset int default 0)
 returns jsonb
 language plpgsql stable security definer set search_path = '' as $$
 declare
@@ -148,8 +148,8 @@ declare
   v_total int;
   v_search text := coalesce(trim(p_search), '');
 begin
-  perform public._owner_guard();
-  perform public._owner_table(p_table);
+  perform public._devtools_guard();
+  perform public._devtools_table(p_table);
   v_order := case when p_table = 'email_log' then 'sent_at' else 'created_at' end;
 
   execute format(
@@ -167,19 +167,19 @@ begin
   return jsonb_build_object('rows', v_rows, 'total', v_total);
 end $$;
 
-create function public.owner_get_row(p_table text, p_id text) returns jsonb
+create function public.devtools_get_row(p_table text, p_id text) returns jsonb
 language plpgsql stable security definer set search_path = '' as $$
 declare
   v_row jsonb;
 begin
-  perform public._owner_guard();
-  perform public._owner_table(p_table);
+  perform public._devtools_guard();
+  perform public._devtools_table(p_table);
   execute format('select to_jsonb(t) from public.%I t where t.id::text = $1', p_table) into v_row using p_id;
   return v_row;
 end $$;
 
 -- Sets only the columns present in p_patch (JSON values, null allowed).
-create function public.owner_update_row(p_table text, p_id text, p_patch jsonb) returns jsonb
+create function public.devtools_update_row(p_table text, p_id text, p_patch jsonb) returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare
   v_before jsonb;
@@ -187,8 +187,8 @@ declare
   v_sets text;
   v_bad text;
 begin
-  perform public._owner_guard();
-  perform public._owner_table(p_table);
+  perform public._devtools_guard();
+  perform public._devtools_table(p_table);
   if p_patch is null or jsonb_typeof(p_patch) <> 'object' or p_patch = '{}'::jsonb then
     raise exception 'nothing_to_change';
   end if;
@@ -219,31 +219,31 @@ begin
     p_table, v_sets)
     into v_after using p_patch, p_id;
 
-  perform public._owner_log('update_row', p_table, p_id, v_before, v_after);
+  perform public._devtools_log('update_row', p_table, p_id, v_before, v_after);
   return v_after;
 end $$;
 
 -- Deleting a profile deletes the whole account (auth user, sign-ups cascade).
-create function public.owner_delete_row(p_table text, p_id text) returns void
+create function public.devtools_delete_row(p_table text, p_id text) returns void
 language plpgsql security definer set search_path = '' as $$
 declare
   v_before jsonb;
 begin
-  perform public._owner_guard();
-  perform public._owner_table(p_table);
+  perform public._devtools_guard();
+  perform public._devtools_table(p_table);
   execute format('select to_jsonb(t) from public.%I t where t.id::text = $1', p_table) into v_before using p_id;
   if v_before is null then
     raise exception 'row_not_found';
   end if;
   if p_table = 'profiles' then
     if p_id = (select auth.uid())::text then
-      raise exception 'cannot_delete_owner';
+      raise exception 'cannot_delete_self';
     end if;
     delete from auth.users where id = p_id::uuid;
   else
     execute format('delete from public.%I t where t.id::text = $1', p_table) using p_id;
   end if;
-  perform public._owner_log('delete_row', p_table, p_id, v_before, null);
+  perform public._devtools_log('delete_row', p_table, p_id, v_before, null);
 end $$;
 
 -------------------------------------------------------------------------------
@@ -251,14 +251,14 @@ end $$;
 -------------------------------------------------------------------------------
 -- Put a sign-up into a status with the bookkeeping that status needs, then let
 -- the waitlist move up if that freed a spot. Returns events for emails.
-create function public.owner_force_status(p_registration_id uuid, p_status public.registration_status) returns jsonb
+create function public.devtools_force_status(p_registration_id uuid, p_status public.registration_status) returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare
   r public.registrations;
   s public.sessions;
   v_after jsonb;
 begin
-  perform public._owner_guard();
+  perform public._devtools_guard();
   select * into r from public.registrations where id = p_registration_id;
   if not found then
     raise exception 'registration_not_found';
@@ -277,17 +277,17 @@ begin
    where id = r.id
   returning to_jsonb(registrations.*) into v_after;
 
-  perform public._owner_log('force_status', 'registrations', r.id::text, to_jsonb(r), v_after, p_status::text);
+  perform public._devtools_log('force_status', 'registrations', r.id::text, to_jsonb(r), v_after, p_status::text);
   return public._promote(s.id);
 end $$;
 
 -- Bulk clean-ups. Returns how many rows went.
-create function public.owner_clear(p_scope text) returns int
+create function public.devtools_clear(p_scope text) returns int
 language plpgsql security definer set search_path = '' as $$
 declare
   v_count int;
 begin
-  perform public._owner_guard();
+  perform public._devtools_guard();
   case p_scope
     when 'email_log' then
       -- Supabase's safeupdate guard rejects a DELETE with no WHERE clause.
@@ -298,22 +298,22 @@ begin
     when 'unmatched_payments' then
       delete from public.payments where registration_id is null;
     when 'audit' then
-      delete from public.owner_audit where at < now() - interval '30 days';
+      delete from public.devtools_audit where at < now() - interval '30 days';
     else
       raise exception 'unknown_scope';
   end case;
   get diagnostics v_count = row_count;
-  perform public._owner_log('clear', null, null, null, null, format('%s (%s rows)', p_scope, v_count));
+  perform public._devtools_log('clear', null, null, null, null, format('%s (%s rows)', p_scope, v_count));
   return v_count;
 end $$;
 
 -- Wipes every session, sign-up, payment, team, post and email record. Keeps
 -- accounts, the weekly schedule, settings and the audit log. p_wipe_players
--- also deletes every account except the owner's.
-create function public.owner_reset(p_confirm text, p_wipe_players boolean default false) returns void
+-- also deletes every account except the dev tools account.
+create function public.devtools_reset(p_confirm text, p_wipe_players boolean default false) returns void
 language plpgsql security definer set search_path = '' as $$
 begin
-  perform public._owner_guard();
+  perform public._devtools_guard();
   if p_confirm is distinct from 'RESET' then
     raise exception 'confirm_mismatch';
   end if;
@@ -322,47 +322,47 @@ begin
   if p_wipe_players then
     delete from auth.users where id <> (select auth.uid());
   end if;
-  perform public._owner_log('reset', null, null, null, null,
+  perform public._devtools_log('reset', null, null, null, null,
     case when p_wipe_players then 'everything + player accounts' else 'everything except accounts' end);
 end $$;
 
-create function public.owner_set_maintenance(p_on boolean, p_message text default '') returns void
+create function public.devtools_set_maintenance(p_on boolean, p_message text default '') returns void
 language plpgsql security definer set search_path = '' as $$
 declare
   v_before jsonb;
   v_after jsonb := jsonb_build_object('on', coalesce(p_on, false), 'message', left(trim(coalesce(p_message, '')), 300));
 begin
-  perform public._owner_guard();
+  perform public._devtools_guard();
   select value into v_before from public.app_settings where key = 'maintenance';
   insert into public.app_settings (key, value, updated_at) values ('maintenance', v_after, now())
   on conflict (key) do update set value = excluded.value, updated_at = excluded.updated_at;
-  perform public._owner_log('maintenance', 'app_settings', 'maintenance', v_before, v_after);
+  perform public._devtools_log('maintenance', 'app_settings', 'maintenance', v_before, v_after);
 end $$;
 
--- Lets the owner re-send an email: drops its de-dupe claim so the app can send it again.
-create function public.owner_release_email(p_email_id bigint) returns jsonb
+-- Lets dev tools re-send an email: drops its de-dupe claim so the app can send it again.
+create function public.devtools_release_email(p_email_id bigint) returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare
   v_row public.email_log;
 begin
-  perform public._owner_guard();
+  perform public._devtools_guard();
   delete from public.email_log where id = p_email_id returning * into v_row;
   if v_row.id is null then
     raise exception 'row_not_found';
   end if;
-  perform public._owner_log('resend_email', 'email_log', p_email_id::text, to_jsonb(v_row), null, v_row.kind);
+  perform public._devtools_log('resend_email', 'email_log', p_email_id::text, to_jsonb(v_row), null, v_row.kind);
   return to_jsonb(v_row);
 end $$;
 
 -------------------------------------------------------------------------------
 -- Health + backup
 -------------------------------------------------------------------------------
-create function public.owner_health() returns jsonb
+create function public.devtools_health() returns jsonb
 language plpgsql stable security definer set search_path = '' as $$
 declare
   v_cron jsonb := null;
 begin
-  perform public._owner_guard();
+  perform public._devtools_guard();
   -- pg_cron only exists on the hosted database (not in tests / local).
   if to_regclass('cron.job_run_details') is not null then
     execute $q$
@@ -401,49 +401,49 @@ begin
 end $$;
 
 -- Every table as JSON, for a download before risky changes.
-create function public.owner_backup() returns jsonb
+create function public.devtools_backup() returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare
   v_out jsonb := '{}';
   v_table text;
   v_rows jsonb;
 begin
-  perform public._owner_guard();
+  perform public._devtools_guard();
   foreach v_table in array array[
     'profiles', 'session_templates', 'sessions', 'registrations', 'payments',
-    'session_teams', 'team_requests', 'posts', 'email_log', 'app_settings', 'owner_audit'
+    'session_teams', 'team_requests', 'posts', 'email_log', 'app_settings', 'devtools_audit'
   ] loop
     execute format('select coalesce(jsonb_agg(to_jsonb(t)), ''[]'') from public.%I t', v_table) into v_rows;
     v_out := v_out || jsonb_build_object(v_table, v_rows);
   end loop;
-  perform public._owner_log('backup', null, null, null, null, null);
+  perform public._devtools_log('backup', null, null, null, null, null);
   return v_out;
 end $$;
 
 -------------------------------------------------------------------------------
--- Grants: signed-in only; each function checks is_owner() itself
+-- Grants: signed-in only; each function checks is_devtools_user() itself
 -------------------------------------------------------------------------------
-revoke execute on function public.owner_table_columns(text) from public, anon;
-revoke execute on function public.owner_rows(text, text, int, int) from public, anon;
-revoke execute on function public.owner_get_row(text, text) from public, anon;
-revoke execute on function public.owner_update_row(text, text, jsonb) from public, anon;
-revoke execute on function public.owner_delete_row(text, text) from public, anon;
-revoke execute on function public.owner_force_status(uuid, public.registration_status) from public, anon;
-revoke execute on function public.owner_clear(text) from public, anon;
-revoke execute on function public.owner_reset(text, boolean) from public, anon;
-revoke execute on function public.owner_set_maintenance(boolean, text) from public, anon;
-revoke execute on function public.owner_release_email(bigint) from public, anon;
-revoke execute on function public.owner_health() from public, anon;
-revoke execute on function public.owner_backup() from public, anon;
-grant execute on function public.owner_table_columns(text) to authenticated;
-grant execute on function public.owner_rows(text, text, int, int) to authenticated;
-grant execute on function public.owner_get_row(text, text) to authenticated;
-grant execute on function public.owner_update_row(text, text, jsonb) to authenticated;
-grant execute on function public.owner_delete_row(text, text) to authenticated;
-grant execute on function public.owner_force_status(uuid, public.registration_status) to authenticated;
-grant execute on function public.owner_clear(text) to authenticated;
-grant execute on function public.owner_reset(text, boolean) to authenticated;
-grant execute on function public.owner_set_maintenance(boolean, text) to authenticated;
-grant execute on function public.owner_release_email(bigint) to authenticated;
-grant execute on function public.owner_health() to authenticated;
-grant execute on function public.owner_backup() to authenticated;
+revoke execute on function public.devtools_table_columns(text) from public, anon;
+revoke execute on function public.devtools_rows(text, text, int, int) from public, anon;
+revoke execute on function public.devtools_get_row(text, text) from public, anon;
+revoke execute on function public.devtools_update_row(text, text, jsonb) from public, anon;
+revoke execute on function public.devtools_delete_row(text, text) from public, anon;
+revoke execute on function public.devtools_force_status(uuid, public.registration_status) from public, anon;
+revoke execute on function public.devtools_clear(text) from public, anon;
+revoke execute on function public.devtools_reset(text, boolean) from public, anon;
+revoke execute on function public.devtools_set_maintenance(boolean, text) from public, anon;
+revoke execute on function public.devtools_release_email(bigint) from public, anon;
+revoke execute on function public.devtools_health() from public, anon;
+revoke execute on function public.devtools_backup() from public, anon;
+grant execute on function public.devtools_table_columns(text) to authenticated;
+grant execute on function public.devtools_rows(text, text, int, int) to authenticated;
+grant execute on function public.devtools_get_row(text, text) to authenticated;
+grant execute on function public.devtools_update_row(text, text, jsonb) to authenticated;
+grant execute on function public.devtools_delete_row(text, text) to authenticated;
+grant execute on function public.devtools_force_status(uuid, public.registration_status) to authenticated;
+grant execute on function public.devtools_clear(text) to authenticated;
+grant execute on function public.devtools_reset(text, boolean) to authenticated;
+grant execute on function public.devtools_set_maintenance(boolean, text) to authenticated;
+grant execute on function public.devtools_release_email(bigint) to authenticated;
+grant execute on function public.devtools_health() to authenticated;
+grant execute on function public.devtools_backup() to authenticated;

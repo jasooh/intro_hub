@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { SignupRow } from "@/components/signup-row";
 import { Avatar, BackLink, EmptyState, Mark, PageSpinner, reveal, Sheet } from "@/components/ui";
-import { requireOwner } from "@/lib/auth";
+import { requireDevTools } from "@/lib/auth";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { HEARD_LABELS, profileComplete, SKILL_LABELS } from "@/lib/profile";
 import { signupView } from "@/lib/signups";
@@ -32,10 +32,10 @@ export default function DevToolsPlayerPage(props: PageProps<"/dev-tools/players/
 }
 
 async function PlayerView({ params }: { params: PageProps<"/dev-tools/players/[id]">["params"] }) {
-  await requireOwner();
+  await requireDevTools();
   const { id } = await params;
 
-  // Read-only, after the owner check: the service client sees past RLS, like the player's own view would.
+  // Read-only, after the dev tools check: the service client sees past RLS, like the player's own view would.
   const admin = createAdminClient();
   const { data: profile } = await admin.from("profiles").select("*").eq("id", id).maybeSingle();
   if (!profile) notFound();

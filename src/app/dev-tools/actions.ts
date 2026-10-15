@@ -3,15 +3,15 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { requireOwner } from "@/lib/auth";
+import { requireDevTools } from "@/lib/auth";
 import { flash } from "@/lib/flash";
 import { BACKUP_COOKIE, buildPatch, databaseName, isEditableTable, type ColumnInfo } from "@/lib/dev-tools";
 import { dispatchEvents, parseEvents } from "@/lib/registrations";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import type { RegistrationEvent, RegistrationStatus } from "@/lib/types";
 
-// Every write goes through an owner_* database function with the owner's own
-// session: the database re-checks is_owner() and records it in owner_audit.
+// Every write goes through a devtools_* database function with the dev tools user's own
+// session: the database re-checks is_devtools_user() and records it in devtools_audit.
 
 function fail(path: string, message: string): never {
   redirect(`${path}?error=${encodeURIComponent(message)}`);
@@ -25,14 +25,14 @@ const EMAIL_EVENTS = new Set<string>(["signed_up", "waitlisted", "promoted", "co
 // ---------------------------------------------------------------------------
 
 export async function saveRow(table: string, id: string, formData: FormData) {
-  await requireOwner();
+  await requireDevTools();
   const path = `/dev-tools/data/${table}/${id}`;
   if (!isEditableTable(table)) fail("/dev-tools/data", "Unknown table");
 
   const supabase = await createClient();
   const [{ data: columns, error: colError }, { data: row, error: rowError }] = await Promise.all([
-    supabase.rpc("owner_table_columns", { p_table: table }),
-    supabase.rpc("owner_get_row", { p_table: table, p_id: id }),
+    supabase.rpc("devtools_table_columns", { p_table: table }),
+    supabase.rpc("devtools_get_row", { p_table: table, p_id: id }),
   ]);
   if (colError || rowError) fail(path, (colError ?? rowError)!.message);
   if (!row) fail("/dev-tools/data", "That row doesn't exist any more");
@@ -48,17 +48,17 @@ export async function saveRow(table: string, id: string, formData: FormData) {
     return;
   }
 
-  const { error } = await supabase.rpc("owner_update_row", { p_table: table, p_id: id, p_patch: patch });
+  const { error } = await supabase.rpc("devtools_update_row", { p_table: table, p_id: id, p_patch: patch });
   if (error) fail(path, error.message);
   revalidatePath("/", "layout");
   await flash("success", `Saved ${Object.keys(patch).join(", ")}`);
 }
 
 export async function deleteRow(table: string, id: string) {
-  await requireOwner();
+  await requireDevTools();
   if (!isEditableTable(table)) fail("/dev-tools/data", "Unknown table");
   const supabase = await createClient();
-  const { error } = await supabase.rpc("owner_delete_row", { p_table: table, p_id: id });
+  const { error } = await supabase.rpc("devtools_delete_row", { p_table: table, p_id: id });
   if (error) fail(`/dev-tools/data/${table}/${id}`, error.message);
   revalidatePath("/", "layout");
   await flash("success", table === "profiles" ? "Account deleted" : "Row deleted");
@@ -66,13 +66,13 @@ export async function deleteRow(table: string, id: string) {
 }
 
 export async function forceStatus(registrationId: string, formData: FormData) {
-  await requireOwner();
+  await requireDevTools();
   const path = `/dev-tools/data/registrations/${registrationId}`;
   const status = String(formData.get("status"));
   if (!STATUSES.includes(status as RegistrationStatus)) fail(path, "Pick a status");
 
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("owner_force_status", {
+  const { data, error } = await supabase.rpc("devtools_force_status", {
     p_registration_id: registrationId,
     p_status: status,
   });
@@ -92,7 +92,7 @@ export async function forceStatus(registrationId: string, formData: FormData) {
 
 /** Runs the every-minute job now (expire holds, promote, reminders, weekly sessions). */
 export async function runTickNow() {
-  await requireOwner();
+  await requireDevTools();
   const { data, error } = await createAdminClient().rpc("run_tick");
   if (error) fail("/dev-tools", error.message);
   const events = parseEvents(data);
@@ -102,7 +102,7 @@ export async function runTickNow() {
 }
 
 export async function createFromTemplates() {
-  await requireOwner();
+  await requireDevTools();
   const { data, error } = await createAdminClient().rpc("create_sessions_from_templates");
   if (error) fail("/dev-tools", error.message);
   revalidatePath("/", "layout");
@@ -111,9 +111,9 @@ export async function createFromTemplates() {
 
 /** Drops an email's de-dupe record and sends it again (sign-up emails only). */
 export async function resendEmail(emailId: number) {
-  await requireOwner();
+  await requireDevTools();
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("owner_release_email", { p_email_id: emailId });
+  const { data, error } = await supabase.rpc("devtools_release_email", { p_email_id: emailId });
   if (error) fail("/dev-tools", error.message);
   const row = data as { kind: string; registration_id: string | null };
   if (!row.registration_id || !EMAIL_EVENTS.has(row.kind)) fail("/dev-tools", "Only sign-up emails can be re-sent here");
@@ -123,9 +123,9 @@ export async function resendEmail(emailId: number) {
 }
 
 export async function setMaintenance(formData: FormData) {
-  await requireOwner();
+  await requireDevTools();
   const supabase = await createClient();
-  const { error } = await supabase.rpc("owner_set_maintenance", {
+  const { error } = await supabase.rpc("devtools_set_maintenance", {
     p_on: formData.get("on") === "on",
     p_message: String(formData.get("message") ?? ""),
   });
@@ -146,18 +146,18 @@ const CLEAR_LABELS: Record<string, string> = {
 };
 
 export async function clearData(formData: FormData) {
-  await requireOwner();
+  await requireDevTools();
   const scope = String(formData.get("scope"));
   if (!(scope in CLEAR_LABELS)) fail("/dev-tools/danger", "Unknown clean-up");
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("owner_clear", { p_scope: scope });
+  const { data, error } = await supabase.rpc("devtools_clear", { p_scope: scope });
   if (error) fail("/dev-tools/danger", error.message);
   revalidatePath("/", "layout");
   await flash("success", `Cleared ${CLEAR_LABELS[scope]} (${data ?? 0} rows)`);
 }
 
 export async function resetDatabase(formData: FormData) {
-  await requireOwner();
+  await requireDevTools();
   const db = databaseName();
   if (String(formData.get("confirm") ?? "").trim() !== `RESET ${db}`) {
     fail("/dev-tools/danger", `Type RESET ${db} exactly to reset`);
@@ -165,7 +165,7 @@ export async function resetDatabase(formData: FormData) {
   if (!(await cookies()).get(BACKUP_COOKIE)) fail("/dev-tools/danger", "Download a backup first (it unlocks Reset for an hour)");
 
   const supabase = await createClient();
-  const { error } = await supabase.rpc("owner_reset", {
+  const { error } = await supabase.rpc("devtools_reset", {
     p_confirm: "RESET",
     p_wipe_players: formData.get("wipe_players") === "on",
   });

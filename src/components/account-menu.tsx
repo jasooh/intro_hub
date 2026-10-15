@@ -14,19 +14,19 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-/** Profile picture in the header that opens Account / Admin (hosts only) / Dev tools (the owner only) / Sign out. */
+/** Profile picture in the header that opens Account / Admin (hosts only) / Dev tools (one account only) / Sign out. */
 export function AccountMenu({
   name,
   email,
   avatarUrl,
   isAdmin,
-  isOwner,
+  showDevTools,
 }: {
   name: string;
   email: string;
   avatarUrl: string | null;
   isAdmin: boolean;
-  isOwner: boolean;
+  showDevTools: boolean;
 }) {
   const [signingOut, startSignOut] = useTransition();
 
@@ -65,7 +65,7 @@ export function AccountMenu({
             </Link>
           </DropdownMenuItem>
         )}
-        {isOwner && (
+        {showDevTools && (
           <DropdownMenuItem asChild>
             <Link href="/dev-tools">
               <Wrench />

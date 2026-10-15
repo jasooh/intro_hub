@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 
-/** Site-wide notice while the owner has maintenance mode on (sign-ups are paused). */
+/** Site-wide notice while maintenance mode is on in dev tools (sign-ups are paused). */
 export async function MaintenanceBanner() {
   const supabase = await createClient();
   const { data } = await supabase.from("app_settings").select("value").eq("key", "maintenance").maybeSingle();

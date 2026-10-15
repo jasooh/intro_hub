@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { buttonClass, EmptyState, inputClass, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
-import { requireOwner } from "@/lib/auth";
+import { requireDevTools } from "@/lib/auth";
 import { cellText, isEditableTable, EDITABLE_TABLES, type EditableTable } from "@/lib/dev-tools";
 import { createClient } from "@/lib/supabase/server";
 
@@ -21,14 +21,14 @@ export default function DevToolsDataPage(props: PageProps<"/dev-tools/data">) {
 }
 
 async function DataView({ searchParams }: { searchParams: PageProps<"/dev-tools/data">["searchParams"] }) {
-  await requireOwner();
+  await requireDevTools();
   const params = await searchParams;
   const table: EditableTable = isEditableTable(params.table) ? params.table : "registrations";
   const q = typeof params.q === "string" ? params.q.trim() : "";
   const page = Math.max(0, Number(params.page) || 0);
 
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("owner_rows", {
+  const { data, error } = await supabase.rpc("devtools_rows", {
     p_table: table,
     p_search: q,
     p_limit: PAGE_SIZE,

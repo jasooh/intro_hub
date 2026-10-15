@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { AccountMenu } from "@/components/account-menu";
 import { buttonClass } from "@/components/ui";
-import { getIsOwner, getProfile } from "@/lib/auth";
+import { canUseDevTools, getProfile } from "@/lib/auth";
 
 export async function UserMenu() {
   const profile = await getProfile();
@@ -19,7 +19,7 @@ export async function UserMenu() {
       email={profile.email}
       avatarUrl={profile.avatar_url}
       isAdmin={profile.role === "admin"}
-      isOwner={await getIsOwner()}
+      showDevTools={await canUseDevTools()}
     />
   );
 }
