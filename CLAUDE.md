@@ -55,4 +55,4 @@ Light only. A community-centre gym, not a SaaS template.
 - **Motion:** CSS only (`.reveal` stagger, scoreboard flicker, dot fill), disabled under `prefers-reduced-motion`.
 - **Banned:** rounded card grids / three-card heroes, icons in tinted square containers, generic pill badges, purple gradients, Inter/Roboto/system fonts.
 - **Dark (`board`/`ink`) + orange is for anchors:** section tabs, the admin nav bar (active tab = orange block), the scoreboard, the ref-code panel, the playlist panel and the footer band. Keep content areas light.
-- The page header has an orange 3px "court line"; the footer is a dark band (orange top line) with About, Instagram + email. The account dropdown (avatar) holds Account / Admin (hosts) / Sign out.
+- The page header has an orange 3px "court line"; the footer (`src/components/site-footer.tsx`) is a dark band (orange top line) with the club blurb and Resources / Keep in touch / Legal stacks; waiver and media release have pages under `/legal`. The account dropdown (avatar) holds Account / Admin (hosts) / Sign out.
