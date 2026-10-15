@@ -230,10 +230,18 @@ export function Scoreboard({
   size?: "sm" | "md" | "lg";
   className?: string;
 }) {
+  // Longer readouts (money like $1,234.50) step down a size or two so they always fit on one line.
+  const length = typeof value === "string" ? value.length : 0;
+  const step = length > 9 ? 2 : length > 6 ? 1 : 0;
+  const text = {
+    sm: ["text-3xl", "text-2xl", "text-xl"],
+    md: ["text-5xl", "text-4xl", "text-3xl"],
+    lg: ["text-6xl sm:text-7xl", "text-5xl sm:text-6xl", "text-4xl sm:text-5xl"],
+  }[size][step];
   return (
     <div
       className={cn(
-        "inline-flex flex-col items-center gap-1 bg-board shadow-[inset_0_0_0_2px_#2a241f,4px_4px_0_var(--line)]",
+        "inline-flex flex-col items-center justify-center gap-1 bg-board shadow-[inset_0_0_0_2px_#2a241f,4px_4px_0_var(--line)]",
         size === "sm" ? "px-3 py-2" : size === "lg" ? "px-6 py-4" : "px-4 py-3",
         className,
       )}
@@ -241,12 +249,31 @@ export function Scoreboard({
       <span
         className={cn(
           "led animate-flicker font-score leading-none font-black whitespace-nowrap tabular-nums",
-          size === "sm" ? "text-3xl" : size === "lg" ? "text-6xl sm:text-7xl" : "text-5xl",
+          text,
         )}
       >
         {value}
       </span>
       <span className="font-display text-[11px] font-bold tracking-[0.3em] text-[#f2e3c6]/60 uppercase">{label}</span>
+    </div>
+  );
+}
+
+/**
+ * A row of scoreboards in equal cells: two per row on phones, evenly sized
+ * cells beyond that, so how they wrap never depends on how long a value is.
+ * Give each Scoreboard className="w-full" so it fills its cell.
+ */
+export function ScoreboardRow({ className, children, ...props }: ComponentProps<"div">) {
+  return (
+    <div
+      {...props}
+      className={cn(
+        "grid grid-cols-2 gap-4 max-sm:[&>*:last-child:nth-child(odd)]:col-span-2 sm:grid-cols-[repeat(auto-fill,minmax(9rem,1fr))]",
+        className,
+      )}
+    >
+      {children}
     </div>
   );
 }

@@ -20,6 +20,7 @@ import {
   PageSpinner,
   reveal,
   Scoreboard,
+  ScoreboardRow,
   Sheet,
   SpotDots,
   StatusMark,
@@ -135,13 +136,15 @@ async function AdminSession({
       </div>
 
       <div className="reveal space-y-4" style={reveal(1)}>
-        <div className="flex flex-wrap gap-4">
-          <Scoreboard size="sm" value={`${pad2(confirmedCount)}/${pad2(session.capacity)}`} label="Confirmed" />
-          <Scoreboard size="sm" value={pad2(holdingCount)} label="Awaiting pay" />
-          <Scoreboard size="sm" value={pad2(waiting.length)} label="Waitlist" />
-          {instructionalCount > 0 && <Scoreboard size="sm" value={pad2(instructionalCount)} label="Instr. only" />}
-          <Scoreboard size="sm" value={formatMoney(collected)} label="e-Transfers in" />
-        </div>
+        <ScoreboardRow>
+          <Scoreboard size="sm" className="w-full" value={`${pad2(confirmedCount)}/${pad2(session.capacity)}`} label="Confirmed" />
+          <Scoreboard size="sm" className="w-full" value={pad2(holdingCount)} label="Awaiting pay" />
+          <Scoreboard size="sm" className="w-full" value={pad2(waiting.length)} label="Waitlist" />
+          {instructionalCount > 0 && (
+            <Scoreboard size="sm" className="w-full" value={pad2(instructionalCount)} label="Instr. only" />
+          )}
+          <Scoreboard size="sm" className="w-full" value={formatMoney(collected)} label="e-Transfers in" />
+        </ScoreboardRow>
         <SpotDots capacity={session.capacity} confirmed={confirmedCount} holding={holdingCount} />
       </div>
 

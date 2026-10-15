@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { SessionCard } from "@/components/session-card";
-import { buttonClass, EmptyState, PageSpinner, PageTitle, reveal, Scoreboard, Sheet } from "@/components/ui";
+import { buttonClass, EmptyState, PageSpinner, PageTitle, reveal, Scoreboard, ScoreboardRow, Sheet } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { type AdminSessionView, getAdminSessions, getCounts } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
@@ -59,14 +59,14 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/admin">["
         </Link>
       </div>
 
-      <div className="reveal flex flex-wrap gap-6" style={reveal(1)}>
-        <Link href="/admin/payments" className="transition-transform hover:-translate-y-0.5">
-          <Scoreboard value={pad2(unmatched.count ?? 0)} label="Unmatched payments" />
+      <ScoreboardRow className="reveal" style={reveal(1)}>
+        <Link href="/admin/payments" className="flex transition-transform hover:-translate-y-0.5">
+          <Scoreboard className="w-full" value={pad2(unmatched.count ?? 0)} label="Unmatched payments" />
         </Link>
-        <Link href="/admin/refunds" className="transition-transform hover:-translate-y-0.5">
-          <Scoreboard value={pad2(refunds.count ?? 0)} label="Refunds owed" />
+        <Link href="/admin/refunds" className="flex transition-transform hover:-translate-y-0.5">
+          <Scoreboard className="w-full" value={pad2(refunds.count ?? 0)} label="Refunds owed" />
         </Link>
-      </div>
+      </ScoreboardRow>
 
       <Sheet label="Sessions" className="reveal" style={reveal(2)}>
         <ListFilters
