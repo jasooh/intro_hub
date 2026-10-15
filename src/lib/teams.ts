@@ -24,6 +24,29 @@ export function defaultTeamCount(capacity: number) {
 
 const rank = (p: Player) => SKILL_RANK[p.skill ?? "unknown"];
 
+/**
+ * Who ends up together: anyone linked by a request (either direction, chains
+ * included). Returns groups of 2+ ids, in the order their first member appears
+ * in `ids`. Requests involving ids not in the list are ignored.
+ */
+export function requestGroups(ids: string[], requests: TeamRequest[]): string[][] {
+  const known = new Set(ids);
+  const parent = new Map(ids.map((id) => [id, id]));
+  const find = (id: string): string => {
+    const up = parent.get(id)!;
+    if (up === id) return id;
+    const root = find(up);
+    parent.set(id, root);
+    return root;
+  };
+  for (const r of requests) {
+    if (r.from !== r.to && known.has(r.from) && known.has(r.to)) parent.set(find(r.from), find(r.to));
+  }
+  const byRoot = new Map<string, string[]>();
+  for (const id of ids) byRoot.set(find(id), [...(byRoot.get(find(id)) ?? []), id]);
+  return [...byRoot.values()].filter((g) => g.length > 1);
+}
+
 /** Strongest first, ties shuffled. */
 function bySkill<T extends Player>(players: T[], random: () => number) {
   return players
@@ -52,10 +75,12 @@ export function balanceTeams<T extends Player>(
 ): T[][] {
   const n = Math.max(1, Math.floor(teamCount));
   const teams: T[][] = Array.from({ length: n }, () => []);
-  const ids = new Set(players.map((p) => p.id));
-  const usable = requests.filter((r) => r.from !== r.to && ids.has(r.from) && ids.has(r.to));
+  const groupIds = requestGroups(
+    players.map((p) => p.id),
+    requests,
+  );
 
-  if (usable.length === 0) {
+  if (groupIds.length === 0) {
     bySkill(players, random).forEach((p, i) => {
       const round = Math.floor(i / n);
       const slot = i % n;
@@ -64,32 +89,13 @@ export function balanceTeams<T extends Player>(
     return teams;
   }
 
-  // Union-find: anyone linked by a request ends up in the same group.
-  const parent = new Map(players.map((p) => [p.id, p.id]));
-  const find = (id: string): string => {
-    const up = parent.get(id)!;
-    if (up === id) return id;
-    const root = find(up);
-    parent.set(id, root);
-    return root;
-  };
-  for (const r of usable) parent.set(find(r.from), find(r.to));
-
-  const groups = new Map<string, T[]>();
-  for (const p of players) {
-    const root = find(p.id);
-    groups.set(root, [...(groups.get(root) ?? []), p]);
-  }
-
   // Requests come first and are never split: each requested group is placed
   // whole. Players who didn't ask for anyone are the free pieces that balance
   // sizes and skill around them (and get reshuffled on Re-balance).
-  const units: T[][] = [];
-  const singles: T[] = [];
-  for (const g of groups.values()) {
-    if (g.length === 1) singles.push(g[0]);
-    else units.push(g);
-  }
+  const byId = new Map(players.map((p) => [p.id, p]));
+  const grouped = new Set(groupIds.flat());
+  const units: T[][] = groupIds.map((g) => g.map((id) => byId.get(id)!));
+  const singles: T[] = players.filter((p) => !grouped.has(p.id));
 
   const total = (t: T[]) => t.reduce((sum, p) => sum + rank(p), 0);
   const smallestTeam = () =>

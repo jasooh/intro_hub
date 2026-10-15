@@ -1,4 +1,3 @@
-import { Handshake } from "lucide-react";
 import type { ReactNode } from "react";
 import { Avatar } from "@/components/ui";
 import { SKILL_LABELS } from "@/lib/profile";
@@ -13,8 +12,8 @@ export type TeamMember = {
   skill?: SkillLevel | null;
   /** Host view: e.g. a "move to team" control. */
   control?: ReactNode;
-  /** Host view: names linked to this player by a team request. */
-  pairedWith?: string[];
+  /** Host view: request group letter (same letter = asked to play together). */
+  tag?: string;
 };
 
 export type TeamBlock = {
@@ -40,6 +39,19 @@ const SKILL_TALLY: [SkillLevel, string][] = [
   ["some", "some"],
   ["never", "new"],
 ];
+
+/** A request group's letter (A, B, C…): players with the same letter asked to play together. */
+export function GroupTag({ letter }: { letter: string }) {
+  return (
+    <span
+      title={`Request group ${letter}`}
+      className="inline-flex size-6 shrink-0 items-center justify-center border-2 border-mat font-display text-xs font-black text-mat"
+    >
+      <span className="sr-only">Request group </span>
+      {letter}
+    </span>
+  );
+}
 
 /**
  * Teams as stacked blocks: a dark header (name + LED count), then the roster in
@@ -113,12 +125,7 @@ export function TeamBlocks({
                         {SKILL_DOTS[m.skill]}
                       </span>
                     )}
-                    {host && m.pairedWith && m.pairedWith.length > 0 && (
-                      <span title={`Asked to play with ${m.pairedWith.join(" & ")}`} className="shrink-0 text-mat">
-                        <Handshake className="size-4" aria-hidden />
-                        <span className="sr-only">Asked to play with {m.pairedWith.join(" and ")}</span>
-                      </span>
-                    )}
+                    {host && m.tag && <GroupTag letter={m.tag} />}
                     {m.control}
                   </li>
                 ))}
@@ -143,8 +150,8 @@ export function TeamBlocks({
               <span className="font-score text-xs font-black tracking-tighter">{dots}</span> {label}
             </span>
           ))}
-          <span className="inline-flex items-center gap-1 whitespace-nowrap">
-            <Handshake className="size-4 text-mat" aria-hidden /> Asked to play together
+          <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+            <GroupTag letter="A" /> Same letter = asked to play together
           </span>
           {keyExtra}
         </p>

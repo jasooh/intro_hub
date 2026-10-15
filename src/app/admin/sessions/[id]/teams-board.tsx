@@ -1,10 +1,10 @@
 import { makeTeams, moveToTeam, removeTeams, renameTeam, setTeamsPublished } from "@/app/admin/actions";
-import { TeamBlocks } from "@/components/team-blocks";
+import { GroupTag, TeamBlocks } from "@/components/team-blocks";
 import { SubmitButton } from "@/components/submit-button";
 import { TeamSelect } from "@/components/team-select";
 import { Avatar, inputClass, Mark, reveal, Sheet } from "@/components/ui";
 import { SKILL_LABELS } from "@/lib/profile";
-import { defaultTeamCount, type TeamRequest } from "@/lib/teams";
+import { defaultTeamCount, requestGroups, type TeamRequest } from "@/lib/teams";
 import type { Profile, Registration, Session, Team } from "@/lib/types";
 
 export type TeamRow = Pick<Registration, "id" | "team_id"> & {
@@ -35,17 +35,17 @@ export function TeamsBoard({
   /** Who asked to play with whom (registration ids). */
   requests?: TeamRequest[];
 }) {
-  const nameById = new Map(players.map((p) => [p.id, nameOf(p)]));
-  // Both directions: "with" shows anyone this player is linked to by a request.
-  const linkedNames = (id: string) =>
-    [
-      ...new Set(
-        requests
-          .flatMap((r) => (r.from === id ? [r.to] : r.to === id ? [r.from] : []))
-          .map((other) => nameById.get(other))
-          .filter((n): n is string => Boolean(n)),
-      ),
-    ];
+  // Request groups, lettered A, B, C… in team order so the letters read top to bottom.
+  const teamOrder = (p: TeamRow) => {
+    const i = teams.findIndex((t) => t.id === p.team_id);
+    return i === -1 ? teams.length : i; // players not on a team come last
+  };
+  const ordered = [...players].sort((a, b) => teamOrder(a) - teamOrder(b));
+  const groups = requestGroups(
+    ordered.map((p) => p.id),
+    requests,
+  );
+  const letterOf = new Map(groups.flatMap((g, i) => g.map((id) => [id, groupLetter(i)] as const)));
   const published = Boolean(session.teams_published_at);
   const unassigned = players.filter((p) => !p.team_id || !teams.some((t) => t.id === p.team_id));
 
@@ -77,6 +77,11 @@ export function TeamsBoard({
             <span className="pb-2 text-ink-soft">Teams can be made once players sign up.</span>
           )}
         </form>
+        {groups.length > 0 && (
+          <div className="mt-6">
+            <RequestSummary groups={groups} players={players} teams={teams} requests={requests} />
+          </div>
+        )}
       </Sheet>
     );
   }
@@ -99,6 +104,8 @@ export function TeamsBoard({
       }
     >
       <div className="space-y-6">
+        {groups.length > 0 && <RequestSummary groups={groups} players={players} teams={teams} requests={requests} />}
+
         <TeamBlocks
           host
           keyExtra={<BalanceHelp label />}
@@ -113,7 +120,7 @@ export function TeamsBoard({
                 name: nameOf(p),
                 avatarUrl: p.profile.avatar_url,
                 skill: p.profile.skill_level,
-                pairedWith: linkedNames(p.id),
+                tag: letterOf.get(p.id),
                 control: (
                   <TeamSelect
                     mode="move"
@@ -133,7 +140,7 @@ export function TeamsBoard({
             </p>
             <ul className="divide-y divide-ink/20">
               {unassigned.map((m) => (
-                <TeamMember key={m.id} reg={m} sessionId={session.id} teams={teams} />
+                <TeamMember key={m.id} reg={m} sessionId={session.id} teams={teams} tag={letterOf.get(m.id)} />
               ))}
             </ul>
           </section>
@@ -175,12 +182,13 @@ export function TeamsBoard({
   );
 }
 
-function TeamMember({ reg, sessionId, teams }: { reg: TeamRow; sessionId: string; teams: Team[] }) {
+function TeamMember({ reg, sessionId, teams, tag }: { reg: TeamRow; sessionId: string; teams: Team[]; tag?: string }) {
   const skill = reg.profile.skill_level;
   return (
     <li className="flex items-center gap-3 py-2">
       <Avatar name={nameOf(reg)} src={reg.profile.avatar_url} size={24} />
       <span className="min-w-0 flex-1 truncate">{nameOf(reg)}</span>
+      {tag && <GroupTag letter={tag} />}
       {skill && (
         <span title={SKILL_LABELS[skill]} className="font-display text-sm font-bold tracking-wide text-ink-soft uppercase">
           {SKILL_SHORT[skill]}
@@ -188,6 +196,79 @@ function TeamMember({ reg, sessionId, teams }: { reg: TeamRow; sessionId: string
       )}
       <TeamSelect action={moveToTeam.bind(null, reg.id, sessionId)} teams={teams} current={reg.team_id} />
     </li>
+  );
+}
+
+const groupLetter = (i: number) => (i < 26 ? String.fromCharCode(65 + i) : `G${i + 1}`);
+
+/**
+ * Spells out each request group (who asked for whom) and whether it's
+ * currently together on one team or split, e.g. after a manual move.
+ */
+function RequestSummary({
+  groups,
+  players,
+  teams,
+  requests,
+}: {
+  groups: string[][];
+  players: TeamRow[];
+  teams: Team[];
+  requests: TeamRequest[];
+}) {
+  const byId = new Map(players.map((p) => [p.id, p]));
+  const teamName = (teamId: string | null) => teams.find((t) => t.id === teamId)?.name ?? null;
+
+  return (
+    <section aria-label="Team requests" className="space-y-2">
+      <p className="font-display text-sm font-bold tracking-[0.15em] uppercase">Requests</p>
+      <ul className="divide-y divide-ink/15 border-y border-ink/15">
+        {groups.map((g, i) => {
+          const inGroup = new Set(g);
+          const edges = requests.filter((r) => inGroup.has(r.from) && inGroup.has(r.to));
+          const mutual = (a: string, b: string) => edges.some((r) => r.from === b && r.to === a);
+          // "Jane → Sam, Priya", with "Dev ↔ Mia" when two people asked for each other.
+          const lines: string[] = [];
+          const shown = new Set<string>();
+          for (const from of g) {
+            const targets = edges.filter((r) => r.from === from).map((r) => r.to);
+            const oneWay = targets.filter((to) => !mutual(from, to));
+            for (const to of targets.filter((to) => mutual(from, to))) {
+              const key = [from, to].sort().join("|");
+              if (!shown.has(key)) {
+                shown.add(key);
+                lines.push(`${nameOf(byId.get(from)!)} ↔ ${nameOf(byId.get(to)!)}`);
+              }
+            }
+            if (oneWay.length) lines.push(`${nameOf(byId.get(from)!)} → ${oneWay.map((to) => nameOf(byId.get(to)!)).join(", ")}`);
+          }
+
+          const placed = g.map((id) => byId.get(id)!.team_id).map(teamName);
+          const onTeams = [...new Set(placed.filter((n): n is string => Boolean(n)))];
+          const status =
+            teams.length === 0 ? null : placed.some((n) => !n) ? (
+              <span className="text-warn">● not everyone is on a team</span>
+            ) : onTeams.length === 1 ? (
+              <span className="text-ok">✓ together on {onTeams[0]}</span>
+            ) : (
+              <span className="text-bad">
+                ⚠ split:{" "}
+                {onTeams
+                  .map((t) => `${t} (${g.filter((id) => teamName(byId.get(id)!.team_id) === t).map((id) => nameOf(byId.get(id)!)).join(", ")})`)
+                  .join(" / ")}
+              </span>
+            );
+
+          return (
+            <li key={g.join("|")} className="flex flex-wrap items-start gap-x-3 gap-y-1 py-2">
+              <GroupTag letter={groupLetter(i)} />
+              <span className="min-w-0 flex-1">{lines.join(" · ")}</span>
+              {status && <span className="font-display text-sm font-bold tracking-wide uppercase">{status}</span>}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 
@@ -236,7 +317,7 @@ function BalanceHelp({ label = false }: { label?: boolean }) {
       >
         <b className="mb-1 block font-display tracking-wide uppercase">How balancing works</b>
         <span className="block">
-          <b>Requests first:</b> players who asked to play together (the handshake) are always placed together. Groups
+          <b>Requests first:</b> players who asked to play together (same letter) are always placed together. Groups
           are never split.
         </span>
         <span className="mt-1.5 block">

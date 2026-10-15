@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { balanceTeams, defaultTeamCount } from "@/lib/teams";
+import { balanceTeams, defaultTeamCount, requestGroups } from "@/lib/teams";
 import type { SkillLevel } from "@/lib/types";
 
 const player = (id: string, skill: SkillLevel | null) => ({ id, skill });
@@ -122,5 +122,23 @@ describe("balanceTeams with team requests", () => {
     const players = roster(6);
     const withGhost = balanceTeams(players, 2, () => 0.5, [{ from: "p0", to: "someone-else" }]);
     expect(withGhost).toEqual(balanceTeams(players, 2, () => 0.5));
+  });
+});
+
+describe("requestGroups", () => {
+  it("joins one-way requests and chains into groups, in list order, ignoring unknown ids", () => {
+    const ids = ["a", "b", "c", "d", "e"];
+    expect(
+      requestGroups(ids, [
+        { from: "c", to: "d" },
+        { from: "a", to: "b" },
+        { from: "b", to: "e" },
+        { from: "a", to: "ghost" },
+      ]),
+    ).toEqual([
+      ["a", "b", "e"],
+      ["c", "d"],
+    ]);
+    expect(requestGroups(ids, [])).toEqual([]);
   });
 });
