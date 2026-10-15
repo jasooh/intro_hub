@@ -25,14 +25,13 @@ import {
   StatusMark,
 } from "@/components/ui";
 import { getProfile } from "@/lib/auth";
-import { formatDateTime, formatMoney, sessionTimes } from "@/lib/format";
+import { formatDateTime, formatMoney, pad2, sessionTimes } from "@/lib/format";
 import { OPTION_LABELS } from "@/lib/profile";
 import { getAttendees, getCounts, getMySpot, getTeamRequests, spotsLeft } from "@/lib/queries";
 import { MAX_TEAMMATES } from "@/lib/teams";
 import { createClient } from "@/lib/supabase/server";
 import type { Profile, Session, SessionCounts, Team } from "@/lib/types";
 
-const pad = (n: number) => String(n).padStart(2, "0");
 
 export async function generateMetadata({ params }: PageProps<"/s/[id]">): Promise<Metadata> {
   const { id } = await params;
@@ -135,7 +134,7 @@ async function SessionView({
           </div>
           {!cancelled && (
             <div className="reveal" style={reveal(1)}>
-              <Scoreboard value={`${pad(confirmed + holding)}/${pad(session.capacity)}`} label="Signed up" />
+              <Scoreboard value={`${pad2(confirmed + holding)}/${pad2(session.capacity)}`} label="Signed up" />
             </div>
           )}
         </header>
@@ -420,7 +419,7 @@ async function AttendeeList({ sessionId }: { sessionId: string }) {
       ) : (
         <ol className="divide-y divide-ink/20">
           {waiting.map((a) => (
-            <AttendeeRow key={a.registration_id} a={a} number={pad(a.waitlist_position ?? 0)} numberClass="text-mat" />
+            <AttendeeRow key={a.registration_id} a={a} number={pad2(a.waitlist_position ?? 0)} numberClass="text-mat" />
           ))}
         </ol>
       )}
@@ -456,7 +455,7 @@ async function AttendeeList({ sessionId }: { sessionId: string }) {
         ) : (
           <ol className="divide-y divide-ink/20">
             {going.map((a, i) => (
-              <AttendeeRow key={a.registration_id} a={a} number={pad(i + 1)} />
+              <AttendeeRow key={a.registration_id} a={a} number={pad2(i + 1)} />
             ))}
           </ol>
         )}

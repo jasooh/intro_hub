@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import { buttonClass, PageTitle, reveal, Sheet } from "@/components/ui";
+import { pad2 } from "@/lib/format";
 
 export const metadata: Metadata = {
   title: "About",
@@ -60,7 +61,7 @@ export default function AboutPage() {
           {SESSION_PARTS.map((part, i) => (
             <li key={part.title} className="space-y-2 sm:px-5 sm:first:pl-0 sm:last:pr-0">
               <div className="flex items-baseline gap-3">
-                <span className="font-score text-4xl font-black text-line">{String(i + 1).padStart(2, "0")}</span>
+                <span className="font-score text-4xl font-black text-line">{pad2(i + 1)}</span>
                 <span className="font-display text-2xl font-extrabold uppercase">{part.title}</span>
               </div>
               <p className="text-ink-soft">{part.body}</p>

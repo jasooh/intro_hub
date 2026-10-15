@@ -5,7 +5,7 @@ import { LiveRefresh } from "@/components/live-refresh";
 import { SessionCard } from "@/components/session-card";
 import { buttonClass, EmptyState, PageSpinner, reveal, Scoreboard, Sheet } from "@/components/ui";
 import { env } from "@/lib/env";
-import { dateParts } from "@/lib/format";
+import { dateParts, pad2 } from "@/lib/format";
 import { getCounts, getFeaturedPost, getUpcomingSessions } from "@/lib/queries";
 
 // Shared by the hero scoreboard and the "Next session" row within one request.
@@ -81,10 +81,9 @@ async function NextScoreboard() {
   const next = await getNext();
   if (!next) return <Scoreboard value="--/--" label="No session yet" />;
   const taken = (next.counts?.confirmed ?? 0) + (next.counts?.holding ?? 0);
-  const pad = (n: number) => String(n).padStart(2, "0");
   const { weekday, day, month } = dateParts(next.session.starts_at);
   return (
-    <Scoreboard value={`${pad(taken)}/${pad(next.session.capacity)}`} label={`Taken · ${weekday} ${month} ${day}`} />
+    <Scoreboard value={`${pad2(taken)}/${pad2(next.session.capacity)}`} label={`Taken · ${weekday} ${month} ${day}`} />
   );
 }
 

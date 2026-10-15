@@ -1,5 +1,8 @@
 import { env } from "@/lib/env";
 
+/** 2-digit number for scoreboards and lists: 7 -> "07". */
+export const pad2 = (n: number) => String(n).padStart(2, "0");
+
 export function formatMoney(cents: number) {
   return new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD" }).format(cents / 100);
 }

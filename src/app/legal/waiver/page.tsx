@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { BackLink, PageTitle, reveal, Sheet } from "@/components/ui";
 import { INCLUSION_CHARTER_URL, WAIVER_AGREEMENT, WAIVER_PARAGRAPHS, WAIVER_VERSION } from "@/lib/agreements";
+import { pad2 } from "@/lib/format";
 
 export const metadata: Metadata = {
   title: "Waiver",
@@ -20,7 +21,7 @@ export default function WaiverPage() {
         <ol className="space-y-4 text-ink">
           {WAIVER_PARAGRAPHS.map((p, i) => (
             <li key={p.slice(0, 24)} className="flex gap-3">
-              <span className="font-score font-black text-line">{String(i + 1).padStart(2, "0")}</span>
+              <span className="font-score font-black text-line">{pad2(i + 1)}</span>
               <span>{p}</span>
             </li>
           ))}

@@ -33,7 +33,7 @@ Sign-ups, waitlist, e-Transfer confirmation and emails for a weekly volleyball g
 |---|---|---|
 | App | Next.js 16 (App Router, Server Actions) | Vercel Hobby |
 | DB, auth, realtime, cron | Supabase (Postgres, Google OAuth, Realtime, `pg_cron` + `pg_net`) | Supabase Free |
-| Email | Gmail SMTP (nodemailer) or Resend | 500/day (Gmail) or 100/day (Resend) |
+| Email | Gmail SMTP (nodemailer) | ~500/day |
 | Payment ingest | Google Apps Script in the host's Gmail | Free |
 
 ### Where the logic lives
@@ -99,7 +99,6 @@ Copy `.env.example` to `.env.local` and fill it in:
   2. Create an [App Password](https://myaccount.google.com/apppasswords).
   3. Set `GMAIL_USER` and `GMAIL_APP_PASSWORD`.
   
-  Resend also works, but it needs a domain you own before it can email anyone other than you.
 
 ### 3. Run locally
 ```bash

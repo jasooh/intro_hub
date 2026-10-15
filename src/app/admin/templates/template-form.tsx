@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { SubmitButton } from "@/components/submit-button";
 import { Field, inputClass } from "@/components/ui";
 import type { SessionTemplate } from "@/lib/types";
+import { pad2 } from "@/lib/format";
 
 export const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -10,7 +11,7 @@ export const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday",
 export function clockAfter(start: string, minutes: number | null) {
   if (minutes == null) return "";
   const total = (Number(start.slice(0, 2)) * 60 + Number(start.slice(3, 5)) + minutes) % 1440;
-  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+  return `${pad2(Math.floor(total / 60))}:${pad2(total % 60)}`;
 }
 
 /** Create / edit a weekly session, in a few short sections; rarely-changed rules sit under "Advanced". */

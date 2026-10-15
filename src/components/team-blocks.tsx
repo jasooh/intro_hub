@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Avatar } from "@/components/ui";
 import { SKILL_LABELS } from "@/lib/profile";
 import type { SkillLevel } from "@/lib/types";
+import { pad2 } from "@/lib/format";
 
 export type TeamMember = {
   id: string;
@@ -25,7 +26,6 @@ export type TeamBlock = {
   mine?: boolean;
 };
 
-const pad = (n: number) => String(n).padStart(2, "0");
 
 const SKILL_DOTS: Record<SkillLevel, string> = { experienced: "●●", some: "●", never: "○", prefer_not: "–" };
 const LEGEND: [string, string][] = [
@@ -96,7 +96,7 @@ export function TeamBlocks({
                 className="led font-score text-2xl leading-none font-black tabular-nums"
                 aria-label={`${t.members.length} players`}
               >
-                {pad(t.members.length)}
+                {pad2(t.members.length)}
               </span>
             </header>
 
@@ -111,7 +111,7 @@ export function TeamBlocks({
                       m.isMe ? "-mx-1.5 bg-line/15 px-1.5" : ""
                     }`}
                   >
-                    <span className="w-6 shrink-0 font-score text-sm font-black text-ink-soft">{pad(i + 1)}</span>
+                    <span className="w-6 shrink-0 font-score text-sm font-black text-ink-soft">{pad2(i + 1)}</span>
                     <Avatar name={m.name} src={m.avatarUrl} size={22} />
                     <span className="flex min-w-0 flex-1 items-baseline gap-1">
                       <span className={`truncate ${m.isMe ? "font-bold" : ""}`}>{m.name}</span>

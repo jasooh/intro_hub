@@ -25,7 +25,7 @@ import {
   StatusMark,
 } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
-import { formatDateTime, formatMoney, formatTime } from "@/lib/format";
+import { formatDateTime, formatMoney, formatTime, pad2 } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import { DateBlock } from "@/components/session-card";
 import { PlayerDetails } from "@/components/player-details";
@@ -135,10 +135,10 @@ async function AdminSession({
 
       <div className="reveal space-y-4" style={reveal(1)}>
         <div className="flex flex-wrap gap-4">
-          <Scoreboard size="sm" value={`${pad(confirmedCount)}/${pad(session.capacity)}`} label="Confirmed" />
-          <Scoreboard size="sm" value={pad(holdingCount)} label="Awaiting pay" />
-          <Scoreboard size="sm" value={pad(waiting.length)} label="Waitlist" />
-          {instructionalCount > 0 && <Scoreboard size="sm" value={pad(instructionalCount)} label="Instr. only" />}
+          <Scoreboard size="sm" value={`${pad2(confirmedCount)}/${pad2(session.capacity)}`} label="Confirmed" />
+          <Scoreboard size="sm" value={pad2(holdingCount)} label="Awaiting pay" />
+          <Scoreboard size="sm" value={pad2(waiting.length)} label="Waitlist" />
+          {instructionalCount > 0 && <Scoreboard size="sm" value={pad2(instructionalCount)} label="Instr. only" />}
           <Scoreboard size="sm" value={formatMoney(collected)} label="e-Transfers in" />
         </div>
         <SpotDots capacity={session.capacity} confirmed={confirmedCount} holding={holdingCount} />
@@ -184,7 +184,7 @@ async function AdminSession({
         {waiting.length === 0 && <p className="text-ink-soft">Nobody waiting.</p>}
         <ol className="divide-y divide-ink/20">
           {waiting.map((r, i) => (
-            <PlayerRow key={r.id} reg={r} sessionId={id} prefix={pad(i + 1)}>
+            <PlayerRow key={r.id} reg={r} sessionId={id} prefix={pad2(i + 1)}>
               <form action={moveWaitlist.bind(null, r.id, -1, id)}>
                 <SubmitButton size="sm" variant="ghost">↑</SubmitButton>
               </form>
@@ -293,7 +293,6 @@ function name(r: Row) {
   return r.profile.display_name ?? r.profile.full_name ?? r.profile.email;
 }
 
-const pad = (n: number) => String(n).padStart(2, "0");
 
 function PlayerRow({
   reg,

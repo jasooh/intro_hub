@@ -7,6 +7,7 @@ import { requireAdmin } from "@/lib/auth";
 import { type AdminSessionView, getAdminSessions, getCounts } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
 import { ListFilters } from "@/components/list-filters";
+import { pad2 } from "@/lib/format";
 
 const VIEWS: { key: AdminSessionView; label: string }[] = [
   { key: "upcoming", label: "Upcoming" },
@@ -48,7 +49,6 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/admin">["
       .is("refund_waived_at", null),
   ]);
   const counts = await getCounts(sessions.map((s) => s.id));
-  const pad = (n: number) => String(n).padStart(2, "0");
 
   return (
     <div className="space-y-12">
@@ -61,10 +61,10 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/admin">["
 
       <div className="reveal flex flex-wrap gap-6" style={reveal(1)}>
         <Link href="/admin/payments" className="transition-transform hover:-translate-y-0.5">
-          <Scoreboard value={pad(unmatched.count ?? 0)} label="Unmatched payments" />
+          <Scoreboard value={pad2(unmatched.count ?? 0)} label="Unmatched payments" />
         </Link>
         <Link href="/admin/refunds" className="transition-transform hover:-translate-y-0.5">
-          <Scoreboard value={pad(refunds.count ?? 0)} label="Refunds owed" />
+          <Scoreboard value={pad2(refunds.count ?? 0)} label="Refunds owed" />
         </Link>
       </div>
 
