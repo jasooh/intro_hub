@@ -531,3 +531,55 @@ describe("sign-up rate limits", () => {
     expect(await register(host, sid)).toHaveLength(1);
   });
 });
+
+describe("editing a session updates existing holds", () => {
+  async function holdOf(regId: string) {
+    const res = await db.query<{ hours: number; status: string }>(
+      `select round(extract(epoch from hold_expires_at - now()) / 3600, 2)::float as hours, status::text
+         from public.registrations where id = $1`,
+      [regId],
+    );
+    return res.rows[0];
+  }
+
+  it("moves the deadline when the payment window changes", async () => {
+    const sid = await createSession(db); // 12h window
+    const a = await createUser(db, "A");
+    await register(a, sid);
+    const reg = await regOf(a, sid);
+    expect((await holdOf(reg.id)).hours).toBeCloseTo(12, 1);
+
+    await asService(db, `update public.sessions set hold_hours = 1 where id = $1`, [sid]);
+    expect((await holdOf(reg.id)).hours).toBeCloseTo(1, 1);
+
+    await asService(db, `update public.sessions set hold_hours = 24 where id = $1`, [sid]);
+    expect((await holdOf(reg.id)).hours).toBeCloseTo(24, 1);
+  });
+
+  it("gives 30 minutes instead of expiring instantly when the window shrinks", async () => {
+    const sid = await createSession(db);
+    const a = await createUser(db, "A");
+    await register(a, sid);
+    const reg = await regOf(a, sid);
+    // Hold started 11 hours ago (1 hour left of 12).
+    await asService(db, `update public.registrations set hold_expires_at = now() + interval '1 hour' where id = $1`, [reg.id]);
+    await asService(db, `update public.sessions set hold_hours = 2 where id = $1`, [sid]);
+    expect((await holdOf(reg.id)).hours).toBeCloseTo(0.5, 1);
+  });
+
+  it("never lets a hold run past a session that moved earlier, and leaves paid spots alone", async () => {
+    const sid = await createSession(db, { startsInHours: 72 });
+    const a = await createUser(db, "A");
+    const b = await createUser(db, "B");
+    await register(a, sid);
+    await register(b, sid);
+    const regA = await regOf(a, sid);
+    const regB = await regOf(b, sid);
+    const host = await createUser(db, "Host", { admin: true });
+    await asUser(db, host, `select public.admin_mark_paid($1)`, [regB.id]);
+
+    await asService(db, `update public.sessions set starts_at = now() + interval '5 hours' where id = $1`, [sid]);
+    expect((await holdOf(regA.id)).hours).toBeCloseTo(5, 1);
+    expect(await holdOf(regB.id)).toEqual({ hours: null, status: "confirmed" });
+  });
+});
