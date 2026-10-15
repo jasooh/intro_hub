@@ -28,50 +28,61 @@ export function SessionCard({ session, counts, href }: { session: Session; count
   return (
     <Link
       href={href}
-      className="group grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-3 py-4 transition-colors hover:bg-maple-deep/50 sm:grid-cols-[auto_1fr_auto] sm:gap-x-6 sm:px-2"
+      className="group grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-4 py-5 transition-colors hover:bg-maple-deep/50 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-x-6 sm:gap-y-2 sm:px-2 sm:py-4"
     >
-      <DateBlock iso={session.starts_at} />
+      <DateBlock iso={session.starts_at} className="sm:row-span-2" />
 
-      <div className="min-w-0 space-y-2">
-        <div>
-          <p className={`font-display text-2xl leading-tight font-extrabold uppercase ${cancelled ? "line-through" : ""}`}>
-            {session.title}
-          </p>
-          <p className="text-ink-soft">
-            {formatTime(session.starts_at)} – {formatTime(session.ends_at)} · {session.location}
-            <span className="font-score font-black text-ink sm:hidden"> · {formatMoney(session.price_cents)}</span>
-          </p>
-        </div>
-        {cancelled ? (
-          <Mark tone="bad" glyph="✕">
-            Cancelled
-          </Mark>
-        ) : (
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <SpotDots capacity={session.capacity} confirmed={confirmed} holding={holding} size="sm" />
-            {left > 0 ? (
-              <Mark tone="ok" glyph="●">
-                {left} open
-              </Mark>
-            ) : (
-              <Mark tone="mat" glyph="○">
-                Full · {waitlisted} waiting
-              </Mark>
-            )}
-            {instructional > 0 && (
-              <Mark tone="mat" glyph="◇">
-                +{instructional} instr.
-              </Mark>
-            )}
-          </div>
-        )}
+      <div className="min-w-0 space-y-1">
+        <p className={`font-display text-2xl leading-tight font-extrabold uppercase ${cancelled ? "line-through" : ""}`}>
+          {session.title}
+        </p>
+        <p className="font-semibold">
+          {formatTime(session.starts_at)} – {formatTime(session.ends_at)}
+        </p>
+        <p className="text-sm leading-snug text-ink-soft">{session.location}</p>
       </div>
 
-      <div className="hidden flex-col items-end gap-1 sm:flex">
+      {/* Desktop: price and arrow on the right. */}
+      <div className="hidden flex-col items-end gap-1 sm:row-span-2 sm:flex">
         <span className="font-score text-2xl font-black">{formatMoney(session.price_cents)}</span>
         <span aria-hidden className="font-display text-3xl font-black text-line transition-transform group-hover:translate-x-1.5">
           →
         </span>
+      </div>
+
+      {/* Spots: full width under the date on phones, under the title on desktop. */}
+      <div className="col-span-2 space-y-1.5 sm:col-span-1 sm:col-start-2 sm:row-start-2">
+        {!cancelled && <SpotDots capacity={session.capacity} confirmed={confirmed} holding={holding} size="sm" />}
+        <div className="flex items-center justify-between gap-4">
+          {cancelled ? (
+            <Mark tone="bad" glyph="✕">
+              Cancelled
+            </Mark>
+          ) : (
+            <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+              {left > 0 ? (
+                <Mark tone="ok" glyph="●">
+                  {left} open
+                </Mark>
+              ) : (
+                <Mark tone="mat" glyph="○">
+                  Full · {waitlisted} waiting
+                </Mark>
+              )}
+              {instructional > 0 && (
+                <Mark tone="mat" glyph="◇">
+                  +{instructional} instr.
+                </Mark>
+              )}
+            </div>
+          )}
+          <span className="flex shrink-0 items-baseline gap-2 sm:hidden">
+            <span className="font-score text-xl font-black">{formatMoney(session.price_cents)}</span>
+            <span aria-hidden className="font-display text-2xl font-black text-line">
+              →
+            </span>
+          </span>
+        </div>
       </div>
     </Link>
   );
