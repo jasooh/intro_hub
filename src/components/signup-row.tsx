@@ -63,7 +63,7 @@ export function SignupRow({
         </div>
       </div>
 
-      {actionable && reg.status === "pending_payment" && <PaymentInstructions registration={reg} />}
+      {actionable && reg.status === "pending_payment" && <PaymentInstructions registration={reg} deposit={reg.session.deposit_cents != null} />}
 
       {reg.refund_owed && (
         <p className="text-sm text-ink-soft">

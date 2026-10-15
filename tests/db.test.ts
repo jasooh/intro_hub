@@ -1121,3 +1121,202 @@ describe("assigning a payment by hand", () => {
     expect((await regOf(a, sid)).status).toBe("confirmed");
   });
 });
+
+describe("bring a friend", () => {
+  async function signUp(userId: string, sessionId: string, option = "full") {
+    await asUser(db, userId, `select public.register_for_session($1, $2)`, [sessionId, option]);
+    return (await regOf(userId, sessionId)).id;
+  }
+  const link = (userId: string, regId: string, buddyId: string | null) =>
+    asUser<{ events: Event[] }>(db, userId, `select public.set_brought_by($1, $2) as events`, [regId, buddyId]);
+  const row = async (id: string) =>
+    (
+      await db.query<{ status: string; amount_cents: number; friend_discount: boolean; refund_owed: boolean; brought_by: string | null }>(
+        `select status::text, amount_cents, friend_discount, refund_owed, brought_by from public.registrations where id = $1`,
+        [id],
+      )
+    ).rows[0];
+  async function pay(regId: string, cents: number) {
+    const p = await db.query<{ id: string }>(`insert into public.payments (sender_name, amount_cents) values ('X', $1) returning id`, [cents]);
+    await asService(db, `select public.ingest_apply_payment($1, $2, 'ref')`, [p.rows[0].id, regId]);
+  }
+
+  it("halves both prices when a first-timer names who brought them", async () => {
+    const sid = await createSession(db, { priceCents: 1500 });
+    const [regular, friend] = [await createUser(db, "Regular"), await createUser(db, "Friend")];
+    const r = await signUp(regular, sid);
+    const f = await signUp(friend, sid);
+    await link(friend, f, r);
+    expect(await row(f)).toMatchObject({ amount_cents: 750, friend_discount: true, brought_by: r });
+    expect(await row(r)).toMatchObject({ amount_cents: 750, friend_discount: true });
+
+    // Unlinking puts both back to full price.
+    await link(friend, f, null);
+    expect(await row(f)).toMatchObject({ amount_cents: 1500, friend_discount: false });
+    expect(await row(r)).toMatchObject({ amount_cents: 1500, friend_discount: false });
+  });
+
+  it("only works for first-timers, with another player in the same session", async () => {
+    const sid = await createSession(db, { priceCents: 1500 });
+    const other = await createSession(db, { priceCents: 1500 });
+    const [regular, vet, friend, elsewhere] = await Promise.all(["Regular", "Vet", "Friend", "Elsewhere"].map((n) => createUser(db, n)));
+    const r = await signUp(regular, sid);
+    const f = await signUp(friend, sid);
+    const e = await signUp(elsewhere, other);
+
+    await db.query(`update public.profiles set attended_before = true where id = $1`, [vet]);
+    const v = await signUp(vet, sid);
+    await expect(link(vet, v, r)).rejects.toThrow(/not_first_timer/);
+
+    await expect(link(friend, f, f)).rejects.toThrow(/buddy_unavailable/);
+    await expect(link(friend, f, e)).rejects.toThrow(/buddy_unavailable/);
+    await expect(link(regular, f, r)).rejects.toThrow(/forbidden/);
+  });
+
+  it("someone who already played a past session is not a first-timer", async () => {
+    const past = await createSession(db, { startsInHours: -48 });
+    const sid = await createSession(db, { priceCents: 1500 });
+    const [regular, friend] = [await createUser(db, "Regular"), await createUser(db, "Friend")];
+    await db.query(
+      `insert into public.registrations (session_id, profile_id, status, ref_code, option, amount_cents) values ($1, $2, 'confirmed', 'VB-PAST', 'full', 1000)`,
+      [past, friend],
+    );
+    const r = await signUp(regular, sid);
+    const f = await signUp(friend, sid);
+    await expect(link(friend, f, r)).rejects.toThrow(/not_first_timer/);
+  });
+
+  it("a regular who already paid full becomes overpaid; a held spot already paid enough is confirmed", async () => {
+    const sid = await createSession(db, { priceCents: 1500 });
+    const [regular, friend, regular2, friend2] = await Promise.all(["Regular", "Friend", "Regular2", "Friend2"].map((n) => createUser(db, n)));
+    const r = await signUp(regular, sid);
+    await pay(r, 1500);
+    const f = await signUp(friend, sid);
+    await link(friend, f, r);
+    expect(await row(r)).toMatchObject({ status: "confirmed", amount_cents: 750, refund_owed: true });
+
+    const r2 = await signUp(regular2, sid);
+    await pay(r2, 750); // half of the full price: still holding
+    expect((await row(r2)).status).toBe("pending_payment");
+    const f2 = await signUp(friend2, sid);
+    const res = await link(friend2, f2, r2);
+    expect(res.rows[0].events.map((x) => x.event)).toEqual(["confirmed"]);
+    expect(await row(r2)).toMatchObject({ status: "confirmed", amount_cents: 750, refund_owed: false });
+  });
+
+  it("keeps the discount when switching option", async () => {
+    const sid = await createSession(db, { priceCents: 1500, instructionalPriceCents: 1000 });
+    const [regular, friend] = [await createUser(db, "Regular"), await createUser(db, "Friend")];
+    const r = await signUp(regular, sid);
+    const f = await signUp(friend, sid);
+    await link(friend, f, r);
+    await asUser(db, friend, `select public.change_registration_option($1, 'instructional')`, [f]);
+    expect((await row(f)).amount_cents).toBe(500);
+  });
+
+  it("friend cancels: an unpaid regular goes back to full; regular cancels: the friend keeps half", async () => {
+    const sid = await createSession(db, { priceCents: 1500 });
+    const [regular, friend, regular2, friend2] = await Promise.all(["Regular", "Friend", "Regular2", "Friend2"].map((n) => createUser(db, n)));
+    const r = await signUp(regular, sid);
+    const f = await signUp(friend, sid);
+    await link(friend, f, r);
+    await asUser(db, friend, `select public.cancel_registration($1)`, [f]);
+    expect(await row(r)).toMatchObject({ amount_cents: 1500, friend_discount: false });
+
+    const r2 = await signUp(regular2, sid);
+    const f2 = await signUp(friend2, sid);
+    await link(friend2, f2, r2);
+    await asUser(db, regular2, `select public.cancel_registration($1)`, [r2]);
+    expect(await row(f2)).toMatchObject({ amount_cents: 750, friend_discount: true });
+  });
+
+  it("a confirmed regular keeps their price when the friend cancels", async () => {
+    const sid = await createSession(db, { priceCents: 1500 });
+    const [regular, friend] = [await createUser(db, "Regular"), await createUser(db, "Friend")];
+    const r = await signUp(regular, sid);
+    const f = await signUp(friend, sid);
+    await link(friend, f, r);
+    await pay(r, 750);
+    expect((await row(r)).status).toBe("confirmed");
+    await asUser(db, friend, `select public.cancel_registration($1)`, [f]);
+    expect(await row(r)).toMatchObject({ status: "confirmed", amount_cents: 750 });
+  });
+
+  it("a host can remove the discount", async () => {
+    const sid = await createSession(db, { priceCents: 1500 });
+    const host = await createUser(db, "Host", { admin: true });
+    const [regular, friend] = [await createUser(db, "Regular"), await createUser(db, "Friend")];
+    const r = await signUp(regular, sid);
+    const f = await signUp(friend, sid);
+    await link(friend, f, r);
+    await expect(asUser(db, regular, `select public.admin_remove_friend_discount($1)`, [f])).rejects.toThrow(/forbidden/);
+    await asUser(db, host, `select public.admin_remove_friend_discount($1)`, [f]);
+    expect(await row(f)).toMatchObject({ amount_cents: 1500, brought_by: null });
+    expect(await row(r)).toMatchObject({ amount_cents: 1500, friend_discount: false });
+  });
+});
+
+describe("refundable deposits", () => {
+  it("free session: everyone owes the deposit, and it is owed back once the session is over", async () => {
+    const sid = await createSession(db, { priceCents: 0 });
+    await db.query(`update public.sessions set deposit_cents = 1000 where id = $1`, [sid]);
+    const [a, b, c] = [await createUser(db, "A"), await createUser(db, "B"), await createUser(db, "C")];
+    for (const u of [a, b, c]) {
+      expect((await register(u, sid))[0].event).toBe("signed_up");
+    }
+    const ids = await Promise.all([a, b, c].map(async (u) => (await regOf(u, sid)).id));
+    const amounts = await db.query<{ amount_cents: number }>(`select amount_cents from public.registrations where session_id = $1`, [sid]);
+    expect(amounts.rows.every((x) => x.amount_cents === 1000)).toBe(true);
+
+    for (const id of ids.slice(0, 2)) {
+      const p = await db.query<{ id: string }>(`insert into public.payments (sender_name, amount_cents) values ('X', 1000) returning id`);
+      await asService(db, `select public.ingest_apply_payment($1, $2, 'ref')`, [p.rows[0].id, id]);
+    }
+    // No friend rate on a deposit session.
+    await expect(asUser(db, c, `select public.set_brought_by($1, $2)`, [ids[2], ids[0]])).rejects.toThrow(/friend_rate_unavailable/);
+
+    // The session ends; the tick releases deposits once.
+    await db.query(`update public.sessions set starts_at = now() - interval '3 hours', ends_at = now() - interval '1 hour' where id = $1`, [sid]);
+    await asService(db, `select public.run_tick()`);
+    const owed = await db.query<{ refund_owed: boolean; status: string }>(
+      `select refund_owed, status::text from public.registrations where session_id = $1`,
+      [sid],
+    );
+    const confirmed = owed.rows.filter((x) => x.status === "confirmed");
+    expect(confirmed).toHaveLength(2);
+    expect(confirmed.every((x) => x.refund_owed)).toBe(true);
+    const released = await db.query<{ deposits_released_at: Date | null }>(`select deposits_released_at from public.sessions where id = $1`, [sid]);
+    expect(released.rows[0].deposits_released_at).not.toBeNull();
+
+    // Once settled, the next tick does not flag it again.
+    await db.query(`update public.registrations set refund_owed = false where session_id = $1 and refund_owed`, [sid]);
+    await asService(db, `select public.run_tick()`);
+    const again = await db.query<{ n: number }>(`select count(*)::int as n from public.registrations where session_id = $1 and refund_owed`, [sid]);
+    expect(again.rows[0].n).toBe(0);
+  });
+});
+
+describe("changing a session's price after sign-ups", () => {
+  it("unpaid sign-ups owe the new amount; confirmed players are left alone", async () => {
+    const sid = await createSession(db, { priceCents: 1500 });
+    const host = await createUser(db, "Host", { admin: true });
+    const [a, b] = [await createUser(db, "A"), await createUser(db, "B")];
+    await register(a, sid);
+    await register(b, sid);
+    const ra = (await regOf(a, sid)).id;
+    await db.query(`insert into public.payments (sender_name, amount_cents, registration_id) values ('A', 1500, $1)`, [ra]);
+    await db.query(`update public.registrations set status = 'confirmed' where id = $1`, [ra]);
+
+    await db.query(`update public.sessions set price_cents = 0, deposit_cents = 1000 where id = $1`, [sid]);
+    await expect(asUser(db, a, `select public.admin_reprice_session($1)`, [sid])).rejects.toThrow(/forbidden/);
+    await asUser(db, host, `select public.admin_reprice_session($1)`, [sid]);
+
+    const amounts = await db.query<{ profile_id: string; amount_cents: number; status: string }>(
+      `select profile_id, amount_cents, status::text from public.registrations where session_id = $1`,
+      [sid],
+    );
+    const byUser = new Map(amounts.rows.map((r) => [r.profile_id, r]));
+    expect(byUser.get(a)).toMatchObject({ amount_cents: 1500, status: "confirmed" });
+    expect(byUser.get(b)).toMatchObject({ amount_cents: 1000, status: "pending_payment" });
+  });
+});

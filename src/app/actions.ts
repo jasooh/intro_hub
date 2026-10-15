@@ -27,6 +27,9 @@ const ERRORS: Record<string, string> = {
   too_many_teammates: `You can ask for up to ${MAX_TEAMMATES} teammates.`,
   teammate_unavailable: "One of those players isn't signed up for drop-in anymore. Pick again.",
   maintenance: "Sign-ups are paused for a few minutes while we fix something. Please try again soon.",
+  not_first_timer: "Bring a Friend is for first-time players.",
+  buddy_unavailable: "That player isn't signed up for this session anymore. Pick again.",
+  friend_rate_unavailable: "This session is free, so there's no Bring a Friend rate.",
 };
 
 function friendly(message: string) {
@@ -69,8 +72,40 @@ export async function registerForSession(sessionId: string, formData: FormData) 
     if (teamError) teamNote = " We couldn't save your teammate picks; try again below.";
   }
 
+  // Bring a Friend: a first-timer says who brought them, and both pay half.
+  const buddy = String(formData.get("brought_by") ?? "");
+  let friendNote = "";
+  if (buddy && events[0]) {
+    const { data: friendData, error: friendError } = await supabase.rpc("set_brought_by", {
+      p_registration_id: events[0].registration_id,
+      p_buddy_id: buddy,
+    });
+    if (friendError) {
+      friendNote = ` ${friendly(friendError.message)}`;
+    } else {
+      const friendEvents = parseEvents(friendData);
+      after(() => dispatchEvents(friendEvents));
+      friendNote = " Bring a Friend: you both pay half.";
+    }
+  }
+
   revalidatePath(path);
-  await flash("success", (SIGNED_UP[events[0]?.event ?? ""] ?? "You're already signed up for this session.") + teamNote);
+  await flash("success", (SIGNED_UP[events[0]?.event ?? ""] ?? "You're already signed up for this session.") + teamNote + friendNote);
+}
+
+/** Bring a Friend from the session page: set, change or clear who brought you. */
+export async function setBroughtBy(registrationId: string, sessionId: string, formData: FormData) {
+  const path = `/s/${sessionId}`;
+  await requireProfile(path);
+  const buddy = String(formData.get("brought_by") ?? "") || null;
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("set_brought_by", { p_registration_id: registrationId, p_buddy_id: buddy });
+  if (error) redirect(`${path}?error=${encodeURIComponent(friendly(error.message))}`);
+  const events = parseEvents(data);
+  after(() => dispatchEvents(events));
+  revalidatePath(path);
+  revalidatePath(`/admin/sessions/${sessionId}`);
+  await flash("success", buddy ? "Bring a Friend applied: you both pay half." : "Bring a Friend removed.");
 }
 
 function teammateIds(formData: FormData) {

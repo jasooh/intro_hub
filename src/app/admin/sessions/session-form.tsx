@@ -54,6 +54,19 @@ export function SessionForm({
           className={inputClass}
         />
       </Field>
+      <Field
+        label="Refundable deposit ($)"
+        hint="For free sessions: set the price to 0 and players pay this to hold a spot. It's owed back after the session."
+      >
+        <input
+          type="number"
+          name="deposit"
+          step="0.01"
+          min={0}
+          defaultValue={session?.deposit_cents != null ? session.deposit_cents / 100 : ""}
+          className={inputClass}
+        />
+      </Field>
       <Field label="Sign-ups open at">
         <input
           type="datetime-local"

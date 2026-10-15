@@ -8,7 +8,7 @@ import type { Profile, Registration, Session } from "@/lib/types";
 
 export type RefundRowData = Registration & {
   profile: Pick<Profile, "display_name" | "full_name" | "first_name" | "last_name" | "email" | "phone" | "etransfer_names">;
-  session: Pick<Session, "id" | "title" | "starts_at" | "status">;
+  session: Pick<Session, "id" | "title" | "starts_at" | "status" | "deposit_cents">;
 };
 
 /** One refund: who, how much, why, and the next action for its status. */
@@ -20,12 +20,12 @@ export function RefundRow({ r, status, reason }: { r: RefundRowData; status: Ref
       <div className="min-w-0 space-y-1">
         <p className="text-lg">
           <span className={`font-score font-black ${status === "to_refund" ? "text-line" : ""}`}>
-            {formatMoney(refundAmount(r))}
+            {formatMoney(refundAmount(r, r.session))}
           </span>{" "}
           to <b>{name}</b>
           {fullName && fullName !== name && <span className="text-ink-soft"> · {fullName}</span>}
         </p>
-        {(reason === "overpaid" || r.paid_cents !== r.amount_cents) && (
+        {reason !== "deposit_return" && (reason === "overpaid" || r.paid_cents !== r.amount_cents) && (
           <p className="text-sm text-ink-soft">
             Paid <span className="font-score font-black text-ink">{formatMoney(r.paid_cents)}</span>
             {reason === "overpaid" ? " · owes " : " of "}
@@ -49,8 +49,8 @@ export function RefundRow({ r, status, reason }: { r: RefundRowData; status: Ref
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <Mark
-          tone={reason === "session_cancelled" ? "bad" : reason === "overpaid" ? "line" : "mat"}
-          glyph={reason === "session_cancelled" ? "✕" : reason === "overpaid" ? "+" : "○"}
+          tone={reason === "session_cancelled" ? "bad" : reason === "overpaid" ? "line" : reason === "deposit_return" ? "ok" : "mat"}
+          glyph={reason === "session_cancelled" ? "✕" : reason === "overpaid" ? "+" : reason === "deposit_return" ? "↺" : "○"}
         >
           {REFUND_REASON_LABELS[reason]}
         </Mark>

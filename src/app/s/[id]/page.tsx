@@ -3,7 +3,7 @@ import Link from "next/link";
 import { MapLink } from "@/components/map-link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { cancelRegistration, changeOption, registerForSession, setTeammates } from "@/app/actions";
+import { cancelRegistration, changeOption, registerForSession, setBroughtBy, setTeammates } from "@/app/actions";
 import { LiveRefresh } from "@/components/live-refresh";
 import { PaymentInstructions } from "@/components/payment-instructions";
 import { DateBlock } from "@/components/session-card";
@@ -27,7 +27,7 @@ import {
 import { getProfile } from "@/lib/auth";
 import { formatDateTime, formatMoney, pad2, sessionTimes } from "@/lib/format";
 import { OPTION_LABELS } from "@/lib/profile";
-import { getAttendees, getCounts, getMySpot, getTeamRequests, spotsLeft } from "@/lib/queries";
+import { getAttendees, getCounts, getMySpot, getTeamRequests, isFirstTimer, spotsLeft } from "@/lib/queries";
 import { MAX_TEAMMATES } from "@/lib/teams";
 import { createClient } from "@/lib/supabase/server";
 import type { Match, Profile, Session, SessionCounts, Team } from "@/lib/types";
@@ -122,8 +122,18 @@ async function SessionView({
                 <MapLink location={session.location} />
               </p>
               <p className="flex flex-wrap items-baseline gap-x-3">
-                <span className="font-score text-2xl font-black text-line">{formatMoney(session.price_cents)}</span>
-                {session.instructional_price_cents != null && (
+                {session.deposit_cents != null ? (
+                  <>
+                    <span className="font-display text-2xl font-black text-line uppercase">Free</span>
+                    <span className="text-ink-soft">
+                      · <span className="font-score font-black text-ink">{formatMoney(session.deposit_cents)}</span> refundable
+                      deposit to hold your spot
+                    </span>
+                  </>
+                ) : (
+                  <span className="font-score text-2xl font-black text-line">{formatMoney(session.price_cents)}</span>
+                )}
+                {session.deposit_cents == null && session.instructional_price_cents != null && (
                   <span className="text-ink-soft">
                     or <span className="font-score font-black text-ink">{formatMoney(session.instructional_price_cents)}</span>{" "}
                     instructional only
@@ -219,11 +229,24 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
   const { reg, started, notOpenYet, beforeCutoff } = await getMySpot(session, profile.id);
   const path = `/s/${session.id}`;
   // Teammate picks: other drop-in players who are signed up (incl. the waitlist).
-  const teammateOptions: TeammateOption[] = (await getAttendees(session.id))
-    .filter((a) => a.option === "full" && !a.is_me && ["pending_payment", "confirmed", "waitlisted"].includes(a.status))
+  const attendees = (await getAttendees(session.id)).filter(
+    (a) => !a.is_me && ["pending_payment", "confirmed", "waitlisted"].includes(a.status),
+  );
+  const teammateOptions: TeammateOption[] = attendees
+    .filter((a) => a.option === "full")
     .map((a) => ({ id: a.registration_id, name: a.display_name }));
+  // Bring a Friend: first-timers pick the player who brought them (any signed-up player).
+  const buddyOptions = attendees.map((a) => ({ id: a.registration_id, name: a.display_name }));
+  const deposit = session.deposit_cents;
+  const friendRate = deposit == null && !started && (await isFirstTimer(profile));
   const times = sessionTimes(session);
   const hasInstructional = session.instructional_price_cents != null;
+  // What each option costs this player (deposit sessions: the deposit for everyone).
+  const priceOf = (option: "full" | "instructional", discounted = false) => {
+    if (deposit != null) return deposit;
+    const base = option === "full" ? session.price_cents : session.instructional_price_cents!;
+    return discounted ? Math.round(base / 2) : base;
+  };
 
   if (!reg) {
     if (started) {
@@ -262,13 +285,13 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
                 value="full"
                 defaultChecked
                 title={OPTION_LABELS.full}
-                price={formatMoney(session.price_cents)}
+                price={formatMoney(priceOf("full"))}
                 detail={[times.full, full ? "joins the waitlist" : null]}
               />
               <OptionRadio
                 value="instructional"
                 title={OPTION_LABELS.instructional}
-                price={formatMoney(session.instructional_price_cents!)}
+                price={formatMoney(priceOf("instructional"))}
                 detail={[times.instructional, "doesn't use a drop-in spot"]}
               />
             </fieldset>
@@ -283,6 +306,22 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
             <TeammatePicker options={teammateOptions} />
           </div>
 
+          {friendRate && buddyOptions.length > 0 && (
+            <Field
+              label="Did a friend bring you? (optional)"
+              hint="First time here? Pick the player who brought you and you both pay half (Bring a Friend)."
+            >
+              <select name="brought_by" defaultValue="" className={inputClass}>
+                <option value="">No</option>
+                {buddyOptions.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
+
           <Field label="Note to the host (optional)" hint="Questions, comments, or if you're bringing a team.">
             <textarea name="note" rows={2} maxLength={1000} className={inputClass} />
           </Field>
@@ -295,7 +334,9 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
 
   const switchable = hasInstructional && (reg.status === "pending_payment" || reg.status === "waitlisted");
   const other = reg.option === "full" ? "instructional" : "full";
-  const otherPrice = other === "full" ? session.price_cents : session.instructional_price_cents!;
+  const otherPrice = priceOf(other, reg.friend_discount);
+  const active = ["pending_payment", "confirmed", "waitlisted"].includes(reg.status);
+  const broughtByName = reg.brought_by ? buddyOptions.find((o) => o.id === reg.brought_by)?.name : null;
 
   return (
     <Sheet
@@ -307,12 +348,17 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
               Instructional only
             </Mark>
           )}
+          {reg.friend_discount && (
+            <Mark tone="line" glyph="+">
+              Bring a Friend · half price
+            </Mark>
+          )}
           <StatusMark status={reg.status} />
         </div>
       }
     >
       <div className="space-y-5">
-        {reg.status === "pending_payment" && <PaymentInstructions registration={reg} />}
+        {reg.status === "pending_payment" && <PaymentInstructions registration={reg} deposit={deposit != null} />}
         {reg.status === "confirmed" && (
           <p className="font-display text-3xl font-black uppercase">
             You&apos;re in<span className="text-line">.</span>{" "}
@@ -327,6 +373,34 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
           </p>
         )}
         {reg.note && <p className="border-l-4 border-ink/20 pl-3 text-ink-soft">Your note: &ldquo;{reg.note}&rdquo;</p>}
+
+        {reg.friend_discount && !reg.brought_by && (
+          <p className="text-ink-soft">A friend you brought signed up, so you both pay half (Bring a Friend).</p>
+        )}
+        {active && deposit == null && !started && (reg.brought_by || friendRate) && buddyOptions.length > 0 && (
+          <form action={setBroughtBy.bind(null, reg.id, session.id)} className="space-y-2 border-t border-ink/20 pt-4">
+            <Field
+              label="Did a friend bring you?"
+              hint={
+                broughtByName
+                  ? `You came with ${broughtByName}, so you both pay half (Bring a Friend).`
+                  : "First time here? Pick the player who brought you and you both pay half."
+              }
+            >
+              <select name="brought_by" defaultValue={reg.brought_by ?? ""} className={inputClass}>
+                <option value="">No</option>
+                {buddyOptions.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <SubmitButton size="sm" variant="secondary" requireChange>
+              Save
+            </SubmitButton>
+          </form>
+        )}
 
         {reg.option === "full" && !started && ["pending_payment", "confirmed", "waitlisted"].includes(reg.status) && (
           <form action={setTeammates.bind(null, reg.id, session.id)} className="space-y-2 border-t border-ink/20 pt-4">

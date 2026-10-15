@@ -63,6 +63,7 @@ const SessionForm = z.object({
   instructional_price: optionalDollars,
   instructional_ends: optionalClock,
   dropin_starts: optionalClock,
+  deposit: optionalDollars,
 });
 
 function sessionRow(formData: FormData, path: string) {
@@ -84,6 +85,7 @@ function sessionRow(formData: FormData, path: string) {
     instructional_price_cents: f.instructional_price,
     instructional_ends_at: atClock(startsAt, f.starts_at, f.instructional_ends),
     dropin_starts_at: atClock(startsAt, f.starts_at, f.dropin_starts),
+    deposit_cents: f.deposit,
   };
 }
 
@@ -111,9 +113,25 @@ export async function updateSession(sessionId: string, formData: FormData) {
   const supabase = await createClient();
   const { error } = await supabase.from("sessions").update(row).eq("id", sessionId);
   if (error) fail(path, error.message);
+  // Prices or the deposit may have changed: unpaid sign-ups owe the new amount.
+  const { data: repriced, error: repriceError } = await supabase.rpc("admin_reprice_session", { p_session_id: sessionId });
+  if (repriceError) fail(path, repriceError.message);
+  const repricedEvents = parseEvents(repriced);
+  after(() => dispatchEvents(repricedEvents));
   // Capacity may have gone up: pull people off the waitlist.
   await rpc("admin_promote", { p_session_id: sessionId }, path, "Session saved");
   revalidatePath("/", "layout");
+}
+
+/** Undo a Bring a Friend pairing (on the friend) or one player's discount (on the regular). */
+export async function removeFriendDiscount(registrationId: string, sessionId: string) {
+  await requireAdmin();
+  await rpc(
+    "admin_remove_friend_discount",
+    { p_registration_id: registrationId },
+    `/admin/sessions/${sessionId}`,
+    "Bring a Friend discount removed",
+  );
 }
 
 export async function cancelSession(sessionId: string, formData: FormData) {

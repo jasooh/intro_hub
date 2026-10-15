@@ -76,6 +76,10 @@ export type Session = {
   cancel_reason: string | null;
   /** Minutes per game in the team schedule; null = order only, no times. */
   schedule_game_minutes: number | null;
+  /** Free session with a refundable deposit: what each sign-up pays to hold a spot. */
+  deposit_cents: number | null;
+  /** Set once the deposits were marked as owed back after the session. */
+  deposits_released_at: string | null;
 };
 
 export type Team = { id: string; session_id: string; name: string; position: number };
@@ -114,6 +118,10 @@ export type Registration = {
   amount_cents: number;
   /** Total of the payments linked to this sign-up (partial payments add up). */
   paid_cents: number;
+  /** Bring a Friend: on the new friend's sign-up, the regular who brought them. */
+  brought_by: string | null;
+  /** Bring a Friend: this sign-up is at half price. */
+  friend_discount: boolean;
   note: string | null;
   team_id: string | null;
 };

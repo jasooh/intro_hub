@@ -19,6 +19,7 @@ describe("refundReason", () => {
     expect(refundReason({ status: "cancelled" }, { status: "scheduled" })).toBe("spot_cancelled");
     expect(refundReason({ status: "expired" }, { status: "scheduled" })).toBe("hold_expired");
     expect(refundReason({ status: "confirmed" }, { status: "scheduled" })).toBe("overpaid");
+    expect(refundReason({ status: "confirmed" }, { status: "scheduled", deposit_cents: 1000 })).toBe("deposit_return");
   });
 });
 
@@ -28,5 +29,7 @@ describe("refundAmount", () => {
     expect(refundAmount({ status: "expired", amount_cents: 1500, paid_cents: 500 })).toBe(500);
     expect(refundAmount({ status: "confirmed", amount_cents: 1500, paid_cents: 2000 })).toBe(500);
     expect(refundAmount({ status: "confirmed", amount_cents: 1500, paid_cents: 1500 })).toBe(0);
+    // Deposit sessions give back everything paid.
+    expect(refundAmount({ status: "confirmed", amount_cents: 1000, paid_cents: 1000 }, { deposit_cents: 1000 })).toBe(1000);
   });
 });

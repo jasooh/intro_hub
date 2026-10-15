@@ -31,9 +31,16 @@ export async function GET(_request: Request, ctx: RouteContext<"/admin/sessions/
     "display_name", "first_name", "last_name", "email", "phone", "option", "owes", "status", "ref_code",
     "skill_level", "attended_before", "media_consent", "note", "learning_goals", "hype_song", "heard_about",
     "signed_up_at", "confirmed_at", "paid", "payer_name", "matched_by", "refund_owed", "refunded_at",
+    "bring_a_friend",
   ];
+  const nameOf = new Map(rows.map((r) => [r.id, r.profile.display_name ?? r.profile.full_name]));
   const lines = rows.map((r) => {
     const p = r.payments[0];
+    const friend = r.brought_by
+      ? `friend of ${nameOf.get(r.brought_by) ?? "?"}`
+      : r.friend_discount
+        ? `brought ${rows.filter((x) => x.brought_by === r.id).map((x) => nameOf.get(x.id)).join(" & ")}`
+        : "";
     return [
       r.profile.display_name ?? r.profile.full_name,
       r.profile.first_name,
@@ -53,11 +60,12 @@ export async function GET(_request: Request, ctx: RouteContext<"/admin/sessions/
       r.profile.heard_about === "other" ? r.profile.heard_about_other : r.profile.heard_about ? HEARD_LABELS[r.profile.heard_about] : "",
       r.created_at,
       r.confirmed_at,
-      p ? (p.amount_cents / 100).toFixed(2) : "",
+      r.paid_cents > 0 ? (r.paid_cents / 100).toFixed(2) : "",
       p?.sender_name,
       p?.matched_by,
       r.refund_owed,
       r.refunded_at,
+      friend,
     ]
       .map(csvCell)
       .join(",");

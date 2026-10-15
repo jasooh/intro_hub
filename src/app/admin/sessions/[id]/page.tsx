@@ -6,6 +6,7 @@ import {
   cancelSession,
   markPaid,
   moveWaitlist,
+  removeFriendDiscount,
   removeRegistration,
   updateSession,
 } from "@/app/admin/actions";
@@ -83,6 +84,15 @@ async function AdminSession({
     : { data: [] };
   const teamRequests = (requestRows ?? []).map((r) => ({ from: r.registration_id as string, to: r.requested_id as string }));
   const nameById = new Map(rows.map((r) => [r.id, name(r)]));
+  // Bring a Friend: "Friend of Sam" on the friend, "Brought Jess" on the regular.
+  const friendNoteOf = (r: Row) => {
+    if (!r.friend_discount) return undefined;
+    if (r.brought_by) return `Friend of ${nameById.get(r.brought_by) ?? "someone"}`;
+    const friends = rows.filter(
+      (x) => x.brought_by === r.id && ["pending_payment", "confirmed", "waitlisted"].includes(x.status),
+    );
+    return friends.length ? `Brought ${friends.map(name).join(", ")}` : "Bring a Friend";
+  };
   const wantsWith = (regId: string) =>
     teamRequests.filter((t) => t.from === regId).map((t) => nameById.get(t.to) ?? "someone");
   const going = rows
@@ -155,7 +165,7 @@ async function AdminSession({
             <PlayerRow
               key={r.id}
               reg={r}
-              sessionId={id}
+              sessionId={id} friendNote={friendNoteOf(r)}
               teamName={r.team_id ? teamNames.get(r.team_id) : null}
               teammates={wantsWith(r.id)}
             >
@@ -194,7 +204,7 @@ async function AdminSession({
         {waiting.length === 0 && <p className="text-ink-soft">Nobody waiting.</p>}
         <ol className="divide-y divide-ink/20">
           {waiting.map((r, i) => (
-            <PlayerRow key={r.id} reg={r} sessionId={id} prefix={pad2(i + 1)}>
+            <PlayerRow key={r.id} reg={r} sessionId={id} friendNote={friendNoteOf(r)} prefix={pad2(i + 1)}>
               <form action={moveWaitlist.bind(null, r.id, -1, id)}>
                 <SubmitButton size="sm" variant="ghost">↑</SubmitButton>
               </form>
@@ -234,7 +244,7 @@ async function AdminSession({
           </summary>
           <ul className="mt-3 divide-y divide-ink/20">
             {inactive.map((r) => (
-              <PlayerRow key={r.id} reg={r} sessionId={id}>
+              <PlayerRow key={r.id} reg={r} sessionId={id} friendNote={friendNoteOf(r)}>
                 {r.status === "expired" && (
                   <form action={markPaid.bind(null, r.id, id)}>
                     <SubmitButton
@@ -306,13 +316,17 @@ function name(r: Row) {
 
 function PlayerRow({
   reg,
+  sessionId,
   teamName,
   teammates,
+  friendNote,
   prefix,
   children,
 }: {
   reg: Row;
   sessionId: string;
+  /** Bring a Friend: who they came with, or who they brought. */
+  friendNote?: string;
   teamName?: string | null;
   /** Names this player asked to be teamed with. */
   teammates?: string[];
@@ -372,7 +386,29 @@ function PlayerRow({
               {teamName}
             </Mark>
           )}
+          {friendNote && (
+            <Mark tone="line" glyph="+">
+              {friendNote} · half price
+            </Mark>
+          )}
         </div>
+        {friendNote && (
+          <form action={removeFriendDiscount.bind(null, reg.id, sessionId)} className="mt-1">
+            <SubmitButton
+              size="sm"
+              variant="ghost"
+              confirm={{
+                title: "Remove the Bring a Friend discount?",
+                description: reg.brought_by
+                  ? "They go back to full price, and so does the player who brought them (unless another friend came with them). Anyone already confirmed keeps what they paid."
+                  : "They go back to full price if they haven't paid yet. The friends they brought keep theirs.",
+                action: "Remove discount",
+              }}
+            >
+              Remove discount
+            </SubmitButton>
+          </form>
+        )}
       </div>
       <StatusMark status={reg.status} />
       <div className="flex flex-wrap items-center gap-3">{children}</div>

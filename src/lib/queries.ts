@@ -3,7 +3,7 @@ import { cache } from "react";
 import { signupView } from "@/lib/signups";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import type { Attendee, Post, Registration, Session, SessionCounts } from "@/lib/types";
+import type { Attendee, Post, Profile, Registration, Session, SessionCounts } from "@/lib/types";
 
 export async function getCounts(sessionIds: string[]): Promise<Map<string, SessionCounts>> {
   if (sessionIds.length === 0) return new Map();
@@ -186,4 +186,21 @@ export async function getPlayerHistory() {
     history.set(r.profile_id, h);
   }
   return history;
+}
+
+/**
+ * Bring a Friend: new here means they answered "No, I'm new" on their profile
+ * and have never had a confirmed spot at a session that has ended. The
+ * database checks the same thing (public._is_first_timer).
+ */
+export async function isFirstTimer(profile: Pick<Profile, "id" | "attended_before">) {
+  if (profile.attended_before !== false) return false;
+  const supabase = await createClient();
+  const { count } = await supabase
+    .from("registrations")
+    .select("id, session:sessions!inner(ends_at)", { count: "exact", head: true })
+    .eq("profile_id", profile.id)
+    .eq("status", "confirmed")
+    .lt("session.ends_at", new Date().toISOString());
+  return (count ?? 0) === 0;
 }

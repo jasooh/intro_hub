@@ -74,6 +74,7 @@ async function sendForEvent(event: RegistrationEvent, reg: Loaded) {
     price: formatMoney(reg.amount_cents),
     paid: formatMoney(reg.paid_cents),
     remaining: formatMoney(Math.max(reg.amount_cents - reg.paid_cents, 0)),
+    deposit: reg.session.deposit_cents != null,
     refCode: reg.ref_code,
     holdUntil: reg.hold_expires_at ? formatDateTime(reg.hold_expires_at) : null,
     waitlistPosition,

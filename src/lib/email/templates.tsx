@@ -11,6 +11,8 @@ export type EmailContext = {
   price: string;       // formatted price
   paid: string;        // formatted total received so far
   remaining: string;   // formatted amount still owed
+  /** Free session: the payment is a refundable deposit. */
+  deposit?: boolean;
   refCode: string;
   holdUntil: string | null;
   waitlistPosition: number | null;
@@ -202,6 +204,11 @@ function PaymentBox({ ctx, amount = ctx.price }: { ctx: EmailContext; amount?: s
         <span style={s.step}>02</span>&nbsp; Put this code in the message:
       </Text>
       <Text style={s.code}>{ctx.refCode}</Text>
+      {ctx.deposit && (
+        <Text style={{ ...s.boardText, color: "rgba(242, 227, 198, 0.75)", fontSize: 14 }}>
+          This is a refundable deposit: the session is free, and you&apos;ll get it back after it.
+        </Text>
+      )}
       {ctx.holdUntil && (
         <Text style={{ ...s.boardText, color: "rgba(242, 227, 198, 0.75)", fontSize: 14 }}>
           Your spot is held until <b style={{ color: c.maple }}>{ctx.holdUntil}</b>. After that it goes to the next

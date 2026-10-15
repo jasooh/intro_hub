@@ -3,7 +3,7 @@ import { env } from "@/lib/env";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import type { Registration } from "@/lib/types";
 
-export function PaymentInstructions({ registration }: { registration: Registration }) {
+export function PaymentInstructions({ registration, deposit = false }: { registration: Registration; deposit?: boolean }) {
   const email = env.etransferEmail();
   const paid = registration.paid_cents ?? 0;
   const due = Math.max(registration.amount_cents - paid, 0);
@@ -37,6 +37,11 @@ export function PaymentInstructions({ registration }: { registration: Registrati
         </span>
         <CopyButton value={registration.ref_code} label="Code" tone="dark" />
       </div>
+      {deposit && (
+        <p className="text-sm text-ink-soft">
+          This is a <b className="text-ink">refundable deposit</b>: the session is free, and you&apos;ll get it back after it.
+        </p>
+      )}
       {registration.hold_expires_at && (
         <p className="text-sm text-ink-soft">
           Your spot is held until <b className="text-ink">{formatDateTime(registration.hold_expires_at)}</b>. It&apos;s
