@@ -1,12 +1,13 @@
 import Link from "next/link";
-import { PostBody } from "@/components/post-body";
 import { dateParts } from "@/lib/format";
+import { postExcerpt } from "@/lib/rich-text";
 import type { Post } from "@/lib/types";
 
 /**
  * The host's featured post on the home page. No section divider: it sits on
  * its own, in an orange-framed panel with an LED "announcement" strip, so it
- * reads as the most important thing on the page.
+ * reads as the most important thing on the page. Shows a short preview; the
+ * full post is on its own page.
  */
 export function FeaturedPost({ post }: { post: Post }) {
   const { weekday, day, month } = dateParts(post.published_at ?? post.created_at);
@@ -29,7 +30,9 @@ export function FeaturedPost({ post }: { post: Post }) {
           {post.title.replace(/[.!?]$/, "")}
           <span className="text-line">.</span>
         </h2>
-        <PostBody html={post.body_html} className="max-w-2xl" />
+        {postExcerpt(post.body_html, 400) && (
+          <p className="line-clamp-4 max-w-2xl text-lg leading-relaxed text-ink">{postExcerpt(post.body_html, 400)}</p>
+        )}
         <Link
           href={`/updates/${post.id}`}
           className="group inline-flex items-center gap-2 font-display text-lg font-bold tracking-wide text-line uppercase hover:text-ink"
