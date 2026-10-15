@@ -44,3 +44,46 @@ describe("defaultTeamCount", () => {
     expect(defaultTeamCount(capacity)).toBe(expected);
   });
 });
+
+describe("balanceTeams with team requests", () => {
+  const skills: SkillLevel[] = ["experienced", "some", "never", "some", "experienced", "never"];
+  const roster = (count: number) => Array.from({ length: count }, (_, i) => player(`p${i}`, skills[i % skills.length]));
+  const teamOf = (teams: { id: string }[][], id: string) => teams.findIndex((t) => t.some((p) => p.id === id));
+
+  it("keeps requested pairs and trios together (one-way is enough)", () => {
+    const teams = balanceTeams(roster(12), 3, Math.random, [
+      { from: "p0", to: "p1" },
+      { from: "p2", to: "p3" },
+      { from: "p3", to: "p4" }, // p2-p3-p4 chain
+    ]);
+    expect(teamOf(teams, "p0")).toBe(teamOf(teams, "p1"));
+    expect(teamOf(teams, "p2")).toBe(teamOf(teams, "p3"));
+    expect(teamOf(teams, "p3")).toBe(teamOf(teams, "p4"));
+  });
+
+  it("still uses everyone once and keeps team sizes within one", () => {
+    for (let run = 0; run < 25; run++) {
+      const teams = balanceTeams(roster(17), 3, Math.random, [
+        { from: "p0", to: "p1" },
+        { from: "p5", to: "p6" },
+        { from: "p6", to: "p7" },
+      ]);
+      expect(new Set(teams.flat().map((p) => p.id)).size).toBe(17);
+      const sizes = teams.map((t) => t.length);
+      expect(Math.max(...sizes) - Math.min(...sizes)).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it("splits a group too big for one team", () => {
+    const players = roster(6);
+    const everyone = players.slice(1).map((p) => ({ from: "p0", to: p.id }));
+    const teams = balanceTeams(players, 2, () => 0.5, everyone);
+    expect(teams.map((t) => t.length).sort()).toEqual([3, 3]);
+  });
+
+  it("ignores requests for people who aren't playing", () => {
+    const players = roster(6);
+    const withGhost = balanceTeams(players, 2, () => 0.5, [{ from: "p0", to: "someone-else" }]);
+    expect(withGhost).toEqual(balanceTeams(players, 2, () => 0.5));
+  });
+});

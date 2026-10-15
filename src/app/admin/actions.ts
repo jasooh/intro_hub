@@ -390,7 +390,15 @@ export async function makeTeams(sessionId: string, formData: FormData) {
     id: r.id,
     skill: r.profile.skill_level,
   }));
-  const groups = balanceTeams(players, teams.length);
+  const { data: requestRows } = await supabase
+    .from("team_requests")
+    .select("registration_id, requested_id")
+    .in(
+      "registration_id",
+      players.map((p) => p.id),
+    );
+  const requests = (requestRows ?? []).map((r) => ({ from: r.registration_id as string, to: r.requested_id as string }));
+  const groups = balanceTeams(players, teams.length, Math.random, requests);
   for (const [i, group] of groups.entries()) {
     if (group.length === 0) continue;
     const { error } = await supabase

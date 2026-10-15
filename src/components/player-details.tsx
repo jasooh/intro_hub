@@ -30,6 +30,8 @@ export type PlayerDetailsData = {
   /** Pre-formatted on the server (timezone-aware). */
   paid?: string | null;
   teamName?: string | null;
+  /** Players they asked to be teamed with. */
+  teammates?: string[];
   /** Present when opened from the Players page. lastPlayed is pre-formatted. */
   history?: { played: number; upcoming: number; lastPlayed: string | null; memberSince: string };
 };
@@ -90,6 +92,14 @@ export function PlayerDetails({
         {r?.note && (
           <Section title="Note to the host">
             <p className="border-l-4 border-line pl-3 text-lg whitespace-pre-line">{r.note}</p>
+          </Section>
+        )}
+
+        {data.teammates && data.teammates.length > 0 && (
+          <Section title="Team request">
+            <Rows>
+              <Row label="Wants to play with">{data.teammates.join(", ")}</Row>
+            </Rows>
           </Section>
         )}
 

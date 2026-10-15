@@ -70,6 +70,19 @@ async function AdminSession({
   const teamNames = new Map(teams.map((t) => [t.id, t.name]));
 
   const rows = (regs ?? []) as Row[];
+  const { data: requestRows } = rows.length
+    ? await supabase
+        .from("team_requests")
+        .select("registration_id, requested_id")
+        .in(
+          "registration_id",
+          rows.map((r) => r.id),
+        )
+    : { data: [] };
+  const teamRequests = (requestRows ?? []).map((r) => ({ from: r.registration_id as string, to: r.requested_id as string }));
+  const nameById = new Map(rows.map((r) => [r.id, name(r)]));
+  const wantsWith = (regId: string) =>
+    teamRequests.filter((t) => t.from === regId).map((t) => nameById.get(t.to) ?? "someone");
   const going = rows
     .filter((r) => r.status === "confirmed" || r.status === "pending_payment")
     .sort((a, b) => (a.status === b.status ? 0 : a.status === "confirmed" ? -1 : 1));
@@ -135,7 +148,13 @@ async function AdminSession({
         {going.length === 0 && <p className="text-ink-soft">No sign-ups yet.</p>}
         <ul className="divide-y divide-ink/20">
           {going.map((r) => (
-            <PlayerRow key={r.id} reg={r} sessionId={id} teamName={r.team_id ? teamNames.get(r.team_id) : null}>
+            <PlayerRow
+              key={r.id}
+              reg={r}
+              sessionId={id}
+              teamName={r.team_id ? teamNames.get(r.team_id) : null}
+              teammates={wantsWith(r.id)}
+            >
               {r.status === "pending_payment" && (
                 <form action={markPaid.bind(null, r.id, id)}>
                   <SubmitButton size="sm">Mark paid</SubmitButton>
@@ -159,7 +178,7 @@ async function AdminSession({
         </ul>
       </Sheet>
 
-      {!cancelled && <TeamsBoard session={session} players={dropIn as TeamRow[]} teams={teams} />}
+      {!cancelled && <TeamsBoard session={session} players={dropIn as TeamRow[]} teams={teams} requests={teamRequests} />}
 
       <Sheet label={`Waitlist · ${waiting.length}`} className="reveal" style={reveal(3)}>
         {waiting.length === 0 && <p className="text-ink-soft">Nobody waiting.</p>}
@@ -279,12 +298,15 @@ const pad = (n: number) => String(n).padStart(2, "0");
 function PlayerRow({
   reg,
   teamName,
+  teammates,
   prefix,
   children,
 }: {
   reg: Row;
   sessionId: string;
   teamName?: string | null;
+  /** Names this player asked to be teamed with. */
+  teammates?: string[];
   prefix?: string;
   children?: React.ReactNode;
 }) {
@@ -300,7 +322,7 @@ function PlayerRow({
       <Avatar name={name(reg)} src={reg.profile.avatar_url} />
       <div className="min-w-0 flex-1">
         <p className="truncate">
-          <PlayerDetails data={{ profile: reg.profile, registration: reg, paid, teamName: teamName ?? null }}>
+          <PlayerDetails data={{ profile: reg.profile, registration: reg, paid, teamName: teamName ?? null, teammates }}>
             {name(reg)}
           </PlayerDetails>
           {fullName(reg) && fullName(reg) !== name(reg) && <span className="text-ink-soft"> · {fullName(reg)}</span>}

@@ -632,3 +632,70 @@ describe("updates board posts", () => {
     expect(after.rows[0].on).toBe(false);
   });
 });
+
+describe("team requests", () => {
+  async function signUp(userId: string, sessionId: string, option = "full") {
+    const res = await asUser<{ events: Event[] }>(db, userId, `select public.register_for_session($1, $2) as events`, [
+      sessionId,
+      option,
+    ]);
+    return res.rows[0].events[0].registration_id;
+  }
+  const setRequests = (userId: string, regId: string, targets: string[]) =>
+    asUser(db, userId, `select public.set_team_requests($1, $2::uuid[])`, [regId, targets]);
+  const requestsOf = async (regId: string) =>
+    (
+      await db.query<{ requested_id: string }>(
+        `select requested_id from public.team_requests where registration_id = $1 order by requested_id`,
+        [regId],
+      )
+    ).rows.map((r) => r.requested_id);
+
+  it("lets a player pick up to two teammates and replaces the set each time", async () => {
+    const sid = await createSession(db, { instructionalPriceCents: 500 });
+    const [a, b, c, d] = await Promise.all(["A", "B", "C", "D"].map((n) => createUser(db, n)));
+    const [ra, rb, rc, rd] = [await signUp(a, sid), await signUp(b, sid), await signUp(c, sid), await signUp(d, sid)];
+
+    await setRequests(a, ra, [rb, rc]);
+    expect(await requestsOf(ra)).toEqual([rb, rc].sort());
+    await setRequests(a, ra, [rd]);
+    expect(await requestsOf(ra)).toEqual([rd]);
+    await setRequests(a, ra, []);
+    expect(await requestsOf(ra)).toEqual([]);
+    await expect(setRequests(a, ra, [rb, rc, rd])).rejects.toThrow(/too_many_teammates/);
+  });
+
+  it("rejects self, other sessions, instructional-only players and other people's sign-ups", async () => {
+    const sid = await createSession(db, { instructionalPriceCents: 500 });
+    const other = await createSession(db);
+    const [a, b, c, e] = await Promise.all(["A", "B", "C", "E"].map((n) => createUser(db, n)));
+    const ra = await signUp(a, sid);
+    const rb = await signUp(b, sid);
+    const rcInstr = await signUp(c, sid, "instructional");
+    const reOther = await signUp(e, other);
+
+    await expect(setRequests(a, ra, [ra])).rejects.toThrow(/teammate_unavailable/);
+    await expect(setRequests(a, ra, [reOther])).rejects.toThrow(/teammate_unavailable/);
+    await expect(setRequests(a, ra, [rcInstr])).rejects.toThrow(/teammate_unavailable/);
+    await expect(setRequests(b, ra, [rb])).rejects.toThrow(/forbidden/);
+    await expect(setRequests(c, rcInstr, [ra])).rejects.toThrow(/teammate_unavailable/);
+  });
+
+  it("players only see their own requests; hosts see all; rows go when a sign-up is deleted", async () => {
+    const sid = await createSession(db);
+    const [a, b] = await Promise.all(["A", "B"].map((n) => createUser(db, n)));
+    const host = await createUser(db, "H", { admin: true });
+    const ra = await signUp(a, sid);
+    const rb = await signUp(b, sid);
+    await setRequests(a, ra, [rb]);
+    const visible = async (who: string) =>
+      (await asUser<{ n: number }>(db, who, `select count(*)::int as n from public.team_requests`)).rows[0].n;
+    expect(await visible(a)).toBe(1);
+    expect(await visible(b)).toBe(0);
+    expect(await visible(host)).toBe(1);
+    await expect(asUser(db, a, `insert into public.team_requests values ($1, $2)`, [rb, ra])).rejects.toThrow();
+
+    await asService(db, `delete from public.registrations where id = $1`, [rb]);
+    expect(await requestsOf(ra)).toEqual([]);
+  });
+});

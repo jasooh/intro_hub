@@ -1,3 +1,4 @@
+import { Handshake } from "lucide-react";
 import type { ReactNode } from "react";
 import { Avatar } from "@/components/ui";
 import { SKILL_LABELS } from "@/lib/profile";
@@ -12,6 +13,8 @@ export type TeamMember = {
   skill?: SkillLevel | null;
   /** Host view: e.g. a "move to team" control. */
   control?: ReactNode;
+  /** Host view: names linked to this player by a team request. */
+  pairedWith?: string[];
 };
 
 export type TeamBlock = {
@@ -101,6 +104,12 @@ export function TeamBlocks({ teams, host = false }: { teams: TeamBlock[]; host?:
                         {SKILL_DOTS[m.skill]}
                       </span>
                     )}
+                    {host && m.pairedWith && m.pairedWith.length > 0 && (
+                      <span title={`Asked to play with ${m.pairedWith.join(" & ")}`} className="shrink-0 text-mat">
+                        <Handshake className="size-4" aria-hidden />
+                        <span className="sr-only">Asked to play with {m.pairedWith.join(" and ")}</span>
+                      </span>
+                    )}
                     {m.control}
                   </li>
                 ))}
@@ -125,6 +134,9 @@ export function TeamBlocks({ teams, host = false }: { teams: TeamBlock[]; host?:
               <span className="font-score text-xs font-black tracking-tighter">{dots}</span> {label}
             </span>
           ))}
+          <span className="inline-flex items-center gap-1 whitespace-nowrap">
+            <Handshake className="size-4 text-mat" aria-hidden /> Asked to play together (kept together when balancing)
+          </span>
         </p>
       )}
     </div>

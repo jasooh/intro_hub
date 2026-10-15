@@ -3,7 +3,7 @@ import { cache } from "react";
 import { signupView } from "@/lib/signups";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import type { Post, Registration, Session, SessionCounts } from "@/lib/types";
+import type { Attendee, Post, Registration, Session, SessionCounts } from "@/lib/types";
 
 export async function getCounts(sessionIds: string[]): Promise<Map<string, SessionCounts>> {
   if (sessionIds.length === 0) return new Map();
@@ -70,6 +70,20 @@ export async function getMySignups(profileId: string) {
       const tb = new Date(b.session.starts_at).getTime();
       return a.view === "upcoming" && b.view === "upcoming" ? ta - tb : tb - ta;
     });
+}
+
+/** Everyone signed up for a session (public names only), memoized per request. */
+export const getAttendees = cache(async (sessionId: string) => {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("get_session_attendees", { p_session_id: sessionId });
+  return (data ?? []) as Attendee[];
+});
+
+/** Registration ids this sign-up asked to be teamed with (own rows only, via RLS). */
+export async function getTeamRequests(registrationId: string) {
+  const supabase = await createClient();
+  const { data } = await supabase.from("team_requests").select("requested_id").eq("registration_id", registrationId);
+  return (data ?? []).map((r) => r.requested_id as string);
 }
 
 /** Published host posts, newest first (public). */

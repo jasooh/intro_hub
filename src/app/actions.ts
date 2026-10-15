@@ -23,6 +23,8 @@ const ERRORS: Record<string, string> = {
   option_locked: "You've already paid, so the option can't be changed here. Please contact the host.",
   too_many_signups: "You've signed up for this session a few times already. Please message the host if you still need a spot.",
   slow_down: "That's a lot of sign-ups in a short time. Please wait a bit and try again.",
+  too_many_teammates: "You can ask for up to two teammates.",
+  teammate_unavailable: "One of those players isn't signed up for drop-in anymore. Pick again.",
 };
 
 function friendly(message: string) {
@@ -53,8 +55,38 @@ export async function registerForSession(sessionId: string, formData: FormData) 
 
   const events = parseEvents(data);
   after(() => dispatchEvents(events));
+
+  // Teammate requests (drop-in only) are saved once the sign-up exists.
+  const teammates = teammateIds(formData);
+  let teamNote = "";
+  if (option === "full" && teammates.length && events[0]) {
+    const { error: teamError } = await supabase.rpc("set_team_requests", {
+      p_registration_id: events[0].registration_id,
+      p_requested: teammates,
+    });
+    if (teamError) teamNote = " We couldn't save your teammate picks; try again below.";
+  }
+
   revalidatePath(path);
-  await flash("success", SIGNED_UP[events[0]?.event ?? ""] ?? "You're already signed up for this session.");
+  await flash("success", (SIGNED_UP[events[0]?.event ?? ""] ?? "You're already signed up for this session.") + teamNote);
+}
+
+function teammateIds(formData: FormData) {
+  return [...new Set(formData.getAll("teammates").map(String).filter(Boolean))].slice(0, 2);
+}
+
+export async function setTeammates(registrationId: string, sessionId: string, formData: FormData) {
+  const path = `/s/${sessionId}`;
+  await requireProfile(path);
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_team_requests", {
+    p_registration_id: registrationId,
+    p_requested: teammateIds(formData),
+  });
+  if (error) redirect(`${path}?error=${encodeURIComponent(friendly(error.message))}`);
+  revalidatePath(path);
+  revalidatePath(`/admin/sessions/${sessionId}`);
+  await flash("success", "Teammate requests saved");
 }
 
 const SIGNED_UP: Record<string, string> = {

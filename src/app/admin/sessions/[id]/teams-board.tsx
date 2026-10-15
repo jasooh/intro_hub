@@ -4,7 +4,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { TeamSelect } from "@/components/team-select";
 import { Avatar, inputClass, Mark, reveal, Sheet } from "@/components/ui";
 import { SKILL_LABELS } from "@/lib/profile";
-import { defaultTeamCount } from "@/lib/teams";
+import { defaultTeamCount, type TeamRequest } from "@/lib/teams";
 import type { Profile, Registration, Session, Team } from "@/lib/types";
 
 export type TeamRow = Pick<Registration, "id" | "team_id"> & {
@@ -23,7 +23,29 @@ const SKILL_SHORT: Record<string, string> = {
 };
 
 /** Build, adjust and publish teams for the drop-in players. */
-export function TeamsBoard({ session, players, teams }: { session: Session; players: TeamRow[]; teams: Team[] }) {
+export function TeamsBoard({
+  session,
+  players,
+  teams,
+  requests = [],
+}: {
+  session: Session;
+  players: TeamRow[];
+  teams: Team[];
+  /** Who asked to play with whom (registration ids). */
+  requests?: TeamRequest[];
+}) {
+  const nameById = new Map(players.map((p) => [p.id, nameOf(p)]));
+  // Both directions: "with" shows anyone this player is linked to by a request.
+  const linkedNames = (id: string) =>
+    [
+      ...new Set(
+        requests
+          .flatMap((r) => (r.from === id ? [r.to] : r.to === id ? [r.from] : []))
+          .map((other) => nameById.get(other))
+          .filter((n): n is string => Boolean(n)),
+      ),
+    ];
   const published = Boolean(session.teams_published_at);
   const unassigned = players.filter((p) => !p.team_id || !teams.some((t) => t.id === p.team_id));
 
@@ -90,6 +112,7 @@ export function TeamsBoard({ session, players, teams }: { session: Session; play
                 name: nameOf(p),
                 avatarUrl: p.profile.avatar_url,
                 skill: p.profile.skill_level,
+                pairedWith: linkedNames(p.id),
                 control: (
                   <TeamSelect
                     mode="move"

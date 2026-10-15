@@ -3,11 +3,12 @@ import Link from "next/link";
 import { MapLink } from "@/components/map-link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { cancelRegistration, changeOption, registerForSession } from "@/app/actions";
+import { cancelRegistration, changeOption, registerForSession, setTeammates } from "@/app/actions";
 import { LiveRefresh } from "@/components/live-refresh";
 import { PaymentInstructions } from "@/components/payment-instructions";
 import { DateBlock } from "@/components/session-card";
 import { AttendeeRow, OptionRadio } from "@/components/signup-parts";
+import { TeammatePicker, type TeammateOption } from "@/components/teammate-picker";
 import { TeamsView } from "@/components/teams-view";
 import { SubmitButton } from "@/components/submit-button";
 import {
@@ -26,9 +27,9 @@ import {
 import { getProfile } from "@/lib/auth";
 import { formatDateTime, formatMoney, sessionTimes } from "@/lib/format";
 import { OPTION_LABELS } from "@/lib/profile";
-import { getCounts, getMySpot, spotsLeft } from "@/lib/queries";
+import { getAttendees, getCounts, getMySpot, getTeamRequests, spotsLeft } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
-import type { Attendee, Profile, Session, SessionCounts, Team } from "@/lib/types";
+import type { Profile, Session, SessionCounts, Team } from "@/lib/types";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
@@ -217,6 +218,10 @@ async function SessionView({
 async function MySpot({ session, profile, counts }: { session: Session; profile: Profile; counts?: SessionCounts }) {
   const { reg, started, notOpenYet, beforeCutoff } = await getMySpot(session, profile.id);
   const path = `/s/${session.id}`;
+  // Teammate picks: other drop-in players who are signed up (incl. the waitlist).
+  const teammateOptions: TeammateOption[] = (await getAttendees(session.id))
+    .filter((a) => a.option === "full" && !a.is_me && ["pending_payment", "confirmed", "waitlisted"].includes(a.status))
+    .map((a) => ({ id: a.registration_id, name: a.display_name }));
   const times = sessionTimes(session);
   const hasInstructional = session.instructional_price_cents != null;
 
@@ -240,7 +245,10 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
     const full = spotsLeft(session, counts) === 0 || (counts?.waitlisted ?? 0) > 0;
     return (
       <Sheet label="Your spot">
-        <form action={registerForSession.bind(null, session.id)} className="space-y-6">
+        <form
+          action={registerForSession.bind(null, session.id)}
+          className="space-y-6 [&:has(input[name=option][value=instructional]:checked)_.teammates]:hidden"
+        >
           <p className="max-w-xl text-lg">
             {full
               ? "Drop-in is full. Join the waitlist and we'll email you if a spot opens."
@@ -267,6 +275,13 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
           ) : (
             <input type="hidden" name="option" value="full" />
           )}
+
+          <div className="teammates space-y-2">
+            <p className="font-display text-sm font-bold tracking-[0.15em] uppercase">
+              Play on the same team as (optional, up to 2)
+            </p>
+            <TeammatePicker options={teammateOptions} />
+          </div>
 
           <Field label="Note to the host (optional)" hint="Questions, comments, or if you're bringing a team.">
             <textarea name="note" rows={2} maxLength={1000} className={inputClass} />
@@ -312,6 +327,20 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
           </p>
         )}
         {reg.note && <p className="border-l-4 border-ink/20 pl-3 text-ink-soft">Your note: &ldquo;{reg.note}&rdquo;</p>}
+
+        {reg.option === "full" && !started && ["pending_payment", "confirmed", "waitlisted"].includes(reg.status) && (
+          <form action={setTeammates.bind(null, reg.id, session.id)} className="space-y-2 border-t border-ink/20 pt-4">
+            <p className="font-display text-sm font-bold tracking-[0.15em] uppercase">
+              Teammates you asked for <span className="font-normal tracking-normal normal-case text-ink-soft">(up to 2)</span>
+            </p>
+            <TeammatePicker options={teammateOptions} defaultSelected={await getTeamRequests(reg.id)} />
+            {teammateOptions.length > 0 && (
+              <SubmitButton size="sm" variant="secondary" requireChange>
+                Save teammates
+              </SubmitButton>
+            )}
+          </form>
+        )}
 
         <div className="flex flex-wrap items-center gap-4">
           {switchable && (
@@ -371,11 +400,10 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
 async function AttendeeList({ sessionId }: { sessionId: string }) {
   const supabase = await createClient();
   // Teams are only readable once the host publishes them (RLS), so an empty list means "not published".
-  const [{ data }, { data: teamRows }] = await Promise.all([
-    supabase.rpc("get_session_attendees", { p_session_id: sessionId }),
+  const [attendees, { data: teamRows }] = await Promise.all([
+    getAttendees(sessionId),
     supabase.from("session_teams").select("*").eq("session_id", sessionId).order("position"),
   ]);
-  const attendees = (data ?? []) as Attendee[];
   const teams = (teamRows ?? []) as Team[];
   const active = attendees.filter((a) => a.status === "confirmed" || a.status === "pending_payment");
   const going = active.filter((a) => a.option === "full");
