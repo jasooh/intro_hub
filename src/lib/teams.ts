@@ -11,6 +11,9 @@ const SKILL_RANK: Record<SkillLevel | "unknown", number> = {
 
 type Player = { id: string; skill: SkillLevel | null };
 
+/** Most teammates one player can ask for: enough to bring a whole team. Also enforced in set_team_requests(). */
+export const MAX_TEAMMATES = 5;
+
 /** "from asked to play with to" (one-way is enough to group them). */
 export type TeamRequest = { from: string; to: string };
 

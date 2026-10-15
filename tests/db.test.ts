@@ -651,10 +651,17 @@ describe("team requests", () => {
       )
     ).rows.map((r) => r.requested_id);
 
-  it("lets a player pick up to two teammates and replaces the set each time", async () => {
+  it("lets a player pick up to five teammates (a whole team) and replaces the set each time", async () => {
     const sid = await createSession(db, { instructionalPriceCents: 500 });
-    const [a, b, c, d] = await Promise.all(["A", "B", "C", "D"].map((n) => createUser(db, n)));
-    const [ra, rb, rc, rd] = [await signUp(a, sid), await signUp(b, sid), await signUp(c, sid), await signUp(d, sid)];
+    const users = await Promise.all(["A", "B", "C", "D", "E", "F", "G"].map((n) => createUser(db, n)));
+    const regs: string[] = [];
+    for (const u of users) regs.push(await signUp(u, sid));
+    const [a] = users;
+    const [ra, rb, rc, rd] = regs;
+
+    await setRequests(a, ra, regs.slice(1, 6));
+    expect(await requestsOf(ra)).toHaveLength(5);
+    await expect(setRequests(a, ra, regs.slice(1, 7))).rejects.toThrow(/too_many_teammates/);
 
     await setRequests(a, ra, [rb, rc]);
     expect(await requestsOf(ra)).toEqual([rb, rc].sort());
@@ -662,7 +669,6 @@ describe("team requests", () => {
     expect(await requestsOf(ra)).toEqual([rd]);
     await setRequests(a, ra, []);
     expect(await requestsOf(ra)).toEqual([]);
-    await expect(setRequests(a, ra, [rb, rc, rd])).rejects.toThrow(/too_many_teammates/);
   });
 
   it("rejects self, other sessions, instructional-only players and other people's sign-ups", async () => {

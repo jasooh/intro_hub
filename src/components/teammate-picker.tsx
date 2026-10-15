@@ -2,6 +2,7 @@
 
 import { X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { MAX_TEAMMATES } from "@/lib/teams";
 
 export type TeammateOption = { id: string; name: string };
 
@@ -13,7 +14,7 @@ export function TeammatePicker({
   options,
   defaultSelected = [],
   name = "teammates",
-  max = 2,
+  max = MAX_TEAMMATES,
 }: {
   options: TeammateOption[];
   defaultSelected?: string[];

@@ -8,6 +8,7 @@ import { WAIVER_VERSION } from "@/lib/agreements";
 import { requireProfile } from "@/lib/auth";
 import { flash } from "@/lib/flash";
 import { cleanName, cleanNameList, cleanText, normalizePhone } from "@/lib/input";
+import { MAX_TEAMMATES } from "@/lib/teams";
 import { OPTION_LABELS, profileComplete } from "@/lib/profile";
 import { dispatchEvents, parseEvents } from "@/lib/registrations";
 import { createClient } from "@/lib/supabase/server";
@@ -23,7 +24,7 @@ const ERRORS: Record<string, string> = {
   option_locked: "You've already paid, so the option can't be changed here. Please contact the host.",
   too_many_signups: "You've signed up for this session a few times already. Please message the host if you still need a spot.",
   slow_down: "That's a lot of sign-ups in a short time. Please wait a bit and try again.",
-  too_many_teammates: "You can ask for up to two teammates.",
+  too_many_teammates: `You can ask for up to ${MAX_TEAMMATES} teammates.`,
   teammate_unavailable: "One of those players isn't signed up for drop-in anymore. Pick again.",
 };
 
@@ -72,7 +73,7 @@ export async function registerForSession(sessionId: string, formData: FormData) 
 }
 
 function teammateIds(formData: FormData) {
-  return [...new Set(formData.getAll("teammates").map(String).filter(Boolean))].slice(0, 2);
+  return [...new Set(formData.getAll("teammates").map(String).filter(Boolean))].slice(0, MAX_TEAMMATES);
 }
 
 export async function setTeammates(registrationId: string, sessionId: string, formData: FormData) {

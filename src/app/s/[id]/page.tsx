@@ -28,6 +28,7 @@ import { getProfile } from "@/lib/auth";
 import { formatDateTime, formatMoney, sessionTimes } from "@/lib/format";
 import { OPTION_LABELS } from "@/lib/profile";
 import { getAttendees, getCounts, getMySpot, getTeamRequests, spotsLeft } from "@/lib/queries";
+import { MAX_TEAMMATES } from "@/lib/teams";
 import { createClient } from "@/lib/supabase/server";
 import type { Profile, Session, SessionCounts, Team } from "@/lib/types";
 
@@ -278,7 +279,7 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
 
           <div className="teammates space-y-2">
             <p className="font-display text-sm font-bold tracking-[0.15em] uppercase">
-              Play on the same team as (optional, up to 2)
+              Play on the same team as (optional, up to {MAX_TEAMMATES})
             </p>
             <TeammatePicker options={teammateOptions} />
           </div>
@@ -331,7 +332,7 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
         {reg.option === "full" && !started && ["pending_payment", "confirmed", "waitlisted"].includes(reg.status) && (
           <form action={setTeammates.bind(null, reg.id, session.id)} className="space-y-2 border-t border-ink/20 pt-4">
             <p className="font-display text-sm font-bold tracking-[0.15em] uppercase">
-              Teammates you asked for <span className="font-normal tracking-normal normal-case text-ink-soft">(up to 2)</span>
+              Teammates you asked for <span className="font-normal tracking-normal normal-case text-ink-soft">(up to {MAX_TEAMMATES})</span>
             </p>
             <TeammatePicker options={teammateOptions} defaultSelected={await getTeamRequests(reg.id)} />
             {teammateOptions.length > 0 && (

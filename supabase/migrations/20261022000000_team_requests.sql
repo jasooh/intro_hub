@@ -1,6 +1,6 @@
--- Team requests: a drop-in player can ask to be on the same team as up to two
--- other drop-in players signed up for the same session. One-way is enough;
--- Make teams / Re-balance keeps requested groups together.
+-- Team requests: a drop-in player can ask to be on the same team as up to five
+-- other drop-in players signed up for the same session (enough to bring a whole
+-- team). One-way is enough; Make teams / Re-balance keeps requested groups together.
 
 create table public.team_requests (
   registration_id uuid not null references public.registrations (id) on delete cascade,
@@ -52,7 +52,7 @@ begin
   end if;
 
   v_targets := array(select distinct t from unnest(coalesce(p_requested, '{}'::uuid[])) as t);
-  if cardinality(v_targets) > 2 then
+  if cardinality(v_targets) > 5 then  -- MAX_TEAMMATES in src/lib/teams.ts
     raise exception 'too_many_teammates';
   end if;
   if p_registration_id = any (v_targets) or exists (
