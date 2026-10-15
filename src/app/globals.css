@@ -95,8 +95,9 @@
   }
 
   /* Safety net: nothing should ever make the page pan sideways on a phone.
-     `clip` (unlike `hidden`) keeps the sticky header working. */
-  html,
+     Only on body, so it passes up to the viewport. Setting it on html too
+     makes body its own scroll box whenever a menu/dialog locks scrolling,
+     which throws the sticky header off-screen. */
   body {
     overflow-x: clip;
   }
