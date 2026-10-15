@@ -29,7 +29,8 @@ export function AccountMenu({
   const [signingOut, startSignOut] = useTransition();
 
   return (
-    <DropdownMenu>
+    // Not modal: no scroll lock, so opening it never shifts the page (or the sticky header).
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger
         aria-label="Account menu"
         className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-line focus-visible:ring-offset-2 focus-visible:ring-offset-maple"

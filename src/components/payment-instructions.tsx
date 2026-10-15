@@ -1,15 +1,21 @@
+import { CopyButton } from "@/components/copy-button";
 import { env } from "@/lib/env";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import type { Registration } from "@/lib/types";
 
 export function PaymentInstructions({ registration }: { registration: Registration }) {
+  const email = env.etransferEmail();
   return (
     <div className="space-y-4">
       <ol className="space-y-2 text-ink">
         <li className="flex gap-3">
           <span className="font-score font-black text-line">01</span>
-          <span>
-            Send <b>{formatMoney(registration.amount_cents)}</b> by Interac e-Transfer to <b>{env.etransferEmail()}</b>
+          <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+            <span>
+              Send <b>{formatMoney(registration.amount_cents)}</b> by Interac e-Transfer to{" "}
+              <b className="[overflow-wrap:anywhere]">{email}</b>
+            </span>
+            <CopyButton value={email} label="Email" />
           </span>
         </li>
         <li className="flex gap-3">
@@ -17,8 +23,11 @@ export function PaymentInstructions({ registration }: { registration: Registrati
           <span>Put this code in the message:</span>
         </li>
       </ol>
-      <div className="inline-flex items-center gap-4 bg-board px-5 py-3 shadow-[4px_4px_0_var(--line)]">
-        <span className="led animate-flicker font-score text-4xl font-black tracking-widest">{registration.ref_code}</span>
+      <div className="inline-flex flex-wrap items-center gap-4 bg-board px-5 py-3 shadow-[4px_4px_0_var(--line)]">
+        <span className="led animate-flicker font-score text-4xl font-black tracking-widest select-all">
+          {registration.ref_code}
+        </span>
+        <CopyButton value={registration.ref_code} label="Code" tone="dark" />
       </div>
       {registration.hold_expires_at && (
         <p className="text-sm text-ink-soft">
