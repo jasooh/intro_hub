@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
+import { getProfile } from "@/lib/auth";
 import { AdminNav } from "./admin-nav";
 
 export const metadata: Metadata = {
@@ -6,13 +8,24 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+/** The host nav, only for hosts (pages like /admin/demo show non-hosts an "Admin only" screen). */
+async function HostBench() {
+  const profile = await getProfile();
+  if (profile?.role !== "admin") return null;
+  return (
+    <div className="space-y-1">
+      <p className="font-display text-sm font-bold tracking-[0.3em] t-[#f2e3c6]/60 uppercase">Host bench</p>
+      <AdminNav />
+    </div>
+  );
+}
+
 export default function AdminLayout({ children }: LayoutProps<"/admin">) {
   return (
     <div className="space-y-10">
-      <div className="space-y-1">
-        <p className="font-display text-sm font-bold tracking-[0.3em] t-[#f2e3c6]/60 uppercase">Host bench</p>
-        <AdminNav />
-      </div>
+      <Suspense>
+        <HostBench />
+      </Suspense>
       {children}
     </div>
   );

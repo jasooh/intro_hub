@@ -2,6 +2,8 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 const SIGNED_IN_ONLY = ["/me", "/onboarding", "/admin"];
+// Admin pages that show their own "Admin only" screen instead of redirecting.
+const SELF_GATED = ["/admin/demo"];
 
 // Refreshes the Supabase session cookie on every request and does an
 // optimistic auth gate. Pages and actions re-check permissions themselves.
@@ -28,6 +30,7 @@ export async function proxy(request: NextRequest) {
   const { data } = await supabase.auth.getClaims();
   const userId = data?.claims?.sub;
   const path = request.nextUrl.pathname;
+  if (SELF_GATED.includes(path)) return response;
 
   if (!userId && SIGNED_IN_ONLY.some((p) => path === p || path.startsWith(`${p}/`))) {
     const url = request.nextUrl.clone();
