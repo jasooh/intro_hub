@@ -5,7 +5,8 @@ import { TeamSelect } from "@/components/team-select";
 import { Avatar, inputClass, Mark, reveal, Sheet } from "@/components/ui";
 import { SKILL_LABELS } from "@/lib/profile";
 import { defaultTeamCount, requestGroups, type TeamRequest } from "@/lib/teams";
-import type { Profile, Registration, Session, Team } from "@/lib/types";
+import type { Match, Profile, Registration, Session, Team } from "@/lib/types";
+import { ScheduleBoard } from "./schedule-board";
 
 export type TeamRow = Pick<Registration, "id" | "team_id"> & {
   profile: Pick<Profile, "display_name" | "full_name" | "email" | "avatar_url" | "skill_level">;
@@ -28,12 +29,15 @@ export function TeamsBoard({
   players,
   teams,
   requests = [],
+  matches = [],
 }: {
   session: Session;
   players: TeamRow[];
   teams: Team[];
   /** Who asked to play with whom (registration ids). */
   requests?: TeamRequest[];
+  /** The game schedule, if one was made. */
+  matches?: Match[];
 }) {
   // Request groups, lettered A, B, C… in team order so the letters read top to bottom.
   const teamOrder = (p: TeamRow) => {
@@ -69,10 +73,7 @@ export function TeamsBoard({
             />
           </label>
           {players.length > 0 ? (
-            <span className="flex items-center gap-2">
-              <SubmitButton>Make teams</SubmitButton>
-              <BalanceHelp />
-            </span>
+            <SubmitButton>Make teams</SubmitButton>
           ) : (
             <span className="pb-2 text-ink-soft">Teams can be made once players sign up.</span>
           )}
@@ -146,10 +147,12 @@ export function TeamsBoard({
           </section>
         )}
 
+        <ScheduleBoard session={session} teams={teams} matches={matches} />
+
         <div className="flex flex-wrap items-center gap-4 border-t border-ink/25 pt-4">
           <form action={setTeamsPublished.bind(null, session.id, !published)}>
             <SubmitButton size="sm" variant={published ? "secondary" : "primary"}>
-              {published ? "Hide from players" : "Show teams to players"}
+              {published ? "Hide from players" : matches.length ? "Show teams + schedule to players" : "Show teams to players"}
             </SubmitButton>
           </form>
           <form action={makeTeams.bind(null, session.id)} className="flex items-center gap-2">
@@ -160,7 +163,7 @@ export function TeamsBoard({
               confirm={{
                 title: "Re-balance the teams?",
                 description:
-                  "Everyone is shuffled into new teams by skill level, keeping requested teammates together. Team names reset to Team 1, Team 2…",
+                  "Everyone is shuffled into new teams by skill level, keeping requested teammates together. Team names reset to Team 1, Team 2…; the game schedule stays.",
                 action: "Re-balance",
               }}
             >

@@ -30,7 +30,7 @@ import { OPTION_LABELS } from "@/lib/profile";
 import { getAttendees, getCounts, getMySpot, getTeamRequests, spotsLeft } from "@/lib/queries";
 import { MAX_TEAMMATES } from "@/lib/teams";
 import { createClient } from "@/lib/supabase/server";
-import type { Profile, Session, SessionCounts, Team } from "@/lib/types";
+import type { Match, Profile, Session, SessionCounts, Team } from "@/lib/types";
 
 
 export async function generateMetadata({ params }: PageProps<"/s/[id]">): Promise<Metadata> {
@@ -208,7 +208,7 @@ async function SessionView({
 
       {profile && (
         <div className="reveal" style={reveal(5)}>
-          <AttendeeList sessionId={id} />
+          <AttendeeList session={session} />
         </div>
       )}
     </div>
@@ -397,12 +397,15 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
   );
 }
 
-async function AttendeeList({ sessionId }: { sessionId: string }) {
+async function AttendeeList({ session }: { session: Session }) {
+  const sessionId = session.id;
   const supabase = await createClient();
-  // Teams are only readable once the host publishes them (RLS), so an empty list means "not published".
-  const [attendees, { data: teamRows }] = await Promise.all([
+  // Teams and the game schedule are only readable once the host publishes them (RLS),
+  // so empty lists mean "not published".
+  const [attendees, { data: teamRows }, { data: matchRows }] = await Promise.all([
     getAttendees(sessionId),
     supabase.from("session_teams").select("*").eq("session_id", sessionId).order("position"),
+    supabase.from("session_matches").select("*").eq("session_id", sessionId).order("slot").order("court"),
   ]);
   const teams = (teamRows ?? []) as Team[];
   const active = attendees.filter((a) => a.status === "confirmed" || a.status === "pending_payment");
@@ -438,7 +441,13 @@ async function AttendeeList({ sessionId }: { sessionId: string }) {
   if (teams.length > 0) {
     return (
       <div className="space-y-10">
-        <TeamsView teams={teams} going={going} />
+        <TeamsView
+          teams={teams}
+          going={going}
+          matches={(matchRows ?? []) as Match[]}
+          scheduleStart={session.dropin_starts_at ?? session.starts_at}
+          gameMinutes={session.schedule_game_minutes}
+        />
         <div className="grid grid-cols-1 gap-10 sm:grid-cols-2">
           {waitlistSheet}
           {instructionalSheet}

@@ -1,0 +1,135 @@
+import { editMatch, makeSchedule, removeSchedule, setScheduleMinutes } from "@/app/admin/actions";
+import { MatchSchedule } from "@/components/match-schedule";
+import { SubmitButton } from "@/components/submit-button";
+import { inputClass } from "@/components/ui";
+import type { Match, Session, Team } from "@/lib/types";
+
+const pickClass =
+  "min-w-0 max-w-40 truncate border-0 border-b-2 border-ink bg-transparent py-1 pr-6 pl-0 font-display text-sm font-bold tracking-wide uppercase focus:border-line focus:ring-0";
+
+/** Host side of the game schedule: make a round robin, swap matchups, set the game length. */
+export function ScheduleBoard({ session, teams, matches }: { session: Session; teams: Team[]; matches: Match[] }) {
+  if (teams.length < 2) return null;
+  const games = (teams.length * (teams.length - 1)) / 2;
+  const courtsUsed = Math.max(1, ...matches.map((m) => m.court));
+  const start = session.dropin_starts_at ?? session.starts_at;
+
+  return (
+    <section aria-label="Game schedule" className="space-y-4 border-t border-ink/25 pt-6">
+      <p className="font-display text-lg font-bold tracking-[0.15em] uppercase">Game schedule</p>
+
+      {matches.length === 0 ? (
+        <form action={makeSchedule.bind(null, session.id)} className="flex flex-wrap items-end gap-x-6 gap-y-4">
+          <p className="basis-full text-ink-soft">
+            Every team plays every other team once ({games} games). Teams without a game in a round sit out. You can
+            swap matchups afterwards; players see it with the teams.
+          </p>
+          <CourtsField defaultValue={2} />
+          <MinutesField defaultValue={15} />
+          <SubmitButton>Make schedule</SubmitButton>
+        </form>
+      ) : (
+        <>
+          <MatchSchedule
+            teams={teams}
+            matches={matches}
+            startIso={start}
+            minutes={session.schedule_game_minutes}
+            renderGame={(m, courtLabel) => (
+              <form action={editMatch.bind(null, m.id, session.id)} className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                {courtLabel && (
+                  <span className="w-full font-display text-sm font-bold tracking-[0.15em] text-ink-soft uppercase sm:w-auto">
+                    {courtLabel}
+                  </span>
+                )}
+                <TeamPick name="team_a" teams={teams} value={m.team_a_id} label="First team" />
+                <span className="font-display text-sm font-bold text-ink-soft uppercase">vs</span>
+                <TeamPick name="team_b" teams={teams} value={m.team_b_id} label="Second team" />
+                <SubmitButton size="sm" variant="secondary" requireChange>
+                  Save
+                </SubmitButton>
+              </form>
+            )}
+          />
+
+          <div className="flex flex-wrap items-end gap-x-6 gap-y-4">
+            <form action={setScheduleMinutes.bind(null, session.id)} className="flex items-end gap-3">
+              <MinutesField defaultValue={session.schedule_game_minutes} />
+              <SubmitButton size="sm" variant="secondary" requireChange>
+                Save
+              </SubmitButton>
+            </form>
+            <form action={makeSchedule.bind(null, session.id)} className="flex items-end gap-3">
+              <input type="hidden" name="minutes" value={session.schedule_game_minutes ?? ""} />
+              <CourtsField defaultValue={courtsUsed} />
+              <SubmitButton
+                size="sm"
+                variant="secondary"
+                confirm={{
+                  title: "Remake the schedule?",
+                  description: "A fresh round robin replaces the current one, including any games you changed by hand.",
+                  action: "Remake",
+                }}
+              >
+                Remake
+              </SubmitButton>
+            </form>
+            <form action={removeSchedule.bind(null, session.id)}>
+              <SubmitButton
+                size="sm"
+                variant="danger"
+                confirm={{ title: "Remove the schedule?", description: "The teams stay; only the game order goes." }}
+              >
+                Remove schedule
+              </SubmitButton>
+            </form>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
+function CourtsField({ defaultValue }: { defaultValue: number }) {
+  return (
+    <label className="block space-y-1">
+      <span className="font-display text-sm font-bold tracking-[0.15em] uppercase">Courts</span>
+      <select name="courts" defaultValue={defaultValue} className={`${inputClass} w-20`}>
+        {[1, 2, 3].map((n) => (
+          <option key={n} value={n}>
+            {n}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function MinutesField({ defaultValue }: { defaultValue: number | null }) {
+  return (
+    <label className="block space-y-1">
+      <span className="font-display text-sm font-bold tracking-[0.15em] uppercase">Minutes per game</span>
+      <input
+        type="number"
+        name="minutes"
+        min={5}
+        max={120}
+        defaultValue={defaultValue ?? ""}
+        placeholder="No times"
+        className={`${inputClass} w-32`}
+      />
+    </label>
+  );
+}
+
+function TeamPick({ name, teams, value, label }: { name: string; teams: Team[]; value: string; label: string }) {
+  return (
+    <select name={name} defaultValue={value} aria-label={label} className={pickClass}>
+      {teams.map((t) => (
+        <option key={t.id} value={t.id}>
+          {t.name}
+        </option>
+      ))}
+    </select>
+  );
+}

@@ -1,13 +1,27 @@
+import { MatchSchedule } from "@/components/match-schedule";
 import { TeamBlocks } from "@/components/team-blocks";
 import { AttendeeRow } from "@/components/signup-parts";
 import { Mark, Sheet } from "@/components/ui";
-import type { Attendee, Team } from "@/lib/types";
+import type { Attendee, Match, Team } from "@/lib/types";
 
-/** Published teams as stacked team blocks, with the viewer's own team called out. */
-export function TeamsView({ teams, going }: { teams: Team[]; going: Attendee[] }) {
+/** Published teams as stacked team blocks, with the viewer's own team called out, then the game schedule. */
+export function TeamsView({
+  teams,
+  going,
+  matches = [],
+  scheduleStart,
+  gameMinutes = null,
+}: {
+  teams: Team[];
+  going: Attendee[];
+  matches?: Match[];
+  scheduleStart?: string;
+  gameMinutes?: number | null;
+}) {
   const myTeam = going.find((a) => a.is_me)?.team_id ?? null;
+  const myGames = myTeam ? matches.filter((m) => m.team_a_id === myTeam || m.team_b_id === myTeam).length : 0;
   const unplaced = going.filter((a) => !a.team_id || !teams.some((t) => t.id === a.team_id));
-  return (
+  const teamsSheet = (
     <Sheet
       label={`Teams · ${teams.length}`}
       action={
@@ -43,5 +57,24 @@ export function TeamsView({ teams, going }: { teams: Team[]; going: Attendee[] }
         )}
       </div>
     </Sheet>
+  );
+  if (matches.length === 0 || !scheduleStart) return teamsSheet;
+
+  return (
+    <div className="space-y-10">
+      {teamsSheet}
+      <Sheet
+        label="Game schedule"
+        action={
+          myGames > 0 ? (
+            <Mark tone="line" glyph="●">
+              You play {myGames} game{myGames === 1 ? "" : "s"}
+            </Mark>
+          ) : undefined
+        }
+      >
+        <MatchSchedule teams={teams} matches={matches} startIso={scheduleStart} minutes={gameMinutes} highlightTeamId={myTeam} />
+      </Sheet>
+    </div>
   );
 }

@@ -925,3 +925,63 @@ describe("rejoining after a paid cancel", () => {
     expect((await regOf(a, sid)).status).toBe("confirmed");
   });
 });
+
+describe("game schedule", () => {
+  async function setup() {
+    const sid = await createSession(db);
+    const host = await createUser(db, "Host", { admin: true });
+    const a = await createUser(db, "A");
+    const teams = await asUser<{ id: string }>(
+      db,
+      host,
+      `insert into public.session_teams (session_id, name, position) values ($1, 'One', 0), ($1, 'Two', 1) returning id`,
+      [sid],
+    );
+    const [t1, t2] = teams.rows.map((r) => r.id);
+    await asUser(
+      db,
+      host,
+      `insert into public.session_matches (session_id, slot, court, team_a_id, team_b_id) values ($1, 1, 1, $2, $3)`,
+      [sid, t1, t2],
+    );
+    return { sid, host, a, t1, t2 };
+  }
+  const matchCount = async (who: string) =>
+    (await asUser<{ n: number }>(db, who, `select count(*)::int as n from public.session_matches`)).rows[0].n;
+
+  it("is hidden from players until the teams are published", async () => {
+    const { sid, host, a } = await setup();
+    expect(await matchCount(a)).toBe(0);
+    expect(await matchCount(host)).toBe(1);
+    await asUser(db, host, `update public.sessions set teams_published_at = now() where id = $1`, [sid]);
+    expect(await matchCount(a)).toBe(1);
+    await expect(asUser(db, null, `select * from public.session_matches`)).rejects.toThrow(/permission denied/);
+  });
+
+  it("only hosts can write it, and a team can't play itself", async () => {
+    const { sid, host, a, t1, t2 } = await setup();
+    await expect(
+      asUser(db, a, `insert into public.session_matches (session_id, slot, court, team_a_id, team_b_id) values ($1, 2, 1, $2, $3)`, [
+        sid,
+        t1,
+        t2,
+      ]),
+    ).rejects.toThrow(/row-level security/);
+    await expect(
+      asUser(db, host, `update public.session_matches set team_b_id = team_a_id`),
+    ).rejects.toThrow(/check constraint/);
+  });
+
+  it("goes away with the teams, and owner reset still works with matches present", async () => {
+    const { sid, host } = await setup();
+    await asUser(db, host, `delete from public.session_teams where session_id = $1`, [sid]);
+    expect(await matchCount(host)).toBe(0);
+
+    const { host: host2 } = await setup();
+    expect(await matchCount(host2)).toBe(1);
+    const owner = "00000000-0000-4000-9000-000000000002";
+    await db.query(`insert into auth.users (id, email) values ($1, 'abuyuanjustin@gmail.com')`, [owner]);
+    await asUser(db, owner, `select public.owner_reset('RESET')`);
+    expect(await matchCount(host2)).toBe(0);
+  });
+});

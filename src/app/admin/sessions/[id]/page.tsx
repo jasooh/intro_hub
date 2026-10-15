@@ -29,7 +29,7 @@ import { formatDateTime, formatMoney, formatTime, pad2 } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import { DateBlock } from "@/components/session-card";
 import { PlayerDetails } from "@/components/player-details";
-import type { Payment, Profile, Registration, Session, Team } from "@/lib/types";
+import type { Match, Payment, Profile, Registration, Session, Team } from "@/lib/types";
 import { SessionForm } from "../session-form";
 import { TeamsBoard, type TeamRow } from "./teams-board";
 
@@ -56,7 +56,7 @@ async function AdminSession({
   const { id } = await params;
   const supabase = await createClient();
 
-  const [{ data: session }, { data: regs }, { data: teamRows }] = await Promise.all([
+  const [{ data: session }, { data: regs }, { data: teamRows }, { data: matchRows }] = await Promise.all([
     supabase.from("sessions").select("*").eq("id", id).maybeSingle<Session>(),
     supabase
       .from("registrations")
@@ -64,6 +64,7 @@ async function AdminSession({
       .eq("session_id", id)
       .order("created_at"),
     supabase.from("session_teams").select("*").eq("session_id", id).order("position"),
+    supabase.from("session_matches").select("*").eq("session_id", id).order("slot").order("court"),
   ]);
   if (!session) notFound();
   const teams = (teamRows ?? []) as Team[];
@@ -178,7 +179,13 @@ async function AdminSession({
         </ul>
       </Sheet>
 
-      {!cancelled && <TeamsBoard session={session} players={dropIn as TeamRow[]} teams={teams} requests={teamRequests} />}
+      {!cancelled && <TeamsBoard
+          session={session}
+          players={dropIn as TeamRow[]}
+          teams={teams}
+          requests={teamRequests}
+          matches={(matchRows ?? []) as Match[]}
+        />}
 
       <Sheet label={`Waitlist · ${waiting.length}`} className="reveal" style={reveal(3)}>
         {waiting.length === 0 && <p className="text-ink-soft">Nobody waiting.</p>}

@@ -74,9 +74,14 @@ export type Session = {
   dropin_starts_at: string | null;
   teams_published_at: string | null;
   cancel_reason: string | null;
+  /** Minutes per game in the team schedule; null = order only, no times. */
+  schedule_game_minutes: number | null;
 };
 
 export type Team = { id: string; session_id: string; name: string; position: number };
+
+/** One game in a session's team schedule. Slots are time blocks, in order. */
+export type Match = { id: string; session_id: string; slot: number; court: number; team_a_id: string; team_b_id: string };
 
 /** A host post on the Updates board. body_html is sanitized (src/lib/rich-text.ts). */
 export type Post = {

@@ -11,6 +11,7 @@ import { flash } from "@/lib/flash";
 import { zonedLocalToUtc } from "@/lib/format";
 import { dispatchEvents, parseEvents } from "@/lib/registrations";
 import { isEmptyPost, sanitizePostHtml } from "@/lib/rich-text";
+import { roundRobin } from "@/lib/schedule";
 import { balanceTeams } from "@/lib/teams";
 import type { SkillLevel } from "@/lib/types";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
@@ -361,7 +362,7 @@ function revalidateTeams(sessionId: string) {
   revalidatePath(`/s/${sessionId}`);
 }
 
-/** (Re)builds teams: drops any existing ones, then balances drop-in players by skill. */
+/** (Re)builds teams, balancing drop-in players by skill. Re-balancing the same number of teams keeps the team rows. */
 export async function makeTeams(sessionId: string, formData: FormData) {
   await requireAdmin();
   const path = `/admin/sessions/${sessionId}`;
@@ -377,14 +378,37 @@ export async function makeTeams(sessionId: string, formData: FormData) {
     .in("status", ["pending_payment", "confirmed"]);
   if (regsError) fail(path, regsError.message);
 
-  const { error: delError } = await supabase.from("session_teams").delete().eq("session_id", sessionId);
-  if (delError) fail(path, delError.message);
-  const { data: teams, error: teamError } = await supabase
+  const { data: existing } = await supabase
     .from("session_teams")
-    .insert(Array.from({ length: count.data }, (_, i) => ({ session_id: sessionId, name: `Team ${i + 1}`, position: i })))
     .select("id, position")
+    .eq("session_id", sessionId)
     .order("position");
-  if (teamError || !teams) fail(path, teamError?.message ?? "Couldn't create teams");
+  let teams: { id: string; position: number }[];
+  if (existing && existing.length === count.data) {
+    // Re-balance: keep the team rows (so the game schedule stays), reset names and empty them.
+    teams = existing;
+    for (const [i, t] of teams.entries()) {
+      const { error } = await supabase.from("session_teams").update({ name: `Team ${i + 1}` }).eq("id", t.id);
+      if (error) fail(path, error.message);
+    }
+    const { error: clearError } = await supabase
+      .from("registrations")
+      .update({ team_id: null })
+      .eq("session_id", sessionId)
+      .not("team_id", "is", null);
+    if (clearError) fail(path, clearError.message);
+  } else {
+    // A different number of teams: start over (the schedule goes with the old teams).
+    const { error: delError } = await supabase.from("session_teams").delete().eq("session_id", sessionId);
+    if (delError) fail(path, delError.message);
+    const { data: created, error: teamError } = await supabase
+      .from("session_teams")
+      .insert(Array.from({ length: count.data }, (_, i) => ({ session_id: sessionId, name: `Team ${i + 1}`, position: i })))
+      .select("id, position")
+      .order("position");
+    if (teamError || !created) fail(path, teamError?.message ?? "Couldn't create teams");
+    teams = created;
+  }
 
   const players = ((regs ?? []) as unknown as { id: string; profile: { skill_level: SkillLevel | null } }[]).map((r) => ({
     id: r.id,
@@ -455,6 +479,86 @@ export async function removeTeams(sessionId: string) {
   if (error) fail(`/admin/sessions/${sessionId}`, error.message);
   revalidateTeams(sessionId);
   await flash("success", "Teams removed");
+}
+
+// ---------------------------------------------------------------------------
+// Game schedule
+// ---------------------------------------------------------------------------
+
+const GameMinutes = z.preprocess(
+  (v) => (v === "" || v == null ? null : v),
+  z.coerce.number().int().min(5, "Games need at least 5 minutes").max(120, "Games can be up to 120 minutes").nullable(),
+);
+
+/** Round robin for the session's teams: every team plays every other once, `courts` games at a time. */
+export async function makeSchedule(sessionId: string, formData: FormData) {
+  await requireAdmin();
+  const path = `/admin/sessions/${sessionId}`;
+  const courts = z.coerce.number().int().min(1).max(3).safeParse(formData.get("courts"));
+  if (!courts.success) fail(path, "Pick 1 to 3 courts");
+  const minutes = GameMinutes.safeParse(formData.get("minutes"));
+  if (!minutes.success) fail(path, minutes.error.issues[0].message);
+
+  const supabase = await createClient();
+  const { data: teams } = await supabase.from("session_teams").select("id").eq("session_id", sessionId).order("position");
+  if (!teams || teams.length < 2) fail(path, "Make at least 2 teams first");
+
+  const games = roundRobin(
+    teams.map((t) => t.id),
+    courts.data,
+  );
+  const { error: delError } = await supabase.from("session_matches").delete().eq("session_id", sessionId);
+  if (delError) fail(path, delError.message);
+  const { error } = await supabase.from("session_matches").insert(
+    games.map((g) => ({ session_id: sessionId, slot: g.slot, court: g.court, team_a_id: g.a, team_b_id: g.b })),
+  );
+  if (error) fail(path, error.message);
+  await supabase.from("sessions").update({ schedule_game_minutes: minutes.data }).eq("id", sessionId);
+  revalidateTeams(sessionId);
+  await flash("success", `Schedule made: ${games.length} games`);
+}
+
+/** Swap who plays in one game. */
+export async function editMatch(matchId: string, sessionId: string, formData: FormData) {
+  await requireAdmin();
+  const path = `/admin/sessions/${sessionId}`;
+  const a = String(formData.get("team_a") ?? "");
+  const b = String(formData.get("team_b") ?? "");
+  if (!a || !b || a === b) fail(path, "Pick two different teams");
+
+  const supabase = await createClient();
+  const { data: teams } = await supabase.from("session_teams").select("id").eq("session_id", sessionId).in("id", [a, b]);
+  if ((teams ?? []).length !== 2) fail(path, "Those teams aren't in this session");
+  const { error } = await supabase
+    .from("session_matches")
+    .update({ team_a_id: a, team_b_id: b })
+    .eq("id", matchId)
+    .eq("session_id", sessionId);
+  if (error) fail(path, error.message);
+  revalidateTeams(sessionId);
+  await flash("success", "Game updated");
+}
+
+/** Change the game length (times only; matchups stay). */
+export async function setScheduleMinutes(sessionId: string, formData: FormData) {
+  await requireAdmin();
+  const path = `/admin/sessions/${sessionId}`;
+  const minutes = GameMinutes.safeParse(formData.get("minutes"));
+  if (!minutes.success) fail(path, minutes.error.issues[0].message);
+  const supabase = await createClient();
+  const { error } = await supabase.from("sessions").update({ schedule_game_minutes: minutes.data }).eq("id", sessionId);
+  if (error) fail(path, error.message);
+  revalidateTeams(sessionId);
+  await flash("success", minutes.data ? `Games are ${minutes.data} minutes` : "Times removed from the schedule");
+}
+
+export async function removeSchedule(sessionId: string) {
+  await requireAdmin();
+  const supabase = await createClient();
+  const { error } = await supabase.from("session_matches").delete().eq("session_id", sessionId);
+  if (error) fail(`/admin/sessions/${sessionId}`, error.message);
+  revalidateTeams(sessionId);
+  await flash("success", "Schedule removed");
 }
 
 // ---------------------------------------------------------------------------
