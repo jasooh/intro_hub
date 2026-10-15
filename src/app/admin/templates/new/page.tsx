@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { saveTemplate } from "@/app/admin/actions";
-import { BackLink, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
+import { BackLink, PageSpinner, PageTitle, reveal } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { TemplateForm } from "../template-form";
 
@@ -27,9 +27,9 @@ async function NewTemplate() {
           New weekly session
         </PageTitle>
       </div>
-      <Sheet label="Details" className="reveal" style={reveal(1)}>
+      <div className="reveal" style={reveal(1)}>
         <TemplateForm action={saveTemplate.bind(null, null)} submitLabel="Create weekly session" />
-      </Sheet>
+      </div>
     </div>
   );
 }

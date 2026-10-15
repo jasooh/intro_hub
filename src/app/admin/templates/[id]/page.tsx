@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { deleteTemplate, saveTemplate } from "@/app/admin/actions";
 import { SubmitButton } from "@/components/submit-button";
-import { BackLink, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
+import { BackLink, PageSpinner, PageTitle, reveal } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type { SessionTemplate } from "@/lib/types";
@@ -43,9 +43,9 @@ async function EditTemplate({
           {template.title}
         </PageTitle>
       </div>
-      <Sheet label="Details" className="reveal" style={reveal(1)}>
+      <div className="reveal" style={reveal(1)}>
         <TemplateForm action={saveTemplate.bind(null, template.id)} template={template} submitLabel="Save changes" />
-      </Sheet>
+      </div>
       <section className="flex flex-wrap items-center justify-between gap-4 border-t-2 border-bad pt-4">
         <p className="text-ink-soft">
           Deleting stops new sessions being created. Sessions already created stay on the schedule.
