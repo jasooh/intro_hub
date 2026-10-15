@@ -284,10 +284,35 @@ export function Avatar({ name, src, size = 32 }: { name: string; src: string | n
   );
 }
 
-export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+/** Red asterisk after a required field's label (screen readers hear "required"). */
+export function RequiredMark() {
+  return (
+    <>
+      <span aria-hidden className="ml-1 align-top font-sans text-base leading-none font-bold text-[#d01c1c]">
+        *
+      </span>
+      <span className="sr-only"> (required)</span>
+    </>
+  );
+}
+
+export function Field({
+  label,
+  hint,
+  required,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  required?: boolean;
+  children: ReactNode;
+}) {
   return (
     <label className="block space-y-1">
-      <span className="font-display text-sm font-bold tracking-[0.15em] text-ink uppercase">{label}</span>
+      <span className="font-display text-sm font-bold tracking-[0.15em] text-ink uppercase">
+        {label}
+        {required && <RequiredMark />}
+      </span>
       {children}
       {hint && <span className="block text-sm text-ink-soft">{hint}</span>}
     </label>

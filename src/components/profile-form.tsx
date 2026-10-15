@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { saveProfile } from "@/app/actions";
 import { SubmitButton } from "@/components/submit-button";
 import { PhoneInput } from "@/components/phone-input";
-import { Field, inputClass } from "@/components/ui";
+import { Field, inputClass, RequiredMark } from "@/components/ui";
 import {
   INCLUSION_CHARTER_URL,
   MEDIA_RELEASE,
@@ -42,19 +42,22 @@ export function ProfileForm({
     <form action={saveProfile} className="space-y-10">
       <input type="hidden" name="next" value={next} />
       <input type="hidden" name="return_to" value={returnTo} />
+      <p className="text-sm text-ink-soft">
+        <RequiredMark /> Required
+      </p>
 
       <Group title="You">
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-          <Field label="First name">
+          <Field label="First name" required>
             <input name="first_name" defaultValue={first} required maxLength={60} autoComplete="given-name" autoCapitalize="words" spellCheck={false} className={inputClass} />
           </Field>
-          <Field label="Last name">
+          <Field label="Last name" required>
             <input name="last_name" defaultValue={last} required maxLength={60} autoComplete="family-name" autoCapitalize="words" spellCheck={false} className={inputClass} />
           </Field>
-          <Field label="Display name" hint="What other players see on the team sheet.">
+          <Field label="Display name" required hint="What other players see on the team sheet.">
             <input name="display_name" defaultValue={display} required maxLength={60} autoComplete="nickname" autoCapitalize="words" spellCheck={false} className={inputClass} />
           </Field>
-          <Field label="Contact number" hint="Only the hosts can see this.">
+          <Field label="Contact number" required hint="Only the hosts can see this.">
             <PhoneInput name="phone" defaultValue={profile.phone ?? ""} required />
           </Field>
         </div>
@@ -62,14 +65,14 @@ export function ProfileForm({
 
       <Group title="About you">
         <div className="space-y-6">
-          <Choice label="What is your current skill level?">
+          <Choice label="What is your current skill level?" required>
             {Object.entries(SKILL_LABELS).map(([value, label]) => (
               <Radio key={value} name="skill_level" value={value} defaultChecked={profile.skill_level === value} required>
                 {label}
               </Radio>
             ))}
           </Choice>
-          <Choice label="Have you attended this class before?">
+          <Choice label="Have you attended this class before?" required>
             <Radio name="attended_before" value="yes" defaultChecked={profile.attended_before === true} required>
               Yes
             </Radio>
@@ -120,7 +123,7 @@ export function ProfileForm({
 
       <Group title="Agreements">
         <div className="space-y-6">
-          <Choice label="Multimedia release">
+          <Choice label="Multimedia release" required>
             <Legal summary="Read the media release">
               <p>{MEDIA_RELEASE}</p>
             </Legal>
@@ -132,7 +135,7 @@ export function ProfileForm({
             </Radio>
           </Choice>
 
-          <Choice label="Waiver">
+          <Choice label="Waiver" required>
             <Legal summary="Read the waiver">
               {WAIVER_PARAGRAPHS.map((p) => (
                 <p key={p.slice(0, 24)}>{p}</p>
@@ -200,10 +203,13 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-function Choice({ label, children }: { label: string; children: ReactNode }) {
+function Choice({ label, required, children }: { label: string; required?: boolean; children: ReactNode }) {
   return (
-    <div className="space-y-2" role="group" aria-label={label}>
-      <p className="font-display text-sm font-bold tracking-[0.15em] uppercase">{label}</p>
+    <div className="space-y-2" role="group" aria-label={required ? `${label} (required)` : label}>
+      <p className="font-display text-sm font-bold tracking-[0.15em] uppercase">
+        {label}
+        {required && <RequiredMark />}
+      </p>
       <div className="space-y-2">{children}</div>
     </div>
   );
