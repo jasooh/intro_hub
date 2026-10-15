@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { createSession } from "@/app/admin/actions";
-import { BackLink, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
+import { BackLink, PageSpinner, PageTitle, reveal } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { SessionForm } from "../session-form";
 
@@ -38,9 +38,9 @@ async function NewSession() {
           One-off session
         </PageTitle>
       </div>
-      <Sheet label="Details" className="reveal" style={reveal(1)}>
+      <div className="reveal" style={reveal(1)}>
         <SessionForm action={createSession} submitLabel="Create session" />
-      </Sheet label="Details">
+      </div>
     </div>
   );
 }
