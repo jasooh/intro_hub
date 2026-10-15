@@ -26,6 +26,7 @@ const ERRORS: Record<string, string> = {
   slow_down: "That's a lot of sign-ups in a short time. Please wait a bit and try again.",
   too_many_teammates: `You can ask for up to ${MAX_TEAMMATES} teammates.`,
   teammate_unavailable: "One of those players isn't signed up for drop-in anymore. Pick again.",
+  maintenance: "Sign-ups are paused for a few minutes while we fix something. Please try again soon.",
 };
 
 function friendly(message: string) {

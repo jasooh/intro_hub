@@ -12,6 +12,7 @@ Sign-up site for **Intro 2 Volleyball**, a beginner-friendly drop-in at Aaniin C
 - **Holds & waitlist:** a spot is held for N hours while unpaid; expired holds free the spot and the waitlist auto-promotes.
 - **Updates board:** hosts write posts in a Tiptap rich text editor (`/admin/updates`); HTML is sanitized with `sanitizePostHtml` (`src/lib/rich-text.ts`) on save and render. Published posts show at `/updates` (public). One post can be featured on the home page (`FeaturedPost`, above the next session, no divider; DB enforces one). A per-post checkbox emails it once to players with `profiles.announcement_emails` (opt-out on the profile form) via `src/lib/announcements.ts`.
 - **Hosts (`/admin`):** roster with a player-details modal, mark paid, waitlist order, teams (auto-balanced by skill, publish to players), payments inbox, refunds, players/roles, weekly schedule, songs (players' hype songs for the Spotify playlist), CSV export.
+- **Owner (`/owner`):** only abuyuanjustin@gmail.com (`OWNER_EMAIL` + `public.is_owner()`), not hosts. Health/repairs, table editor, view-as-player, maintenance mode, backup, clean-ups/reset. All writes go through `owner_*` SQL functions that check `is_owner()` and log to `owner_audit`.
 
 ## Stack
 Next.js 16 App Router (Cache Components + partial prefetching), React 19, Tailwind v4, shadcn (Radix), Supabase (Postgres, Google OAuth, Realtime, pg_cron), Vercel. Tests: Vitest + PGlite (runs every migration in-memory).

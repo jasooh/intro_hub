@@ -26,6 +26,13 @@ Sign-ups, waitlist, e-Transfer confirmation and emails for a weekly volleyball g
    - refunds owed
    - CSV export
    - player and host management
+6. **Owner tools** (`/owner`, only for the account in `OWNER_EMAIL` in `src/lib/auth.ts` and `public.is_owner()`; everyone else gets a 404):
+   - health checks (cron, stuck holds, Gmail script, settings) and repair buttons (run tick, resend an email)
+   - a table editor and a force-status tool for sign-ups
+   - view-as-player (read-only)
+   - maintenance mode, which pauses sign-ups and shows a banner
+   - JSON backup, clean-ups and a database reset (needs a fresh backup and typing `RESET DEV` / `RESET PROD`)
+   - every change is written to an audit log with the old values
 
 ### Stack
 

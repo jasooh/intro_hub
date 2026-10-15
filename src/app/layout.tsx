@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { AsciiBall } from "@/components/ascii-ball";
 import { FlashToaster } from "@/components/flash-toaster";
+import { MaintenanceBanner } from "@/components/maintenance-banner";
 import { SiteFooter } from "@/components/site-footer";
 import { UserMenu } from "@/components/user-menu";
 import { env } from "@/lib/env";
@@ -64,6 +65,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           {/* the painted court line */}
           <div className="h-[3px] bg-line" />
         </header>
+        <Suspense>
+          <MaintenanceBanner />
+        </Suspense>
         <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-8 sm:py-10">{children}</main>
         <SiteFooter />
       </body>

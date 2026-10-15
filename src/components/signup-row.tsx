@@ -11,15 +11,18 @@ import type { Registration, Session } from "@/lib/types";
 /**
  * One of the player's sign-ups. `actionable` (upcoming sessions) adds payment
  * instructions and the cancel button; past/cancelled ones are just a record.
+ * `preview` (owner's view-as-player) shows what the player sees, minus the cancel button.
  */
 export function SignupRow({
   reg,
   actionable,
   returnTo,
+  preview = false,
 }: {
   reg: Registration & { session: Session };
   actionable: boolean;
   returnTo: string;
+  preview?: boolean;
 }) {
   const sessionCancelled = reg.session.status === "cancelled";
   return (
@@ -71,7 +74,7 @@ export function SignupRow({
         </p>
       )}
 
-      {actionable && isActive(reg.status) && (
+      {actionable && !preview && isActive(reg.status) && (
         <form action={cancelRegistration.bind(null, reg.id, returnTo)}>
           <SubmitButton
             variant="danger"

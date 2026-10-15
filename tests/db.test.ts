@@ -705,3 +705,144 @@ describe("team requests", () => {
     expect(await requestsOf(ra)).toEqual([]);
   });
 });
+
+describe("owner tools", () => {
+  const OWNER_ID = "00000000-0000-4000-9000-000000000001";
+  async function createOwner() {
+    await db.query(`insert into auth.users (id, email, raw_user_meta_data) values ($1, 'AbuyuanJustin@gmail.com', '{"full_name":"Owner"}')`, [
+      OWNER_ID,
+    ]);
+    return OWNER_ID;
+  }
+  const audit = async () =>
+    (await db.query<{ action: string; note: string | null }>(`select action, note from public.owner_audit order by id`)).rows;
+
+  it("only the owner's verified account can use them; hosts and players can't", async () => {
+    const owner = await createOwner();
+    const host = await createUser(db, "Host", { admin: true });
+    const player = await createUser(db, "Player");
+    for (const who of [host, player]) {
+      await expect(asUser(db, who, `select public.owner_health()`)).rejects.toThrow(/owner_only/);
+      await expect(asUser(db, who, `select public.owner_reset('RESET')`)).rejects.toThrow(/owner_only/);
+      expect((await asUser<{ n: number }>(db, who, `select count(*)::int as n from public.owner_audit`)).rows[0].n).toBe(0);
+    }
+    await expect(asUser(db, null, `select public.owner_health()`)).rejects.toThrow(/permission denied/);
+    expect((await asUser<{ h: { counts: { profiles: number } } }>(db, owner, `select public.owner_health() as h`)).rows[0].h.counts.profiles).toBe(3);
+
+    await db.query(`update auth.users set email_confirmed_at = null where id = $1`, [owner]);
+    await expect(asUser(db, owner, `select public.owner_health()`)).rejects.toThrow(/owner_only/);
+  });
+
+  it("edits and deletes rows on allowlisted tables only, and audits each change", async () => {
+    const owner = await createOwner();
+    const sid = await createSession(db, { capacity: 4 });
+
+    const res = await asUser<{ row: { capacity: number; notes: string | null } }>(
+      db,
+      owner,
+      `select public.owner_update_row('sessions', $1, '{"capacity": 9, "notes": null}') as row`,
+      [sid],
+    );
+    expect(res.rows[0].row.capacity).toBe(9);
+    await expect(
+      asUser(db, owner, `select public.owner_update_row('sessions', $1, '{"id": "x"}')`, [sid]),
+    ).rejects.toThrow(/column_not_editable/);
+    await expect(
+      asUser(db, owner, `select public.owner_update_row('sessions', $1, '{"nope": 1}')`, [sid]),
+    ).rejects.toThrow(/column_not_editable/);
+    await expect(asUser(db, owner, `select public.owner_rows('owner_audit')`)).rejects.toThrow(/unknown_table/);
+    await expect(asUser(db, owner, `select public.owner_rows('pg_authid')`)).rejects.toThrow(/unknown_table/);
+
+    const found = await asUser<{ r: { total: number } }>(db, owner, `select public.owner_rows('sessions', 'Gym') as r`);
+    expect(found.rows[0].r.total).toBe(1);
+
+    await asUser(db, owner, `select public.owner_delete_row('sessions', $1)`, [sid]);
+    expect((await db.query(`select 1 from public.sessions where id = $1`, [sid])).rows).toHaveLength(0);
+    expect((await audit()).map((a) => a.action)).toEqual(["update_row", "delete_row"]);
+  });
+
+  it("deleting a profile removes the account, but never the owner's own", async () => {
+    const owner = await createOwner();
+    const p = await createUser(db, "Gone");
+    await asUser(db, owner, `select public.owner_delete_row('profiles', $1)`, [p]);
+    expect((await db.query(`select 1 from auth.users where id = $1`, [p])).rows).toHaveLength(0);
+    await expect(asUser(db, owner, `select public.owner_delete_row('profiles', $1)`, [owner])).rejects.toThrow(
+      /cannot_delete_owner/,
+    );
+  });
+
+  it("forcing a sign-up out lets the waitlist move up", async () => {
+    const owner = await createOwner();
+    const sid = await createSession(db, { capacity: 1 });
+    const [a, b] = [await createUser(db, "A"), await createUser(db, "B")];
+    await register(a, sid);
+    await register(b, sid);
+    const res = await asUser<{ events: Event[] }>(db, owner, `select public.owner_force_status($1, 'cancelled') as events`, [
+      (await regOf(a, sid)).id,
+    ]);
+    expect(res.rows[0].events.map((e) => e.event)).toEqual(["promoted"]);
+    expect((await regOf(b, sid)).status).toBe("pending_payment");
+  });
+
+  it("reset needs the exact word and keeps accounts and the weekly schedule", async () => {
+    const owner = await createOwner();
+    const sid = await createSession(db);
+    const a = await createUser(db, "A");
+    await register(a, sid);
+    await db.query(
+      `insert into public.session_templates (weekday, start_time, location, capacity, price_cents) values (6, '20:00', 'Gym', 18, 1500)`,
+    );
+
+    await expect(asUser(db, owner, `select public.owner_reset('reset')`)).rejects.toThrow(/confirm_mismatch/);
+    await asUser(db, owner, `select public.owner_reset('RESET')`);
+    const n = async (t: string) => (await db.query<{ n: number }>(`select count(*)::int as n from public.${t}`)).rows[0].n;
+    expect(await n("sessions")).toBe(0);
+    expect(await n("registrations")).toBe(0);
+    expect(await n("profiles")).toBe(2);
+    expect(await n("session_templates")).toBe(1);
+
+    await asUser(db, owner, `select public.owner_reset('RESET', true)`);
+    expect(await n("profiles")).toBe(1);
+    expect((await audit()).map((x) => x.action)).toEqual(["reset", "reset"]);
+  });
+
+  it("maintenance mode pauses sign-ups and option switches for players, not cancelling or hosts", async () => {
+    const owner = await createOwner();
+    const sid = await createSession(db, { instructionalPriceCents: 500 });
+    const [a, b] = [await createUser(db, "A"), await createUser(db, "B")];
+    const host = await createUser(db, "Host", { admin: true });
+    await register(a, sid);
+    const ra = (await regOf(a, sid)).id;
+
+    await asUser(db, owner, `select public.owner_set_maintenance(true, 'Fixing payments')`);
+    const banner = await asUser<{ value: { on: boolean; message: string } }>(
+      db,
+      null,
+      `select value from public.app_settings where key = 'maintenance'`,
+    );
+    expect(banner.rows[0].value).toEqual({ on: true, message: "Fixing payments" });
+
+    await expect(register(b, sid)).rejects.toThrow(/maintenance/);
+    await expect(
+      asUser(db, a, `select public.change_registration_option($1, 'instructional')`, [ra]),
+    ).rejects.toThrow(/maintenance/);
+    expect((await register(host, sid))[0].event).toBe("signed_up");
+    await asUser(db, a, `select public.cancel_registration($1)`, [ra]);
+    expect((await regOf(a, sid)).status).toBe("cancelled");
+
+    await asUser(db, owner, `select public.owner_set_maintenance(false)`);
+    expect((await register(b, sid))[0].event).toBe("signed_up");
+  });
+
+  it("backs up every table and can release an email so it sends again", async () => {
+    const owner = await createOwner();
+    await db.query(`insert into public.email_log (dedupe_key, kind) values ('announcement:x', 'announcement')`);
+    const backup = await asUser<{ b: Record<string, unknown[]> }>(db, owner, `select public.owner_backup() as b`);
+    expect(Object.keys(backup.rows[0].b)).toContain("registrations");
+    expect(backup.rows[0].b.email_log).toHaveLength(1);
+
+    const id = (await db.query<{ id: number }>(`select id from public.email_log`)).rows[0].id;
+    await asUser(db, owner, `select public.owner_release_email($1)`, [id]);
+    expect((await db.query(`select 1 from public.email_log`)).rows).toHaveLength(0);
+  });
+});

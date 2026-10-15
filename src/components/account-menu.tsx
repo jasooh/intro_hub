@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarCheck, LayoutDashboard, LogOut, UserRound } from "lucide-react";
+import { CalendarCheck, LayoutDashboard, LogOut, UserRound, Wrench } from "lucide-react";
 import Link from "next/link";
 import { useTransition } from "react";
 import { signOut } from "@/app/auth/actions";
@@ -14,17 +14,19 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-/** Profile picture in the header that opens Account / Admin (hosts only) / Sign out. */
+/** Profile picture in the header that opens Account / Admin (hosts only) / Owner (the owner only) / Sign out. */
 export function AccountMenu({
   name,
   email,
   avatarUrl,
   isAdmin,
+  isOwner,
 }: {
   name: string;
   email: string;
   avatarUrl: string | null;
   isAdmin: boolean;
+  isOwner: boolean;
 }) {
   const [signingOut, startSignOut] = useTransition();
 
@@ -60,6 +62,14 @@ export function AccountMenu({
             <Link href="/admin">
               <LayoutDashboard />
               Admin
+            </Link>
+          </DropdownMenuItem>
+        )}
+        {isOwner && (
+          <DropdownMenuItem asChild>
+            <Link href="/owner">
+              <Wrench />
+              Owner tools
             </Link>
           </DropdownMenuItem>
         )}
