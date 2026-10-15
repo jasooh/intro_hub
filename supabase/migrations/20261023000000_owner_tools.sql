@@ -290,7 +290,8 @@ begin
   perform public._owner_guard();
   case p_scope
     when 'email_log' then
-      delete from public.email_log;
+      -- Supabase's safeupdate guard rejects a DELETE with no WHERE clause.
+      delete from public.email_log where true;
     when 'past_sessions' then
       -- Sign-ups, teams and their emails cascade; payments stay, unlinked.
       delete from public.sessions where ends_at < now();
