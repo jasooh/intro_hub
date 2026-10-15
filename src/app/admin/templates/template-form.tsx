@@ -110,9 +110,12 @@ export function TemplateForm({
       </Group>
 
       <details className="group space-y-5">
-        <summary className="flex cursor-pointer list-none items-center gap-2 font-display text-2xl font-black uppercase">
-          <span className="text-line transition-transform group-open:rotate-90">▸</span> Advanced
-          <span className="font-sans text-sm font-normal tracking-normal text-ink-soft normal-case">sign-up timing & refunds</span>
+        <summary className="flex cursor-pointer list-none flex-wrap items-end gap-x-3 gap-y-1 border-b-2 border-ink">
+          <span className="inline-flex items-center gap-2.5 bg-ink px-3 pt-1.5 pb-1 font-display text-sm font-bold tracking-[0.2em] whitespace-nowrap text-maple uppercase">
+            <span aria-hidden className="text-line transition-transform group-open:rotate-90">▸</span>
+            Advanced
+          </span>
+          <span className="pb-1 text-sm text-ink-soft">Sign-up timing &amp; refunds</span>
         </summary>
         <div className="grid grid-cols-1 gap-x-6 gap-y-5 pt-5 sm:grid-cols-3">
           <Field label="Sign-ups open (hours before)" hint="120 = 5 days before">
@@ -145,16 +148,18 @@ export function TemplateForm({
   );
 }
 
+/** A form section headed like a Sheet: dark tab on a heavy ink rule. */
 function Group({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
   return (
-    <fieldset className="space-y-4">
-      <legend className="mb-3 flex flex-wrap items-baseline gap-x-3 font-display text-2xl font-black uppercase">
-        <span>
+    <fieldset className="min-w-0 space-y-4">
+      <legend className="sr-only">{title}</legend>
+      <div aria-hidden className="border-b-2 border-ink">
+        <span className="inline-flex items-center gap-2.5 bg-ink px-3 pt-1.5 pb-1 font-display text-sm font-bold tracking-[0.2em] whitespace-nowrap text-maple uppercase">
+          <span className="size-1.5 shrink-0 bg-line" />
           {title}
-          <span className="text-line">.</span>
         </span>
-        {hint && <span className="font-sans text-sm font-normal tracking-normal text-ink-soft normal-case">{hint}</span>}
-      </legend>
+      </div>
+      {hint && <p className="text-sm text-ink-soft">{hint}</p>}
       {children}
     </fieldset>
   );

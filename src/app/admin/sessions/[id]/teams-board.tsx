@@ -101,6 +101,7 @@ export function TeamsBoard({
       <div className="space-y-6">
         <TeamBlocks
           host
+          keyExtra={<BalanceHelp label />}
           teams={teams.map((t) => ({
             id: t.id,
             name: t.name,
@@ -151,13 +152,13 @@ export function TeamsBoard({
               variant="secondary"
               confirm={{
                 title: "Re-balance the teams?",
-                description: "Everyone is shuffled into new teams by skill level, and team names reset to Team 1, Team 2…",
+                description:
+                  "Everyone is shuffled into new teams by skill level, keeping requested teammates together. Team names reset to Team 1, Team 2…",
                 action: "Re-balance",
               }}
             >
               Re-balance
             </SubmitButton>
-            <BalanceHelp />
           </form>
           <form action={removeTeams.bind(null, session.id)}>
             <SubmitButton
@@ -212,26 +213,38 @@ function RenameTeam({ team, sessionId }: { team: Team; sessionId: string }) {
   );
 }
 
-/** "?" that explains how auto-balancing works (hover, focus or tap). */
-function BalanceHelp() {
+/** "How balancing works ?" (hover, focus or tap). With `label`, it shows the words too. */
+function BalanceHelp({ label = false }: { label?: boolean }) {
   return (
     <span className="group relative inline-flex">
       <button
         type="button"
         aria-label="How are teams balanced?"
-        className="inline-flex size-6 items-center justify-center rounded-full border-2 border-ink font-display text-sm font-black text-ink hover:border-line hover:text-line focus:border-line focus:text-line focus:outline-none"
+        className="inline-flex items-center gap-1.5 text-ink-soft hover:text-line focus:text-line focus:outline-none"
       >
-        ?
+        {label && <span className="underline decoration-dotted underline-offset-2">How balancing works</span>}
+        <span
+          aria-hidden
+          className="inline-flex size-5 items-center justify-center rounded-full border-2 border-current font-display text-xs font-black"
+        >
+          ?
+        </span>
       </button>
       <span
         role="tooltip"
-        className="pointer-events-none fixed inset-x-4 bottom-4 z-30 border-2 sm:absolute sm:inset-x-auto sm:bottom-full sm:left-1/2 sm:mb-3 sm:w-72 sm:-translate-x-1/2 border-ink bg-[#f7ecd6] p-3 text-left text-sm text-ink opacity-0 shadow-[4px_4px_0_var(--ink)] transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
+        className="pointer-events-none fixed inset-x-4 bottom-4 z-30 border-2 border-ink bg-[#f7ecd6] p-3 text-left text-sm text-ink opacity-0 shadow-[4px_4px_0_var(--ink)] transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 sm:absolute sm:inset-x-auto sm:bottom-full sm:left-0 sm:mb-3 sm:w-80"
       >
         <b className="mb-1 block font-display tracking-wide uppercase">How balancing works</b>
-        Players are ranked by the skill level they picked (experienced → some → prefer not to say → never played),
-        shuffled within each level, then dealt out snake-style (1-2-3, 3-2-1, …) so every team gets a similar mix and
-        sizes differ by at most one. Instructional-only players aren&apos;t included. Re-balancing reshuffles, so you get a
-        new mix each time.
+        <span className="block">
+          <b>Requests first:</b> players who asked to play together (the handshake) are placed together, as long as the
+          group fits on one team. Only bigger groups are split.
+        </span>
+        <span className="mt-1.5 block">
+          <b>Then skill:</b> everyone else is ranked by the skill level they picked (experienced → some → prefer not to
+          say → never played), shuffled within each level, and added to the team with the fewest players, then the
+          lowest skill. Instructional-only players aren&apos;t included. Re-balancing reshuffles, so you get a new mix each
+          time.
+        </span>
       </span>
     </span>
   );

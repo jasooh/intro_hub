@@ -74,6 +74,18 @@ describe("balanceTeams with team requests", () => {
     }
   });
 
+  it("keeps a group whole when it fits on one team, even if sizes end up uneven", () => {
+    // 5 players, 2 teams: a full team is 3, so three friends stay together (3 vs 2).
+    const players = roster(5);
+    const teams = balanceTeams(players, 2, Math.random, [
+      { from: "p0", to: "p1" },
+      { from: "p0", to: "p2" },
+    ]);
+    expect(teamOf(teams, "p0")).toBe(teamOf(teams, "p1"));
+    expect(teamOf(teams, "p0")).toBe(teamOf(teams, "p2"));
+    expect(teams.map((t) => t.length).sort()).toEqual([2, 3]);
+  });
+
   it("splits a group too big for one team", () => {
     const players = roster(6);
     const everyone = players.slice(1).map((p) => ({ from: "p0", to: p.id }));

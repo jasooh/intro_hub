@@ -39,9 +39,9 @@ function bySkill<T extends Player>(players: T[], random: () => number) {
  * Without requests: sort strongest first (ties shuffled), then deal in a snake
  * order 1,2,3,3,2,1,... so no team keeps getting the first pick.
  *
- * With requests: players who asked to play together are grouped (groups are
- * capped so one can't swamp a team), groups go first onto the team with the
- * fewest players (then the lowest skill total), and everyone else is dealt
+ * With requests: players who asked to play together are grouped and placed
+ * first, each group kept whole if it fits on one team, onto the team with the
+ * fewest players (then the lowest skill total); everyone else is then dealt
  * strongest-first the same way.
  */
 export function balanceTeams<T extends Player>(
@@ -81,8 +81,9 @@ export function balanceTeams<T extends Player>(
     groups.set(root, [...(groups.get(root) ?? []), p]);
   }
 
-  // A group bigger than an even share is split, so sizes can still balance.
-  const maxGroup = Math.max(1, Math.floor(players.length / n));
+  // Requests come first: a group stays together as long as it fits on one team
+  // (a full team's share, rounded up). Only bigger groups are split.
+  const maxGroup = Math.max(1, Math.ceil(players.length / n));
   const units: T[][] = [];
   const singles: T[] = [];
   for (const g of groups.values()) {

@@ -46,7 +46,16 @@ const SKILL_TALLY: [SkillLevel, string][] = [
  * one or two columns depending on the block's own width. Blocks sit side by
  * side on wide screens. Nothing scrolls sideways.
  */
-export function TeamBlocks({ teams, host = false }: { teams: TeamBlock[]; host?: boolean }) {
+export function TeamBlocks({
+  teams,
+  host = false,
+  keyExtra,
+}: {
+  teams: TeamBlock[];
+  host?: boolean;
+  /** Host view: extra item at the end of the key (e.g. "How balancing works"). */
+  keyExtra?: ReactNode;
+}) {
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -135,8 +144,9 @@ export function TeamBlocks({ teams, host = false }: { teams: TeamBlock[]; host?:
             </span>
           ))}
           <span className="inline-flex items-center gap-1 whitespace-nowrap">
-            <Handshake className="size-4 text-mat" aria-hidden /> Asked to play together (kept together when balancing)
+            <Handshake className="size-4 text-mat" aria-hidden /> Asked to play together
           </span>
+          {keyExtra}
         </p>
       )}
     </div>
