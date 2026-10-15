@@ -53,3 +53,17 @@ describe("email templates", () => {
     expect(without).not.toContain("Message from the host");
   });
 });
+
+describe("email footer", () => {
+  it.each(kinds)("%s says replies aren't monitored", async (kind) => {
+    const text = await render(buildEmail(kind, ctx).element, { plainText: true });
+    expect(text).toContain("Please do not reply. This inbox is not monitored for replies.");
+  });
+
+  it("no email asks people to reply", async () => {
+    for (const kind of kinds) {
+      const text = await render(buildEmail(kind, ctx).element, { plainText: true });
+      expect(text.toLowerCase()).not.toContain("reply to this email");
+    }
+  });
+});

@@ -1,6 +1,6 @@
-import { Body, Button, Container, Head, Heading, Hr, Html, Preview, Section, Text } from "@react-email/components";
+import { Body, Button, Container, Head, Heading, Html, Link, Preview, Section, Text } from "@react-email/components";
+import type { CSSProperties, ReactNode } from "react";
 import { mapUrl } from "@/lib/maps";
-import type { ReactNode } from "react";
 import type { RegistrationEvent } from "@/lib/types";
 
 export type EmailContext = {
@@ -19,47 +19,176 @@ export type EmailContext = {
   cancelReason?: string | null;
 };
 
-const styles = {
-  body: { backgroundColor: "#f4f4f5", fontFamily: "-apple-system, Segoe UI, Roboto, sans-serif", padding: "24px 0" },
-  container: { backgroundColor: "#ffffff", borderRadius: 12, padding: 32, maxWidth: 480 },
-  heading: { fontSize: 22, margin: "0 0 16px" },
-  text: { fontSize: 15, lineHeight: "24px", color: "#27272a" },
-  box: { backgroundColor: "#fef3c7", borderRadius: 8, padding: "12px 16px", margin: "16px 0" },
-  code: { fontFamily: "monospace", fontSize: 18, fontWeight: 700, letterSpacing: 1 },
-  button: { backgroundColor: "#ea580c", color: "#ffffff", borderRadius: 8, padding: "12px 20px", fontWeight: 600 },
-  muted: { fontSize: 13, color: "#71717a" },
+// The site's "gym-floor scoreboard" look, in email-safe inline styles. Web fonts
+// load in Apple Mail / iOS; Gmail and Outlook fall back to the system stacks.
+const c = {
+  maple: "#F2E3C6",
+  paper: "#FBF3E3",
+  ink: "#1B1612",
+  inkSoft: "#5B4F45",
+  line: "#E8541E",
+  board: "#141210",
+  led: "#FF6A2B",
 };
+const display = "'Big Shoulders', 'Arial Narrow', Impact, sans-serif";
+const score = "Doto, 'Courier New', monospace";
+const sans = "'Atkinson Hyperlegible Next', Verdana, Arial, sans-serif";
+
+const s = {
+  body: { backgroundColor: c.maple, fontFamily: sans, margin: 0, padding: "24px 12px" },
+  card: { backgroundColor: c.paper, border: `2px solid ${c.ink}`, boxShadow: `6px 6px 0 ${c.ink}`, maxWidth: 520 },
+  masthead: { backgroundColor: c.board, padding: "14px 24px", borderBottom: `4px solid ${c.line}` },
+  brand: { fontFamily: display, fontSize: 26, fontWeight: 900, letterSpacing: "-0.5px", color: c.maple, margin: 0 },
+  content: { padding: "28px 24px 24px" },
+  eyebrow: {
+    fontFamily: display,
+    fontSize: 13,
+    fontWeight: 800,
+    letterSpacing: "3px",
+    textTransform: "uppercase",
+    color: c.line,
+    margin: "0 0 8px",
+  },
+  heading: {
+    fontFamily: display,
+    fontSize: 38,
+    lineHeight: "36px",
+    fontWeight: 900,
+    textTransform: "uppercase",
+    color: c.ink,
+    margin: "0 0 20px",
+  },
+  text: { fontFamily: sans, fontSize: 16, lineHeight: "25px", color: c.ink, margin: "0 0 16px" },
+  board: { backgroundColor: c.board, padding: "18px 20px", margin: "8px 0 20px", borderBottom: `4px solid ${c.line}` },
+  boardText: { fontFamily: sans, fontSize: 15, lineHeight: "23px", color: c.maple, margin: 0 },
+  step: { fontFamily: score, fontWeight: 900, color: c.led },
+  code: { fontFamily: score, fontSize: 40, lineHeight: "44px", fontWeight: 900, letterSpacing: "4px", color: c.led, margin: "10px 0" },
+  note: { borderLeft: `4px solid ${c.ink}`, padding: "4px 0 4px 14px", margin: "4px 0 20px" },
+  button: {
+    backgroundColor: c.line,
+    border: `2px solid ${c.ink}`,
+    boxShadow: `3px 3px 0 ${c.ink}`,
+    color: "#FFF8EE",
+    fontFamily: display,
+    fontSize: 18,
+    fontWeight: 900,
+    letterSpacing: "1px",
+    textTransform: "uppercase",
+    padding: "10px 22px",
+  },
+  footer: { backgroundColor: c.board, padding: "18px 24px" },
+  footerText: { fontFamily: sans, fontSize: 13, lineHeight: "20px", color: c.maple, margin: "0 0 10px" },
+  footerLink: { color: c.led, textDecoration: "underline" },
+  disclaimer: {
+    fontFamily: sans,
+    fontSize: 12,
+    lineHeight: "18px",
+    color: "rgba(242, 227, 198, 0.6)",
+    margin: 0,
+    paddingTop: 10,
+    borderTop: "1px solid rgba(242, 227, 198, 0.2)",
+  },
+} satisfies Record<string, CSSProperties>;
+
+const fonts = [
+  {
+    family: "Big Shoulders",
+    url: "https://fonts.gstatic.com/s/bigshoulders/v4/qFdR35CPh40oITJ69S3GFqy5-BQAcbz7z7beObrv_Nahg9U.woff2",
+  },
+  {
+    family: "Doto",
+    url: "https://fonts.gstatic.com/s/doto/v3/t5tJIRMbNJ6TQG7Il_EKPqP9zTnvqqGNcuvLMt1JIphFkeWuyE-T.woff2",
+  },
+  {
+    family: "Atkinson Hyperlegible Next",
+    url: "https://fonts.gstatic.com/s/atkinsonhyperlegiblenext/v7/NaPNcYPdHfdVxJw0IfIP0lvYFqijb-UxCtm5_wdGseiJn3o.woff2",
+  },
+];
+const fontFaces = fonts
+  .map(
+    (f) =>
+      `@font-face{font-family:'${f.family}';font-style:normal;font-weight:100 900;font-display:swap;src:url(${f.url}) format('woff2');}`,
+  )
+  .join("");
+
+/** Big condensed heading ending in the orange period, like PageTitle on the site. */
+function Title({ children }: { children: ReactNode }) {
+  return (
+    <Heading as="h1" style={s.heading}>
+      {children}
+      <span style={{ color: c.line }}>.</span>
+    </Heading>
+  );
+}
 
 function Layout({ preview, children, ctx }: { preview: string; children: ReactNode; ctx: EmailContext }) {
   return (
-    <Html>
-      <Head />
+    <Html lang="en">
+      <Head>
+        {/* @font-face only. react-email's <Font> also sets `* { font-family }`, which overrides inline styles. */}
+        <style>{fontFaces}</style>
+      </Head>
       <Preview>{preview}</Preview>
-      <Body style={styles.body}>
-        <Container style={styles.container}>
-          {children}
-          <Hr />
-          <Text style={styles.muted}>
-            {ctx.sessionTitle} · {ctx.when} · <a href={mapUrl(ctx.location)}>{ctx.location}</a>
-            <br />
-            Can&apos;t make it? Cancel from <a href={ctx.myUrl}>your sign-ups</a> so someone on the waitlist gets your spot.
-          </Text>
+      <Body style={s.body}>
+        <Container style={s.card}>
+          <Section style={s.masthead}>
+            <Text style={s.brand}>
+              INTRO<span style={{ color: c.line }}>/</span>HUB
+            </Text>
+          </Section>
+
+          <Section style={s.content}>
+            <Text style={s.eyebrow}>
+              {ctx.sessionTitle} · {ctx.when}
+            </Text>
+            {children}
+          </Section>
+
+          <Section style={s.footer}>
+            <Text style={s.footerText}>
+              {ctx.sessionTitle} · {ctx.when} ·{" "}
+              <Link href={mapUrl(ctx.location)} style={s.footerLink}>
+                {ctx.location}
+              </Link>
+              <br />
+              Can&apos;t make it? Cancel from{" "}
+              <Link href={ctx.myUrl} style={s.footerLink}>
+                your sign-ups
+              </Link>{" "}
+              so someone on the waitlist gets your spot.
+            </Text>
+            <Text style={s.disclaimer}>
+              Please do not reply. This inbox is not monitored for replies. Questions? Message us on Instagram{" "}
+              <Link href="https://www.instagram.com/intro2volleyball/" style={s.footerLink}>
+                @intro2volleyball
+              </Link>{" "}
+              or email{" "}
+              <Link href="mailto:intro2volleyball@gmail.com" style={s.footerLink}>
+                intro2volleyball@gmail.com
+              </Link>
+              .
+            </Text>
+          </Section>
         </Container>
       </Body>
     </Html>
   );
 }
 
+/** The ref-code panel: dark board with the code in orange LED digits. */
 function PaymentBox({ ctx }: { ctx: EmailContext }) {
   return (
-    <Section style={styles.box}>
-      <Text style={{ ...styles.text, margin: 0 }}>
-        Send <b>{ctx.price}</b> by Interac e-Transfer to <b>{ctx.etransferEmail}</b> and put this code in the message:
+    <Section style={s.board}>
+      <Text style={s.boardText}>
+        <span style={s.step}>01</span>&nbsp; Send <b>{ctx.price}</b> by Interac e-Transfer to <b>{ctx.etransferEmail}</b>
+        <br />
+        <span style={s.step}>02</span>&nbsp; Put this code in the message:
       </Text>
-      <Text style={{ ...styles.code, margin: "8px 0" }}>{ctx.refCode}</Text>
+      <Text style={s.code}>{ctx.refCode}</Text>
       {ctx.holdUntil && (
-        <Text style={{ ...styles.text, margin: 0 }}>
-          Your spot is held until <b>{ctx.holdUntil}</b>. After that it goes to the next person on the waitlist.
+        <Text style={{ ...s.boardText, color: "rgba(242, 227, 198, 0.75)", fontSize: 14 }}>
+          Your spot is held until <b style={{ color: c.maple }}>{ctx.holdUntil}</b>. After that it goes to the next
+          person on the waitlist.
         </Text>
       )}
     </Section>
@@ -69,9 +198,9 @@ function PaymentBox({ ctx }: { ctx: EmailContext }) {
 type Built = { subject: string; element: ReactNode };
 
 export function buildEmail(kind: RegistrationEvent["event"], ctx: EmailContext): Built {
-  const hi = <Text style={styles.text}>Hi {ctx.playerName},</Text>;
+  const hi = <Text style={s.text}>Hi {ctx.playerName},</Text>;
   const viewButton = (
-    <Button href={ctx.sessionUrl} style={styles.button}>
+    <Button href={ctx.sessionUrl} style={s.button}>
       View session
     </Button>
   );
@@ -79,12 +208,12 @@ export function buildEmail(kind: RegistrationEvent["event"], ctx: EmailContext):
   switch (kind) {
     case "signed_up":
       return {
-        subject: `Spot held: ${ctx.sessionTitle} (${ctx.when}) — payment needed`,
+        subject: `Spot held: ${ctx.sessionTitle} (${ctx.when}) · payment needed`,
         element: (
           <Layout preview={`Pay ${ctx.price} with code ${ctx.refCode} to lock in your spot`} ctx={ctx}>
-            <Heading style={styles.heading}>You&apos;ve got a spot 🏐</Heading>
+            <Title>You&apos;ve got a spot</Title>
             {hi}
-            <Text style={styles.text}>We&apos;re holding a spot for you. It&apos;s confirmed once your payment arrives.</Text>
+            <Text style={s.text}>We&apos;re holding a spot for you. It&apos;s confirmed once your payment arrives.</Text>
             <PaymentBox ctx={ctx} />
             {viewButton}
           </Layout>
@@ -95,9 +224,9 @@ export function buildEmail(kind: RegistrationEvent["event"], ctx: EmailContext):
         subject: `You're off the waitlist: ${ctx.sessionTitle} (${ctx.when})`,
         element: (
           <Layout preview={`A spot opened up. Pay ${ctx.price} with code ${ctx.refCode} to claim it`} ctx={ctx}>
-            <Heading style={styles.heading}>A spot opened up! 🎉</Heading>
+            <Title>A spot opened up</Title>
             {hi}
-            <Text style={styles.text}>You&apos;ve moved off the waitlist. Pay soon to keep the spot.</Text>
+            <Text style={s.text}>You&apos;ve moved off the waitlist. Pay soon to keep the spot.</Text>
             <PaymentBox ctx={ctx} />
             {viewButton}
           </Layout>
@@ -108,11 +237,13 @@ export function buildEmail(kind: RegistrationEvent["event"], ctx: EmailContext):
         subject: `Waitlisted (#${ctx.waitlistPosition ?? "?"}): ${ctx.sessionTitle} (${ctx.when})`,
         element: (
           <Layout preview={`You're #${ctx.waitlistPosition ?? "?"} on the waitlist`} ctx={ctx}>
-            <Heading style={styles.heading}>You&apos;re on the waitlist</Heading>
+            <Title>You&apos;re on the waitlist</Title>
             {hi}
-            <Text style={styles.text}>
-              The session is full, so you&apos;re <b>#{ctx.waitlistPosition ?? "?"}</b> on the waitlist. If a spot
-              opens up you&apos;ll get an email right away with payment instructions. Don&apos;t send money yet.
+            <Text style={s.text}>
+              The session is full, so you&apos;re{" "}
+              <span style={{ fontFamily: score, fontWeight: 900, color: c.line }}>#{ctx.waitlistPosition ?? "?"}</span>{" "}
+              on the waitlist. If a spot opens up you&apos;ll get an email right away with payment instructions.
+              Don&apos;t send money yet.
             </Text>
             {viewButton}
           </Layout>
@@ -123,9 +254,9 @@ export function buildEmail(kind: RegistrationEvent["event"], ctx: EmailContext):
         subject: `Confirmed: ${ctx.sessionTitle} (${ctx.when})`,
         element: (
           <Layout preview="Payment received. You're in!" ctx={ctx}>
-            <Heading style={styles.heading}>You&apos;re in ✅</Heading>
+            <Title>You&apos;re in</Title>
             {hi}
-            <Text style={styles.text}>
+            <Text style={s.text}>
               Payment received. See you at <b>{ctx.location}</b> on <b>{ctx.when}</b>.
             </Text>
             {viewButton}
@@ -137,12 +268,12 @@ export function buildEmail(kind: RegistrationEvent["event"], ctx: EmailContext):
         subject: `Spot released: ${ctx.sessionTitle} (${ctx.when})`,
         element: (
           <Layout preview="We didn't receive payment in time" ctx={ctx}>
-            <Heading style={styles.heading}>Your hold expired</Heading>
+            <Title>Your hold expired</Title>
             {hi}
-            <Text style={styles.text}>
+            <Text style={s.text}>
               We didn&apos;t receive your e-Transfer in time, so your spot went to the next person. If you already sent
-              it, reply to this email and the host will sort it out. You can also sign up again (you&apos;ll join the
-              waitlist if it&apos;s full).
+              it, message us on Instagram or email intro2volleyball@gmail.com and the host will sort it out. You can
+              also sign up again (you&apos;ll join the waitlist if it&apos;s full).
             </Text>
             {viewButton}
           </Layout>
@@ -153,9 +284,9 @@ export function buildEmail(kind: RegistrationEvent["event"], ctx: EmailContext):
         subject: `Tomorrow: ${ctx.sessionTitle} at ${ctx.location}`,
         element: (
           <Layout preview={`See you ${ctx.when}`} ctx={ctx}>
-            <Heading style={styles.heading}>See you soon 🏐</Heading>
+            <Title>See you tomorrow</Title>
             {hi}
-            <Text style={styles.text}>
+            <Text style={s.text}>
               Reminder: you&apos;re confirmed for <b>{ctx.when}</b> at <b>{ctx.location}</b>.
             </Text>
             {viewButton}
@@ -167,14 +298,12 @@ export function buildEmail(kind: RegistrationEvent["event"], ctx: EmailContext):
         subject: `Cancelled: ${ctx.sessionTitle} (${ctx.when})`,
         element: (
           <Layout preview="This session has been cancelled" ctx={ctx}>
-            <Heading style={styles.heading}>Session cancelled</Heading>
+            <Title>Session cancelled</Title>
             {hi}
-            <Text style={styles.text}>
-              The host cancelled this session. If you already paid, the host will refund you.
-            </Text>
+            <Text style={s.text}>The host cancelled this session. If you already paid, the host will refund you.</Text>
             {ctx.cancelReason && (
-              <Section style={styles.box}>
-                <Text style={{ ...styles.text, margin: 0 }}>
+              <Section style={s.note}>
+                <Text style={{ ...s.text, margin: 0 }}>
                   <b>Message from the host:</b> {ctx.cancelReason}
                 </Text>
               </Section>
