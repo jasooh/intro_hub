@@ -79,6 +79,15 @@ export function MatchSchedule({
           </li>
         );
       })}
+      {/* Without set times, games go to a score: the order just repeats until time's up. */}
+      {!times && slots.length > 1 && (
+        <li className="grid grid-cols-[3.25rem_minmax(0,1fr)] items-center gap-x-4 py-3 sm:grid-cols-[4.5rem_minmax(0,1fr)]">
+          <span aria-hidden className="font-sans text-2xl leading-none font-bold text-line">↻</span>
+          <p className="text-ink-soft">
+            Then back to <span className="font-score font-black text-ink">01</span>. Keep rotating until time&apos;s up.
+          </p>
+        </li>
+      )}
     </ol>
   );
 }

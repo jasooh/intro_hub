@@ -21,11 +21,12 @@ export function ScheduleBoard({ session, teams, matches }: { session: Session; t
       {matches.length === 0 ? (
         <form action={makeSchedule.bind(null, session.id)} className="flex flex-wrap items-end gap-x-6 gap-y-4">
           <p className="basis-full text-ink-soft">
-            Every team plays every other team once ({games} games). Teams without a game in a round sit out. You can
-            swap matchups afterwards; players see it with the teams.
+            Every team plays every other team once ({games} games), then the rotation starts over. Teams without a game
+            in a round sit out. Leave minutes blank when games go to a score; set it to show clock times. You can swap
+            matchups afterwards; players see it with the teams.
           </p>
           <CourtsField defaultValue={2} />
-          <MinutesField defaultValue={15} />
+          <MinutesField defaultValue={null} />
           <SubmitButton>Make schedule</SubmitButton>
         </form>
       ) : (
@@ -108,7 +109,9 @@ function CourtsField({ defaultValue }: { defaultValue: number }) {
 function MinutesField({ defaultValue }: { defaultValue: number | null }) {
   return (
     <label className="block space-y-1">
-      <span className="font-display text-sm font-bold tracking-[0.15em] uppercase">Minutes per game</span>
+      <span className="font-display text-sm font-bold tracking-[0.15em] uppercase">
+        Minutes per game <span className="font-sans text-xs font-normal tracking-normal normal-case text-ink-soft">(optional)</span>
+      </span>
       <input
         type="number"
         name="minutes"
