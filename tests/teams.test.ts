@@ -86,11 +86,36 @@ describe("balanceTeams with team requests", () => {
     expect(teams.map((t) => t.length).sort()).toEqual([2, 3]);
   });
 
-  it("splits a group too big for one team", () => {
-    const players = roster(6);
-    const everyone = players.slice(1).map((p) => ({ from: "p0", to: p.id }));
-    const teams = balanceTeams(players, 2, () => 0.5, everyone);
-    expect(teams.map((t) => t.length).sort()).toEqual([3, 3]);
+  it("never splits a requested group, even if teams end up uneven", () => {
+    // The dev session: three friends who all asked for each other, two teams.
+    const players = roster(3);
+    const teams = balanceTeams(players, 2, Math.random, [
+      { from: "p1", to: "p0" },
+      { from: "p2", to: "p0" },
+      { from: "p0", to: "p2" },
+    ]);
+    expect(teams.map((t) => t.length).sort()).toEqual([0, 3]);
+
+    // A group of 4 in a 6-player, 2-team session stays whole; the 2 free players go to the other team.
+    const six = roster(6);
+    const four = balanceTeams(six, 2, Math.random, [
+      { from: "p0", to: "p1" },
+      { from: "p1", to: "p2" },
+      { from: "p2", to: "p3" },
+    ]);
+    expect(new Set(["p0", "p1", "p2", "p3"].map((id) => teamOf(four, id))).size).toBe(1);
+    expect(four.map((t) => t.length).sort()).toEqual([2, 4]);
+  });
+
+  it("uses the free players to balance around the groups", () => {
+    // 12 players, 2 teams, one group of 4: the other 8 fill to 6 and 6.
+    const players = roster(12);
+    const teams = balanceTeams(players, 2, Math.random, [
+      { from: "p0", to: "p1" },
+      { from: "p0", to: "p2" },
+      { from: "p0", to: "p3" },
+    ]);
+    expect(teams.map((t) => t.length)).toEqual([6, 6]);
   });
 
   it("ignores requests for people who aren't playing", () => {

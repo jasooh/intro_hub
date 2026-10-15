@@ -236,11 +236,11 @@ function BalanceHelp({ label = false }: { label?: boolean }) {
       >
         <b className="mb-1 block font-display tracking-wide uppercase">How balancing works</b>
         <span className="block">
-          <b>Requests first:</b> players who asked to play together (the handshake) are placed together, as long as the
-          group fits on one team. Only bigger groups are split.
+          <b>Requests first:</b> players who asked to play together (the handshake) are always placed together. Groups
+          are never split.
         </span>
         <span className="mt-1.5 block">
-          <b>Then skill:</b> everyone else is ranked by the skill level they picked (experienced → some → prefer not to
+          <b>Then everyone else:</b> players who didn&apos;t ask for teammates are ranked by the skill level they picked (experienced → some → prefer not to
           say → never played), shuffled within each level, and added to the team with the fewest players, then the
           lowest skill. Instructional-only players aren&apos;t included. Re-balancing reshuffles, so you get a new mix each
           time.

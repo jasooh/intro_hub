@@ -40,7 +40,7 @@ async function NewSession() {
       </div>
       <Sheet label="Details" className="reveal" style={reveal(1)}>
         <SessionForm action={createSession} submitLabel="Create session" />
-      </Sheet>
+      </Sheet label="Details">
     </div>
   );
 }

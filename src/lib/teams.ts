@@ -40,9 +40,9 @@ function bySkill<T extends Player>(players: T[], random: () => number) {
  * order 1,2,3,3,2,1,... so no team keeps getting the first pick.
  *
  * With requests: players who asked to play together are grouped and placed
- * first, each group kept whole if it fits on one team, onto the team with the
- * fewest players (then the lowest skill total); everyone else is then dealt
- * strongest-first the same way.
+ * first, each group whole (never split), onto the team with the fewest players
+ * (then the lowest skill total). Everyone who didn't ask for teammates is then
+ * dealt strongest-first the same way, evening out sizes and skill.
  */
 export function balanceTeams<T extends Player>(
   players: T[],
@@ -81,22 +81,14 @@ export function balanceTeams<T extends Player>(
     groups.set(root, [...(groups.get(root) ?? []), p]);
   }
 
-  // Requests come first: a group stays together as long as it fits on one team
-  // (a full team's share, rounded up). Only bigger groups are split.
-  const maxGroup = Math.max(1, Math.ceil(players.length / n));
+  // Requests come first and are never split: each requested group is placed
+  // whole. Players who didn't ask for anyone are the free pieces that balance
+  // sizes and skill around them (and get reshuffled on Re-balance).
   const units: T[][] = [];
   const singles: T[] = [];
   for (const g of groups.values()) {
-    if (g.length === 1) {
-      singles.push(g[0]);
-      continue;
-    }
-    const sorted = bySkill(g, random);
-    for (let i = 0; i < sorted.length; i += maxGroup) {
-      const chunk = sorted.slice(i, i + maxGroup);
-      if (chunk.length === 1) singles.push(chunk[0]);
-      else units.push(chunk);
-    }
+    if (g.length === 1) singles.push(g[0]);
+    else units.push(g);
   }
 
   const total = (t: T[]) => t.reduce((sum, p) => sum + rank(p), 0);
