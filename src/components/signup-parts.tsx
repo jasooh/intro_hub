@@ -16,7 +16,7 @@ export function OptionRadio({
   defaultChecked?: boolean;
 }) {
   return (
-    <label className="flex cursor-pointer items-start gap-3 border-l-4 border-transparent py-1 pl-3 has-[:checked]:border-line">
+    <label className="flex cursor-pointer items-start gap-3 border-l-4 border-transparent py-2 pl-3 has-[:checked]:border-line sm:py-1">
       <input
         type="radio"
         name="option"
@@ -26,7 +26,7 @@ export function OptionRadio({
         className="mt-1.5 size-4 shrink-0 accent-[var(--line)]"
       />
       <span className="min-w-0 flex-1">
-        <span className="flex flex-wrap items-baseline justify-between gap-x-4">
+        <span className="flex flex-col gap-0.5 sm:flex-row sm:flex-wrap sm:items-baseline sm:justify-between sm:gap-x-4">
           <span className="font-display text-xl font-extrabold uppercase">{title}</span>
           <span className="font-score text-xl font-black">{price}</span>
         </span>

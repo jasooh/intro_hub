@@ -30,7 +30,7 @@ export type ButtonVariant = keyof typeof buttonVariants;
 export function buttonClass(variant: ButtonVariant = "primary", size: "sm" | "md" = "md") {
   return cn(
     "inline-flex items-center justify-center gap-2 font-display font-bold tracking-wide whitespace-nowrap uppercase transition-[transform,box-shadow,background-color,color] duration-100 disabled:pointer-events-none disabled:opacity-50",
-    variant === "ghost" ? (size === "sm" ? "py-1 text-base" : "py-2 text-lg") : size === "sm" ? "px-3 py-1 text-base" : "px-5 py-2 text-xl",
+    variant === "ghost" ? (size === "sm" ? "py-1.5 text-base sm:py-1" : "py-2 text-lg") : size === "sm" ? "px-3 py-1.5 text-base sm:py-1" : "px-5 py-2 text-xl",
     buttonVariants[variant],
   );
 }

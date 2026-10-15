@@ -107,26 +107,30 @@ export function TeamBlocks({
                 {t.members.map((m, i) => (
                   <li
                     key={m.id}
-                    className={`flex min-h-10 break-inside-avoid items-center gap-2 border-b border-ink/15 py-1.5 ${
+                    className={`flex min-h-10 break-inside-avoid flex-wrap items-center gap-x-2 gap-y-1 border-b border-ink/15 py-1.5 ${
                       m.isMe ? "-mx-1.5 bg-line/15 px-1.5" : ""
                     }`}
                   >
                     <span className="w-6 shrink-0 font-score text-sm font-black text-ink-soft">{pad2(i + 1)}</span>
                     <Avatar name={m.name} src={m.avatarUrl} size={22} />
-                    <span className="flex min-w-0 flex-1 items-baseline gap-1">
+                    <span className="flex min-w-[7.5rem] flex-1 items-baseline gap-1">
                       <span className={`truncate ${m.isMe ? "font-bold" : ""}`}>{m.name}</span>
                       {m.isMe && <span className="shrink-0 text-line">(you)</span>}
                     </span>
-                    {host && m.skill && (
-                      <span
-                        title={SKILL_LABELS[m.skill]}
-                        className="shrink-0 font-score text-xs font-black tracking-tighter text-ink-soft"
-                      >
-                        {SKILL_DOTS[m.skill]}
+                    {(host || m.control) && (
+                      <span className="ml-auto flex shrink-0 items-center gap-2">
+                        {host && m.skill && (
+                          <span
+                            title={SKILL_LABELS[m.skill]}
+                            className="shrink-0 font-score text-xs font-black tracking-tighter text-ink-soft"
+                          >
+                            {SKILL_DOTS[m.skill]}
+                          </span>
+                        )}
+                        {host && m.tag && <GroupTag letter={m.tag} />}
+                        {m.control}
                       </span>
                     )}
-                    {host && m.tag && <GroupTag letter={m.tag} />}
-                    {m.control}
                   </li>
                 ))}
               </ol>

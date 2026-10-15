@@ -53,7 +53,7 @@ export function TeammatePicker({
               type="button"
               aria-label={`Remove ${nameOf(id)}`}
               onClick={() => setSelected(selected.filter((x) => x !== id))}
-              className="inline-flex size-6 items-center justify-center text-ink-soft hover:text-bad"
+              className="-my-1 inline-flex size-9 items-center justify-center text-ink-soft hover:text-bad sm:my-0 sm:size-6"
             >
               <X className="size-4" aria-hidden />
             </button>
@@ -66,7 +66,7 @@ export function TeammatePicker({
             onChange={(e) => {
               if (e.target.value) setSelected([...selected, e.target.value]);
             }}
-            className="min-w-0 border-0 border-b-2 border-ink bg-transparent py-1 pr-7 pl-0 font-display text-sm font-bold tracking-wide uppercase focus:border-line focus:ring-0"
+            className="min-w-0 border-0 border-b-2 border-ink bg-transparent py-1.5 pr-7 pl-0 font-display text-base font-bold sm:py-1 sm:text-sm tracking-wide uppercase focus:border-line focus:ring-0"
           >
             <option value="">+ Add a teammate</option>
             {remaining.map((o) => (

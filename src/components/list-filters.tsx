@@ -80,7 +80,7 @@ export function ListFilters({
           })}
         </nav>
         <form
-          className="flex items-end gap-3"
+          className="flex w-full items-end gap-3 sm:w-auto"
           onSubmit={(e) => {
             e.preventDefault();
             go(filters, text);
@@ -92,7 +92,7 @@ export function ListFilters({
             onChange={(e) => setText(e.target.value)}
             placeholder={placeholder}
             aria-label="Search"
-            className={`${inputClass} w-64 text-base`}
+            className={`${inputClass} w-full text-base sm:w-64`}
           />
           {text && (
             <button
@@ -119,7 +119,7 @@ export function ListFilters({
                 type="button"
                 onClick={() => !active && go({ ...filters, [chips.param]: o.key }, text)}
                 aria-pressed={active}
-                className={`border-2 px-2.5 py-0.5 font-display text-sm font-bold tracking-wide uppercase transition-colors ${
+                className={`border-2 px-3 py-1.5 font-display text-sm sm:px-2.5 sm:py-0.5 font-bold tracking-wide uppercase transition-colors ${
                   active ? "border-ink bg-ink text-[#f2e3c6]" : "border-ink/30 text-ink-soft hover:border-ink hover:text-ink"
                 }`}
               >

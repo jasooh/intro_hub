@@ -210,7 +210,7 @@ function Choice({ label, required, children }: { label: string; required?: boole
         {label}
         {required && <RequiredMark />}
       </p>
-      <div className="space-y-2">{children}</div>
+      <div className="space-y-0.5 sm:space-y-2">{children}</div>
     </div>
   );
 }
@@ -229,7 +229,7 @@ function Radio({
   children: ReactNode;
 }) {
   return (
-    <label className="flex cursor-pointer items-center gap-3">
+    <label className="flex cursor-pointer items-center gap-3 py-1.5 sm:py-0.5">
       <input
         type="radio"
         name={name}
@@ -246,7 +246,7 @@ function Radio({
 function Legal({ summary, children }: { summary: string; children: ReactNode }) {
   return (
     <details className="group border-l-4 border-ink/20 pl-4">
-      <summary className="cursor-pointer list-none text-sm font-semibold text-mat underline decoration-2 underline-offset-4">
+      <summary className="-my-1 cursor-pointer list-none py-2 text-sm font-semibold text-mat underline decoration-2 underline-offset-4 sm:my-0 sm:py-0">
         {summary}
       </summary>
       <div className="mt-2 max-h-64 space-y-2 overflow-y-auto text-sm text-ink-soft">{children}</div>

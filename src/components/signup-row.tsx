@@ -54,8 +54,9 @@ export function SignupRow({
               )}
             </span>
           </div>
+          <p className="font-semibold">{formatTime(reg.session.starts_at)}</p>
+          <p className="text-sm leading-snug text-ink-soft">{reg.session.location}</p>
           <p className="text-ink-soft">
-            {formatTime(reg.session.starts_at)} · {reg.session.location} ·{" "}
             <span className="font-score font-black text-ink">{formatMoney(reg.amount_cents)}</span> ·{" "}
             <span className="font-score">{reg.ref_code}</span>
           </p>

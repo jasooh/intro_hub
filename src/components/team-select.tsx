@@ -26,7 +26,7 @@ export function TeamSelect({
         defaultValue={move ? "__" : (current ?? "")}
         aria-label={move ? "Move to team" : "Team"}
         onChange={(e) => e.currentTarget.form?.requestSubmit()}
-        className={`min-w-0 truncate border-0 border-b-2 border-ink bg-transparent py-1 pr-6 pl-0 font-display text-sm font-bold tracking-wide uppercase focus:border-line focus:ring-0 ${
+        className={`min-w-0 truncate border-0 border-b-2 border-ink bg-transparent py-1.5 pr-6 pl-0 font-display text-base font-bold sm:py-1 sm:text-sm tracking-wide uppercase focus:border-line focus:ring-0 ${
           move ? "w-[5.75rem] text-ink-soft" : "w-full max-w-40"
         }`}
       >

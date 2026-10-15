@@ -54,7 +54,7 @@ export function PlayerDetails({
 
   return (
     <Dialog>
-      <DialogTrigger className="text-left font-semibold decoration-line decoration-2 underline-offset-4 hover:underline">
+      <DialogTrigger className="-my-1.5 py-1.5 text-left font-semibold decoration-line decoration-2 underline-offset-4 hover:underline">
         {children}
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto rounded-none border-2 bg-[#f7ecd6] shadow-[6px_6px_0_var(--ink)] sm:max-w-lg">

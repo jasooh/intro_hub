@@ -44,7 +44,7 @@ export function RowFields({ columns, row }: { columns: ColumnInfo[]; row: Record
                   name={name}
                   defaultValue={value}
                   rows={kind === "json" ? Math.min(12, value.split("\n").length + 1) : 4}
-                  className={`${inputClass} font-mono text-sm`}
+                  className={`${inputClass} font-mono text-base sm:text-sm`}
                 />
               ) : (
                 <input

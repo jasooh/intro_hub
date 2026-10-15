@@ -5,7 +5,7 @@ import { inputClass } from "@/components/ui";
 import type { Match, Session, Team } from "@/lib/types";
 
 const pickClass =
-  "min-w-0 max-w-40 truncate border-0 border-b-2 border-ink bg-transparent py-1 pr-6 pl-0 font-display text-sm font-bold tracking-wide uppercase focus:border-line focus:ring-0";
+  "min-w-0 max-w-40 truncate border-0 border-b-2 border-ink bg-transparent py-1.5 pr-6 pl-0 font-display text-base font-bold sm:py-1 sm:text-sm tracking-wide uppercase focus:border-line focus:ring-0";
 
 /** Host side of the game schedule: make a round robin, swap matchups, set the game length. */
 export function ScheduleBoard({ session, teams, matches }: { session: Session; teams: Team[]; matches: Match[] }) {

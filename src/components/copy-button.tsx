@@ -59,7 +59,7 @@ export function CopyButton({
       type="button"
       onClick={copy}
       aria-label={copied ? `${label} copied` : `Copy ${label.toLowerCase()}`}
-      className={`inline-flex shrink-0 items-center gap-1.5 border-2 px-2.5 py-1 font-display text-sm font-bold tracking-wide uppercase transition-colors ${colors} ${className ?? ""}`}
+      className={`inline-flex shrink-0 items-center gap-1.5 border-2 px-3 py-2 font-display text-sm sm:px-2.5 sm:py-1 font-bold tracking-wide uppercase transition-colors ${colors} ${className ?? ""}`}
     >
       {copied ? <Check className="size-4" aria-hidden /> : <Copy className="size-4" aria-hidden />}
       {copied ? "Copied" : "Copy"}
