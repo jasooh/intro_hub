@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { refundReason, refundStatus } from "@/lib/refunds";
+import { refundAmount, refundReason, refundStatus } from "@/lib/refunds";
 
 describe("refundStatus", () => {
   it.each([
@@ -14,8 +14,19 @@ describe("refundStatus", () => {
 });
 
 describe("refundReason", () => {
-  it("separates whole-session cancellations from single spots", () => {
-    expect(refundReason({ status: "cancelled" })).toBe("session_cancelled");
-    expect(refundReason({ status: "scheduled" })).toBe("spot_cancelled");
+  it("separates whole-session cancellations, single spots, expired holds and overpayments", () => {
+    expect(refundReason({ status: "cancelled" }, { status: "cancelled" })).toBe("session_cancelled");
+    expect(refundReason({ status: "cancelled" }, { status: "scheduled" })).toBe("spot_cancelled");
+    expect(refundReason({ status: "expired" }, { status: "scheduled" })).toBe("hold_expired");
+    expect(refundReason({ status: "confirmed" }, { status: "scheduled" })).toBe("overpaid");
+  });
+});
+
+describe("refundAmount", () => {
+  it("gives back everything paid, or just the extra for someone still playing", () => {
+    expect(refundAmount({ status: "cancelled", amount_cents: 1500, paid_cents: 1500 })).toBe(1500);
+    expect(refundAmount({ status: "expired", amount_cents: 1500, paid_cents: 500 })).toBe(500);
+    expect(refundAmount({ status: "confirmed", amount_cents: 1500, paid_cents: 2000 })).toBe(500);
+    expect(refundAmount({ status: "confirmed", amount_cents: 1500, paid_cents: 1500 })).toBe(0);
   });
 });

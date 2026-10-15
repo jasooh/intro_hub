@@ -17,6 +17,8 @@ export type Candidate = {
   status: RegistrationStatus;
   /** What this sign-up owes ($10 instructional-only or the full price). */
   owedCents: number;
+  /** Already received toward it (partial payments add up). */
+  paidCents?: number;
   names: string[]; // e-Transfer names, display name, Google name
 };
 
@@ -54,9 +56,8 @@ export function matchPayment(payment: IncomingPayment, candidates: Candidate[]):
     if (byRef.status !== "pending_payment") {
       return { kind: "unmatched", reason: `Ref code ${ref} belongs to a ${byRef.status.replace("_", " ")} registration` };
     }
-    if (payment.amountCents < byRef.owedCents) {
-      return { kind: "unmatched", reason: `Ref code ${ref} matched, but the amount is less than what this sign-up owes` };
-    }
+    // A short payment still belongs to this sign-up: the database adds it up
+    // and keeps the spot held until the rest arrives.
     return { kind: "match", registrationId: byRef.registrationId, by: "ref" };
   }
 
@@ -65,7 +66,8 @@ export function matchPayment(payment: IncomingPayment, candidates: Candidate[]):
   const byName = candidates.filter(
     (c) =>
       c.status === "pending_payment" &&
-      c.owedCents === payment.amountCents &&
+      // The full price, or exactly what's left after a partial payment.
+      (c.owedCents === payment.amountCents || (!!c.paidCents && c.owedCents - c.paidCents === payment.amountCents)) &&
       c.names.some((n) => normalizeName(n) === sender),
   );
 

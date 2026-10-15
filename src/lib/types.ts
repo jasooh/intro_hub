@@ -112,6 +112,8 @@ export type Registration = {
   created_at: string;
   option: SignupOption;
   amount_cents: number;
+  /** Total of the payments linked to this sign-up (partial payments add up). */
+  paid_cents: number;
   note: string | null;
   team_id: string | null;
 };
@@ -152,6 +154,16 @@ export type Attendee = {
 };
 
 export type RegistrationEvent = {
-  event: "signed_up" | "waitlisted" | "promoted" | "confirmed" | "expired" | "reminder" | "session_cancelled";
+  event:
+    | "signed_up"
+    | "waitlisted"
+    | "promoted"
+    | "confirmed"
+    | "partial_payment"
+    | "expired"
+    | "reminder"
+    | "session_cancelled";
   registration_id: string;
+  /** partial_payment only: the payment that arrived (each one gets its own email). */
+  payment_id?: string;
 };

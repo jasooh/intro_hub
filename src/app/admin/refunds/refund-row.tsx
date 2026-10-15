@@ -3,7 +3,7 @@ import { setRefunded, setRefundWaived } from "@/app/admin/actions";
 import { SubmitButton } from "@/components/submit-button";
 import { Mark } from "@/components/ui";
 import { formatDateTime, formatMoney } from "@/lib/format";
-import { REFUND_REASON_LABELS, type RefundReason, type RefundStatus } from "@/lib/refunds";
+import { REFUND_REASON_LABELS, refundAmount, type RefundReason, type RefundStatus } from "@/lib/refunds";
 import type { Profile, Registration, Session } from "@/lib/types";
 
 export type RefundRowData = Registration & {
@@ -20,11 +20,18 @@ export function RefundRow({ r, status, reason }: { r: RefundRowData; status: Ref
       <div className="min-w-0 space-y-1">
         <p className="text-lg">
           <span className={`font-score font-black ${status === "to_refund" ? "text-line" : ""}`}>
-            {formatMoney(r.amount_cents)}
+            {formatMoney(refundAmount(r))}
           </span>{" "}
           to <b>{name}</b>
           {fullName && fullName !== name && <span className="text-ink-soft"> · {fullName}</span>}
         </p>
+        {(reason === "overpaid" || r.paid_cents !== r.amount_cents) && (
+          <p className="text-sm text-ink-soft">
+            Paid <span className="font-score font-black text-ink">{formatMoney(r.paid_cents)}</span>
+            {reason === "overpaid" ? " · owes " : " of "}
+            <span className="font-score font-black text-ink">{formatMoney(r.amount_cents)}</span>
+          </p>
+        )}
         <p className="text-sm text-ink-soft">
           e-Transfer to <span className="text-ink [overflow-wrap:anywhere]">{r.profile.email}</span>
           {r.profile.phone && ` · ${r.profile.phone}`} · <span className="font-score font-black text-ink">{r.ref_code}</span>
@@ -41,7 +48,10 @@ export function RefundRow({ r, status, reason }: { r: RefundRowData; status: Ref
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-3">
-        <Mark tone={reason === "session_cancelled" ? "bad" : "mat"} glyph={reason === "session_cancelled" ? "✕" : "○"}>
+        <Mark
+          tone={reason === "session_cancelled" ? "bad" : reason === "overpaid" ? "line" : "mat"}
+          glyph={reason === "session_cancelled" ? "✕" : reason === "overpaid" ? "+" : "○"}
+        >
           {REFUND_REASON_LABELS[reason]}
         </Mark>
         {status === "to_refund" && (

@@ -9,6 +9,8 @@ const ctx: EmailContext = {
   when: "Sat, Oct 17, 6:00 p.m.",
   location: "Downtown Gym",
   price: "$10.00",
+  paid: "$6.00",
+  remaining: "$4.00",
   refCode: "VB-7K3Q",
   holdUntil: "Sat, Oct 17, 9:00 a.m.",
   waitlistPosition: 3,
@@ -22,6 +24,7 @@ const kinds: RegistrationEvent["event"][] = [
   "waitlisted",
   "promoted",
   "confirmed",
+  "partial_payment",
   "expired",
   "reminder",
   "session_cancelled",
@@ -51,6 +54,17 @@ describe("email templates", () => {
     expect(withReason).toContain("Gym double-booked, sorry!");
     const without = await render(buildEmail("session_cancelled", ctx).element, { plainText: true });
     expect(without).not.toContain("Message from the host");
+  });
+});
+
+describe("partial payment email", () => {
+  it("says what arrived and asks for exactly what's left, with the same code", async () => {
+    const { subject, element } = buildEmail("partial_payment", ctx);
+    expect(subject).toContain("$4.00 left");
+    const text = await render(element, { plainText: true });
+    expect(text).toContain("received $6.00 of $10.00");
+    expect(text).toContain("Send $4.00 by Interac e-Transfer");
+    expect(text).toContain("VB-7K3Q");
   });
 });
 

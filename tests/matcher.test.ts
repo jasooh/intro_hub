@@ -33,9 +33,21 @@ describe("matchPayment", () => {
     });
   });
 
-  it("accepts overpayment but not underpayment", () => {
+  it("matches over- and under-payments by ref code (the database adds up partials)", () => {
     expect(matchPayment({ senderName: null, amountCents: 1500, memo: "VB-7K3Q" }, candidates).kind).toBe("match");
-    expect(matchPayment({ senderName: null, amountCents: 500, memo: "VB-7K3Q" }, candidates).kind).toBe("unmatched");
+    expect(matchPayment({ senderName: null, amountCents: 500, memo: "VB-7K3Q" }, candidates)).toEqual({
+      kind: "match",
+      registrationId: "r1",
+      by: "ref",
+    });
+  });
+
+  it("matches a top-up without a code by name + exactly what's left", () => {
+    const partly: Candidate[] = [
+      { registrationId: "p1", refCode: "VB-PPPP", status: "pending_payment", owedCents: 1500, paidCents: 1000, names: ["Kim Park"] },
+    ];
+    expect(matchPayment({ senderName: "KIM PARK", amountCents: 500, memo: null }, partly)).toMatchObject({ kind: "match", by: "name_amount" });
+    expect(matchPayment({ senderName: "KIM PARK", amountCents: 700, memo: null }, partly).kind).toBe("unmatched");
   });
 
   it("does not confirm a waitlisted registration by ref", () => {
@@ -79,6 +91,7 @@ describe("matchPayment", () => {
       by: "name_amount",
     });
     expect(matchPayment({ senderName: "Kim Park", amountCents: 1000, memo: null }, mixed).kind).toBe("unmatched");
-    expect(matchPayment({ senderName: "x", amountCents: 1000, memo: "VB-FFFF" }, mixed).kind).toBe("unmatched");
+    // With the code, a short payment is linked as a partial payment (the database adds it up).
+    expect(matchPayment({ senderName: "x", amountCents: 1000, memo: "VB-FFFF" }, mixed)).toMatchObject({ kind: "match", registrationId: "full" });
   });
 });

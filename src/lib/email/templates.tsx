@@ -9,6 +9,8 @@ export type EmailContext = {
   when: string;        // formatted start time
   location: string;
   price: string;       // formatted price
+  paid: string;        // formatted total received so far
+  remaining: string;   // formatted amount still owed
   refCode: string;
   holdUntil: string | null;
   waitlistPosition: number | null;
@@ -190,12 +192,12 @@ function Layout({
   );
 }
 
-/** The ref-code panel: dark board with the code in orange LED digits. */
-function PaymentBox({ ctx }: { ctx: EmailContext }) {
+/** The ref-code panel: dark board with the code in orange LED digits. `amount` defaults to the full price. */
+function PaymentBox({ ctx, amount = ctx.price }: { ctx: EmailContext; amount?: string }) {
   return (
     <Section style={s.board}>
       <Text style={s.boardText}>
-        <span style={s.step}>01</span>&nbsp; Send <b>{ctx.price}</b> by Interac e-Transfer to <b>{ctx.etransferEmail}</b>
+        <span style={s.step}>01</span>&nbsp; Send <b>{amount}</b> by Interac e-Transfer to <b>{ctx.etransferEmail}</b>
         <br />
         <span style={s.step}>02</span>&nbsp; Put this code in the message:
       </Text>
@@ -274,6 +276,22 @@ export function buildEmail(kind: RegistrationEvent["event"], ctx: EmailContext):
             <Text style={s.text}>
               Payment received. See you at <b>{ctx.location}</b> on <b>{ctx.when}</b>.
             </Text>
+            {viewButton}
+          </Layout>
+        ),
+      };
+    case "partial_payment":
+      return {
+        subject: `Almost there: ${ctx.remaining} left for ${ctx.sessionTitle} (${ctx.when})`,
+        element: (
+          <Layout preview={`We got ${ctx.paid} of ${ctx.price}. Send the remaining ${ctx.remaining} to lock in your spot`} ctx={ctx}>
+            <Title>Almost there</Title>
+            {hi}
+            <Text style={s.text}>
+              We received <b>{ctx.paid}</b> of <b>{ctx.price}</b>. Send the remaining <b>{ctx.remaining}</b> with the same
+              code and your spot is confirmed. We&apos;re holding it for you a little longer in the meantime.
+            </Text>
+            <PaymentBox ctx={ctx} amount={ctx.remaining} />
             {viewButton}
           </Layout>
         ),

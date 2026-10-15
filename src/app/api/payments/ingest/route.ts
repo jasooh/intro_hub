@@ -34,6 +34,7 @@ type CandidateRow = {
   ref_code: string;
   status: RegistrationStatus;
   amount_cents: number;
+  paid_cents: number;
   profile: {
     display_name: string | null;
     full_name: string | null;
@@ -76,7 +77,7 @@ export async function POST(request: Request) {
   const { data: rows, error: candError } = await admin
     .from("registrations")
     .select(
-      "id, ref_code, status, amount_cents, session:sessions!inner(starts_at), profile:profiles(display_name, full_name, first_name, last_name, etransfer_names)",
+      "id, ref_code, status, amount_cents, paid_cents, session:sessions!inner(starts_at), profile:profiles(display_name, full_name, first_name, last_name, etransfer_names)",
     )
     .gte("session.starts_at", since);
   if (candError) return NextResponse.json({ error: candError.message }, { status: 500 });
@@ -86,6 +87,7 @@ export async function POST(request: Request) {
     refCode: r.ref_code,
     status: r.status,
     owedCents: r.amount_cents,
+    paidCents: r.paid_cents,
     names: [
       ...r.profile.etransfer_names,
       r.profile.display_name,
@@ -121,9 +123,14 @@ export async function POST(request: Request) {
       continue;
     }
     matched += 1;
-    events.push(...parseEvents(data));
+    const applied = parseEvents(data);
+    events.push(...applied);
+    // Keep later messages in this batch matching against the up-to-date sign-up.
     const candidate = candidates.find((c) => c.registrationId === result.registrationId);
-    if (candidate) candidate.status = "confirmed";
+    if (candidate) {
+      candidate.paidCents = (candidate.paidCents ?? 0) + msg.amountCents;
+      if (applied.some((e) => e.event === "confirmed")) candidate.status = "confirmed";
+    }
   }
 
   await dispatchEvents(events);

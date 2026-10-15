@@ -43,7 +43,9 @@ async function sendForEvent(event: RegistrationEvent, reg: Loaded) {
   const admin = createAdminClient();
 
   // Claim the email first so retries / overlapping cron ticks never double-send.
-  const dedupeKey = `${event.event}:${reg.id}`;
+  // Each partial payment gets its own email; everything else once per sign-up.
+  const dedupeKey =
+    event.event === "partial_payment" && event.payment_id ? `partial_payment:${event.payment_id}` : `${event.event}:${reg.id}`;
   const { error: claimError } = await admin
     .from("email_log")
     .insert({ dedupe_key: dedupeKey, registration_id: reg.id, kind: event.event });
@@ -70,6 +72,8 @@ async function sendForEvent(event: RegistrationEvent, reg: Loaded) {
     when: formatDateTime(reg.session.starts_at),
     location: reg.session.location,
     price: formatMoney(reg.amount_cents),
+    paid: formatMoney(reg.paid_cents),
+    remaining: formatMoney(Math.max(reg.amount_cents - reg.paid_cents, 0)),
     refCode: reg.ref_code,
     holdUntil: reg.hold_expires_at ? formatDateTime(reg.hold_expires_at) : null,
     waitlistPosition,

@@ -109,6 +109,8 @@ describe("cancel + promotion", () => {
     await register(a, sid);
     await register(b, sid);
     const regA = await regOf(a, sid);
+    // Paid in full (refunds follow what was actually paid).
+    await db.query(`insert into public.payments (sender_name, amount_cents, registration_id) values ('A', 1000, $1)`, [regA.id]);
     await db.query(`update public.registrations set status = 'confirmed' where id = $1`, [regA.id]);
 
     const res = await asUser<{ events: Event[] }>(db, a, `select public.cancel_registration($1) as events`, [regA.id]);
@@ -983,5 +985,105 @@ describe("game schedule", () => {
     await db.query(`insert into auth.users (id, email) values ($1, 'abuyuanjustin@gmail.com')`, [devUser]);
     await asUser(db, devUser, `select public.devtools_reset('RESET')`);
     expect(await matchCount(host2)).toBe(0);
+  });
+});
+
+describe("partial payments", () => {
+  let n = 0;
+  async function pay(regId: string, cents: number) {
+    n += 1;
+    const p = await db.query<{ id: string }>(
+      `insert into public.payments (gmail_message_id, sender_name, amount_cents) values ($1, 'X', $2) returning id`,
+      [`partial-${n}`, cents],
+    );
+    const res = await asService<{ events: Event[] | null }>(db, `select public.ingest_apply_payment($1, $2, 'ref') as events`, [
+      p.rows[0].id,
+      regId,
+    ]);
+    return res.rows[0].events;
+  }
+  const row = async (id: string) =>
+    (
+      await db.query<{ status: string; paid_cents: number; refund_owed: boolean; hold_expires_at: Date | null }>(
+        `select status::text, paid_cents, refund_owed, hold_expires_at from public.registrations where id = $1`,
+        [id],
+      )
+    ).rows[0];
+
+  it("adds up: a short payment holds the spot longer, the top-up confirms it", async () => {
+    const sid = await createSession(db, { priceCents: 1500 });
+    const a = await createUser(db, "A");
+    await register(a, sid);
+    const id = (await regOf(a, sid)).id;
+    await db.query(`update public.registrations set hold_expires_at = now() + interval '10 minutes' where id = $1`, [id]);
+
+    const first = await pay(id, 1000);
+    expect(first?.map((e) => e.event)).toEqual(["partial_payment"]);
+    let r = await row(id);
+    expect(r).toMatchObject({ status: "pending_payment", paid_cents: 1000, refund_owed: false });
+    expect(r.hold_expires_at!.getTime()).toBeGreaterThan(Date.now() + 5 * 3600 * 1000);
+
+    const second = await pay(id, 500);
+    expect(second?.map((e) => e.event)).toEqual(["confirmed"]);
+    r = await row(id);
+    expect(r).toMatchObject({ status: "confirmed", paid_cents: 1500, refund_owed: false });
+  });
+
+  it("an expired hold or a cancel owes back what was partly paid", async () => {
+    const sid = await createSession(db, { priceCents: 1500 });
+    const [a, b] = [await createUser(db, "A"), await createUser(db, "B")];
+    await register(a, sid);
+    await register(b, sid);
+    const ra = (await regOf(a, sid)).id;
+    const rb = (await regOf(b, sid)).id;
+    await pay(ra, 500);
+    await pay(rb, 700);
+
+    await db.query(`update public.registrations set hold_expires_at = now() - interval '1 minute' where id = $1`, [ra]);
+    await asService(db, `select public.run_tick()`);
+    expect(await row(ra)).toMatchObject({ status: "expired", paid_cents: 500, refund_owed: true });
+
+    await asUser(db, b, `select public.cancel_registration($1)`, [rb]);
+    expect(await row(rb)).toMatchObject({ status: "cancelled", paid_cents: 700, refund_owed: true });
+  });
+
+  it("paying more than owed confirms and owes back the extra", async () => {
+    const sid = await createSession(db, { priceCents: 1500 });
+    const a = await createUser(db, "A");
+    await register(a, sid);
+    const id = (await regOf(a, sid)).id;
+    expect((await pay(id, 2000))?.map((e) => e.event)).toEqual(["confirmed"]);
+    expect(await row(id)).toMatchObject({ status: "confirmed", paid_cents: 2000, refund_owed: true });
+  });
+
+  it("mark paid records only what's still owed; a host's assign confirms regardless", async () => {
+    const sid = await createSession(db, { priceCents: 1500 });
+    const host = await createUser(db, "Host", { admin: true });
+    const [a, b] = [await createUser(db, "A"), await createUser(db, "B")];
+    await register(a, sid);
+    await register(b, sid);
+    const ra = (await regOf(a, sid)).id;
+    await pay(ra, 1000);
+    await asUser(db, host, `select public.admin_mark_paid($1)`, [ra]);
+    const amounts = await db.query<{ amount_cents: number }>(
+      `select amount_cents from public.payments where registration_id = $1 order by amount_cents`,
+      [ra],
+    );
+    expect(amounts.rows.map((x) => x.amount_cents)).toEqual([500, 1000]);
+    expect(await row(ra)).toMatchObject({ status: "confirmed", paid_cents: 1500 });
+
+    const p = await db.query<{ id: string }>(`insert into public.payments (sender_name, amount_cents) values ('B', 800) returning id`);
+    await asUser(db, host, `select public.admin_assign_payment($1, $2)`, [p.rows[0].id, (await regOf(b, sid)).id]);
+    expect((await regOf(b, sid)).status).toBe("confirmed");
+  });
+
+  it("players see their own paid amount", async () => {
+    const sid = await createSession(db, { priceCents: 1500 });
+    const a = await createUser(db, "A");
+    await register(a, sid);
+    const id = (await regOf(a, sid)).id;
+    await pay(id, 1000);
+    const mine = await asUser<{ paid_cents: number }>(db, a, `select paid_cents from public.registrations where id = $1`, [id]);
+    expect(mine.rows[0].paid_cents).toBe(1000);
   });
 });

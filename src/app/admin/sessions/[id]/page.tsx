@@ -339,7 +339,12 @@ function PlayerRow({
         <p className="truncate text-sm text-ink-soft">
           <span className="font-score font-black text-ink">{reg.ref_code}</span> · owes {formatMoney(reg.amount_cents)}
           {reg.status === "pending_payment" && reg.hold_expires_at && ` · hold until ${formatDateTime(reg.hold_expires_at)}`}
-          {payment && ` · paid ${formatMoney(payment.amount_cents)}`}
+          {reg.paid_cents > 0 &&
+            (reg.status === "pending_payment" && reg.paid_cents < reg.amount_cents ? (
+              <b className="text-warn"> · partly paid {formatMoney(reg.paid_cents)}</b>
+            ) : (
+              ` · paid ${formatMoney(reg.paid_cents)}`
+            ))}
         </p>
         <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
           {reg.option === "instructional" && (

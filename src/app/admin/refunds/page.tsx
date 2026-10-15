@@ -9,6 +9,7 @@ import {
   REFUND_REASON_LABELS,
   REFUND_STATUS_LABELS,
   type RefundReason,
+  refundAmount,
   refundReason,
   type RefundStatus,
   refundStatus,
@@ -26,6 +27,8 @@ const REASON_CHIPS: { key: RefundReason | "any"; label: string }[] = [
   { key: "any", label: "Any reason" },
   { key: "session_cancelled", label: REFUND_REASON_LABELS.session_cancelled },
   { key: "spot_cancelled", label: REFUND_REASON_LABELS.spot_cancelled },
+  { key: "hold_expired", label: REFUND_REASON_LABELS.hold_expired },
+  { key: "overpaid", label: REFUND_REASON_LABELS.overpaid },
 ];
 
 export const metadata: Metadata = {
@@ -58,9 +61,9 @@ async function Refunds({ searchParams }: { searchParams: PageProps<"/admin/refun
     .limit(1000);
 
   const rows = ((data ?? []) as RefundRowData[])
-    .map((r) => ({ r, status: refundStatus(r), reason: refundReason(r.session) }))
+    .map((r) => ({ r, status: refundStatus(r), reason: refundReason(r, r.session) }))
     .filter(({ r }) =>
-      paymentMatches({ sender_name: null, memo: null, amount_cents: r.amount_cents }, [
+      paymentMatches({ sender_name: null, memo: null, amount_cents: refundAmount(r) }, [
         r.profile.display_name,
         r.profile.full_name,
         r.profile.first_name,
@@ -75,7 +78,7 @@ async function Refunds({ searchParams }: { searchParams: PageProps<"/admin/refun
   const inView = rows.filter((x) => view === "all" || x.status === view);
   const reasonCount = (c: RefundReason | "any") => inView.filter((x) => c === "any" || x.reason === c).length;
   const shown = inView.filter((x) => reason === "any" || x.reason === reason);
-  const owedTotal = rows.filter((x) => x.status === "to_refund").reduce((sum, x) => sum + x.r.amount_cents, 0);
+  const owedTotal = rows.filter((x) => x.status === "to_refund").reduce((sum, x) => sum + refundAmount(x.r), 0);
 
   return (
     <div className="space-y-12">

@@ -5,14 +5,22 @@ import type { Registration } from "@/lib/types";
 
 export function PaymentInstructions({ registration }: { registration: Registration }) {
   const email = env.etransferEmail();
+  const paid = registration.paid_cents ?? 0;
+  const due = Math.max(registration.amount_cents - paid, 0);
   return (
     <div className="space-y-4">
+      {paid > 0 && (
+        <p className="border-l-4 border-warn pl-3">
+          We got <b>{formatMoney(paid)}</b> of <b>{formatMoney(registration.amount_cents)}</b>. Send the remaining{" "}
+          <b>{formatMoney(due)}</b> with the same code and your spot is confirmed.
+        </p>
+      )}
       <ol className="space-y-2 text-ink">
         <li className="flex gap-3">
           <span className="font-score font-black text-line">01</span>
           <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
             <span>
-              Send <b>{formatMoney(registration.amount_cents)}</b> by Interac e-Transfer to{" "}
+              Send <b>{formatMoney(due)}</b> by Interac e-Transfer to{" "}
               <b className="[overflow-wrap:anywhere]">{email}</b>
             </span>
             <CopyButton value={email} label="Email" />
