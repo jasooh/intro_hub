@@ -267,9 +267,17 @@ async function AdminSession({
         </details>
       )}
 
-      <Sheet label="Edit session">
+      {/* Collapsible so the form's own section tabs don't sit under another tab. */}
+      <details className="group space-y-8">
+        <summary className="flex cursor-pointer list-none flex-wrap items-end gap-x-3 gap-y-1 border-b-2 border-ink">
+          <span className="inline-flex items-center gap-2.5 bg-ink px-3 pt-1.5 pb-1 font-display text-sm font-bold tracking-[0.2em] whitespace-nowrap text-maple uppercase">
+            <span aria-hidden className="text-line transition-transform group-open:rotate-90">▸</span>
+            Edit session
+          </span>
+          <span className="pb-1 text-sm text-ink-soft">Time, prices, deposit, sign-up rules</span>
+        </summary>
         <SessionForm action={updateSession.bind(null, id)} session={session} submitLabel="Save changes" />
-      </Sheet>
+      </details>
 
       {session.status === "scheduled" && (
         <section className="space-y-4 border-t-2 border-bad pt-4">

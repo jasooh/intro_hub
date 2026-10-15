@@ -1,7 +1,6 @@
 import { LocationInput } from "@/components/location-input";
-import type { ReactNode } from "react";
 import { SubmitButton } from "@/components/submit-button";
-import { Field, inputClass } from "@/components/ui";
+import { Field, FormGroup as Group, inputClass } from "@/components/ui";
 import type { SessionTemplate } from "@/lib/types";
 import { pad2 } from "@/lib/format";
 
@@ -146,22 +145,5 @@ export function TemplateForm({
         <SubmitButton requireChange={Boolean(template)}>{submitLabel}</SubmitButton>
       </div>
     </form>
-  );
-}
-
-/** A form section headed like a Sheet: dark tab on a heavy ink rule. */
-function Group({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
-  return (
-    <fieldset className="min-w-0 space-y-4">
-      <legend className="sr-only">{title}</legend>
-      <div aria-hidden className="border-b-2 border-ink">
-        <span className="inline-flex items-center gap-2.5 bg-ink px-3 pt-1.5 pb-1 font-display text-sm font-bold tracking-[0.2em] whitespace-nowrap text-maple uppercase">
-          <span className="size-1.5 shrink-0 bg-line" />
-          {title}
-        </span>
-      </div>
-      {hint && <p className="text-sm text-ink-soft">{hint}</p>}
-      {children}
-    </fieldset>
   );
 }

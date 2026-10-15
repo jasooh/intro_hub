@@ -346,6 +346,23 @@ export function Field({
   );
 }
 
+/** A form section headed like a Sheet: dark tab on a heavy ink rule. */
+export function FormGroup({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
+  return (
+    <fieldset className="min-w-0 space-y-4">
+      <legend className="sr-only">{title}</legend>
+      <div aria-hidden className="border-b-2 border-ink">
+        <span className="inline-flex items-center gap-2.5 bg-ink px-3 pt-1.5 pb-1 font-display text-sm font-bold tracking-[0.2em] whitespace-nowrap text-maple uppercase">
+          <span className="size-1.5 shrink-0 bg-line" />
+          {title}
+        </span>
+      </div>
+      {hint && <p className="text-sm text-ink-soft">{hint}</p>}
+      {children}
+    </fieldset>
+  );
+}
+
 export const inputClass =
   "block w-full min-w-0 rounded-none border-0 border-b-2 border-ink bg-transparent px-0 py-2 text-lg text-ink placeholder:text-ink-soft/60 focus:border-line focus:ring-0 focus:outline-none";
 
