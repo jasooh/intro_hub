@@ -5,7 +5,7 @@
 Sign-up site for **Intro 2 Volleyball**, a beginner-friendly drop-in at Aaniin Community Centre (Markham), run by a host who used to do everything with Google Forms. Instagram @intro2volleyball, contact intro2volleyball@gmail.com.
 
 ## What it does
-- **Players** sign in with Google, fill in a one-time profile (name, phone, skill, waiver, media release…), then sign up for a session in one tap.
+- **Players** sign in with Google, fill in a one-time profile (name, phone, skill, waiver, media release…), then sign up for a session in one tap. Their account area (`/me`) has Profile and My sign-ups (`/me/signups`: Upcoming/Past/Cancelled tabs, option filter, search) behind a small tab bar.
 - **Options per sign-up:** *Instructional + Drop-in* (full price, uses a spot) or *Instructional only* (cheaper, **doesn't use a spot**, never waitlisted). Players can switch before paying.
 - **Payment:** Interac e-Transfer with a ref code (`VB-XXXX`). A Gmail Apps Script (`scripts/gmail-ingest.gs`) posts notifications to `/api/payments/ingest`; `src/lib/matcher.ts` matches by ref code or name + exact amount owed.
 - **Holds & waitlist:** a spot is held for N hours while unpaid; expired holds free the spot and the waitlist auto-promotes.

@@ -1,16 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { cancelRegistration } from "@/app/actions";
-import { PaymentInstructions } from "@/components/payment-instructions";
 import { ProfileForm } from "@/components/profile-form";
-import { DateBlock } from "@/components/session-card";
-import { SubmitButton } from "@/components/submit-button";
-import { Avatar, EmptyState, Mark, PageSpinner, reveal, Sheet, StatusMark } from "@/components/ui";
+import { Avatar, PageSpinner, reveal, Sheet } from "@/components/ui";
 import { requireProfile } from "@/lib/auth";
-import { formatDateTime, formatMoney, formatTime } from "@/lib/format";
-import { getMyRegistrations } from "@/lib/queries";
-import type { Registration, Session } from "@/lib/types";
+import { getMySignups } from "@/lib/queries";
 
 export const metadata: Metadata = {
   title: "Account",
@@ -27,7 +21,8 @@ export default function MePage() {
 
 async function Account() {
   const profile = await requireProfile("/me");
-  const { upcoming, past } = await getMyRegistrations(profile.id);
+  const upcoming = (await getMySignups(profile.id)).filter((r) => r.view === "upcoming");
+  const needsPayment = upcoming.filter((r) => r.status === "pending_payment").length;
   const name = profile.display_name ?? profile.full_name ?? profile.email;
 
   return (
@@ -42,104 +37,30 @@ async function Account() {
         </div>
       </div>
 
-      <Sheet label="Profile" className="reveal max-w-xl" style={reveal(1)}>
-        <div className="space-y-5">
-          <ProfileForm profile={profile} next="/me" returnTo="/me" submitLabel="Save changes" requireChange />
-        </div>
+      {upcoming.length > 0 && (
+        <Link
+          href="/me/signups"
+          className="reveal group flex flex-wrap items-center justify-between gap-3 border-2 border-ink bg-maple-deep/60 px-4 py-3 hover:bg-maple-deep"
+          style={reveal(1)}
+        >
+          <span>
+            You have <b>{upcoming.length}</b> upcoming sign-up{upcoming.length === 1 ? "" : "s"}
+            {needsPayment > 0 && (
+              <span className="font-semibold text-warn">
+                {" "}
+                · {needsPayment} waiting for payment
+              </span>
+            )}
+          </span>
+          <span className="font-display font-bold tracking-wide text-line uppercase">
+            My sign-ups <span className="inline-block transition-transform group-hover:translate-x-1">→</span>
+          </span>
+        </Link>
+      )}
+
+      <Sheet label="Profile" className="reveal max-w-xl" style={reveal(2)}>
+        <ProfileForm profile={profile} next="/me" returnTo="/me" submitLabel="Save changes" requireChange />
       </Sheet>
-
-      <Sheet label="My sign-ups · upcoming" className="reveal" style={reveal(2)}>
-        {upcoming.length === 0 ? (
-          <EmptyState>
-            Nothing yet.{" "}
-            <Link href="/sessions" className="text-line underline decoration-2 underline-offset-4">
-              Find a session
-            </Link>
-          </EmptyState>
-        ) : (
-          <div className="divide-y divide-ink/25">
-            {upcoming.map((r) => (
-              <RegistrationRow key={r.id} reg={r} />
-            ))}
-          </div>
-        )}
-      </Sheet>
-
-      {past.length > 0 && (
-        <Sheet label="Past" className="reveal" style={reveal(3)}>
-          <ul className="divide-y divide-ink/20">
-            {past.map((r) => (
-              <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
-                <span className="text-ink-soft">
-                  {r.session.title} · {formatDateTime(r.session.starts_at)}
-                </span>
-                <StatusMark status={r.status} />
-              </li>
-            ))}
-          </ul>
-        </Sheet>
-      )}
-    </div>
-  );
-}
-
-function RegistrationRow({ reg }: { reg: Registration & { session: Session } }) {
-  const active = ["pending_payment", "confirmed", "waitlisted"].includes(reg.status);
-  return (
-    <div className="space-y-4 py-5">
-      <div className="flex gap-4">
-        <DateBlock iso={reg.session.starts_at} />
-        <div className="min-w-0 flex-1 space-y-1">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <Link
-              href={`/s/${reg.session_id}`}
-              className="font-display text-2xl leading-tight font-extrabold uppercase decoration-line decoration-2 underline-offset-4 hover:underline"
-            >
-              {reg.session.title}
-            </Link>
-            <span className="flex flex-wrap items-center gap-x-4">
-              {reg.option === "instructional" && (
-                <Mark tone="mat" glyph="◇">
-                  Instructional only
-                </Mark>
-              )}
-              <StatusMark status={reg.status} />
-            </span>
-          </div>
-          <p className="text-ink-soft">
-            {formatTime(reg.session.starts_at)} · {reg.session.location} ·{" "}
-            <span className="font-score font-black text-ink">{formatMoney(reg.amount_cents)}</span>
-          </p>
-        </div>
-      </div>
-      {reg.status === "pending_payment" && <PaymentInstructions registration={reg} />}
-      {reg.refund_owed && (
-        <p className="text-sm text-ink-soft">
-          {reg.refunded_at
-            ? "Refunded."
-            : reg.refund_waived_at
-              ? "No refund for this one. Contact the host if you have questions."
-              : "Refund owed. The host will e-Transfer it back."}
-        </p>
-      )}
-      {active && (
-        <form action={cancelRegistration.bind(null, reg.id, "/me")}>
-          <SubmitButton
-            variant="danger"
-            size="sm"
-            confirm={{
-              title: reg.status === "waitlisted" ? "Leave the waitlist?" : "Cancel your spot?",
-              description:
-                reg.status === "waitlisted"
-                  ? "You'll lose your place in line."
-                  : "Your spot goes to the next person on the waitlist. Refunds only apply before the cancellation cutoff.",
-              action: reg.status === "waitlisted" ? "Leave waitlist" : "Cancel spot",
-            }}
-          >
-            {reg.status === "waitlisted" ? "Leave waitlist" : "Cancel my spot"}
-          </SubmitButton>
-        </form>
-      )}
     </div>
   );
 }

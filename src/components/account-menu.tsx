@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutDashboard, LogOut, UserRound } from "lucide-react";
+import { CalendarCheck, LayoutDashboard, LogOut, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useTransition } from "react";
 import { signOut } from "@/app/auth/actions";
@@ -47,6 +47,12 @@ export function AccountMenu({
           <Link href="/me">
             <UserRound />
             Account
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/me/signups">
+            <CalendarCheck />
+            My sign-ups
           </Link>
         </DropdownMenuItem>
         {isAdmin && (

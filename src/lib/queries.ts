@@ -1,4 +1,5 @@
 import "server-only";
+import { signupView } from "@/lib/signups";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import type { Registration, Session, SessionCounts } from "@/lib/types";
@@ -49,7 +50,8 @@ export async function getMySpot(session: Session, profileId: string) {
   };
 }
 
-export async function getMyRegistrations(profileId: string) {
+/** Every sign-up the player has made, newest session first, each tagged upcoming / past / cancelled. */
+export async function getMySignups(profileId: string) {
   await connection();
   const supabase = await createClient();
   const { data } = await supabase
@@ -57,13 +59,16 @@ export async function getMyRegistrations(profileId: string) {
     .select("*, session:sessions(*)")
     .eq("profile_id", profileId)
     .order("created_at", { ascending: false })
-    .limit(30);
-  const regs = (data ?? []) as (Registration & { session: Session })[];
-  const cutoff = Date.now() - 3 * 3600 * 1000;
-  return {
-    upcoming: regs.filter((r) => new Date(r.session.starts_at).getTime() > cutoff),
-    past: regs.filter((r) => new Date(r.session.starts_at).getTime() <= cutoff),
-  };
+    .limit(500);
+  const now = Date.now();
+  return ((data ?? []) as (Registration & { session: Session })[])
+    .map((r) => ({ ...r, view: signupView(r, now) }))
+    .sort((a, b) => {
+      // Upcoming soonest first; everything else most recent first.
+      const ta = new Date(a.session.starts_at).getTime();
+      const tb = new Date(b.session.starts_at).getTime();
+      return a.view === "upcoming" && b.view === "upcoming" ? ta - tb : tb - ta;
+    });
 }
 
 /** Start of the window used for payment matching and assignment (one week back). */
