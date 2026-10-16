@@ -893,25 +893,48 @@ describe("rejoining after a paid cancel", () => {
     expect((await register(b, sid))[0].event).toBe("signed_up");
   });
 
-  it("does nothing once the refund was sent, or for a different option's price", async () => {
-    const sid = await createSession(db, { instructionalPriceCents: 500 });
-    const [a, b] = [await createUser(db, "A"), await createUser(db, "B")];
-
+  it("does nothing once the refund was sent", async () => {
+    const sid = await createSession(db);
+    const a = await createUser(db, "A");
     await register(a, sid);
     const refunded = await payAndCancel(a, sid);
     await db.query(`update public.registrations set refunded_at = now() where id = $1`, [refunded]);
     expect((await register(a, sid))[0].event).toBe("signed_up");
+  });
 
+  it("carries over any amount: more confirms and leaves the extra owed, less counts as a partial", async () => {
+    const sid = await createSession(db, { priceCents: 1500 });
+    const [a, b] = [await createUser(db, "A"), await createUser(db, "B")];
+    const row = async (id: string) =>
+      (
+        await db.query<{ status: string; paid_cents: number; refund_owed: boolean }>(
+          `select status::text, paid_cents, refund_owed from public.registrations where id = $1`,
+          [id],
+        )
+      ).rows[0];
+    const payThenCancel = async (userId: string, cents: number) => {
+      const reg = await regOf(userId, sid);
+      await db.query(`insert into public.payments (sender_name, amount_cents, registration_id) values ('X', $1, $2)`, [cents, reg.id]);
+      if (cents >= 1500) await db.query(`update public.registrations set status = 'confirmed' where id = $1`, [reg.id]);
+      await asUser(db, userId, `select public.cancel_registration($1)`, [reg.id]);
+      return reg.id;
+    };
+
+    // Paid $20 for a $15 spot, cancelled, signed up again: confirmed, $5 still owed back.
+    await register(a, sid);
+    const oldA = await payThenCancel(a, 2000);
+    expect((await register(a, sid))[0].event).toBe("confirmed");
+    const newA = (await regOf(a, sid)).id;
+    expect(await row(newA)).toMatchObject({ status: "confirmed", paid_cents: 2000, refund_owed: true });
+    expect(await row(oldA)).toMatchObject({ paid_cents: 0, refund_owed: false });
+
+    // Paid $10 toward $15, cancelled, signed up again: still holding, $10 counted, $5 to go.
     await register(b, sid);
-    await payAndCancel(b, sid);
-    await asUser(db, b, `select public.register_for_session($1, 'instructional')`, [sid]);
-    expect((await regOf(b, sid)).status).toBe("pending_payment");
-    // Switching back to the option they paid for uses it.
-    const res = await asUser<{ events: Event[] }>(db, b, `select public.change_registration_option($1, 'full') as events`, [
-      (await regOf(b, sid)).id,
-    ]);
-    expect(res.rows[0].events.map((e) => e.event)).toEqual(["confirmed"]);
-    expect((await regOf(b, sid)).status).toBe("confirmed");
+    const oldB = await payThenCancel(b, 1000);
+    expect((await register(b, sid))[0].event).toBe("signed_up");
+    const newB = (await regOf(b, sid)).id;
+    expect(await row(newB)).toMatchObject({ status: "pending_payment", paid_cents: 1000, refund_owed: false });
+    expect(await row(oldB)).toMatchObject({ paid_cents: 0, refund_owed: false });
   });
 
   it("applies when they come off the waitlist", async () => {

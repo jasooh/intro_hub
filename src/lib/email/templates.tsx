@@ -194,8 +194,8 @@ function Layout({
   );
 }
 
-/** The ref-code panel: dark board with the code in orange LED digits. `amount` defaults to the full price. */
-function PaymentBox({ ctx, amount = ctx.price }: { ctx: EmailContext; amount?: string }) {
+/** The ref-code panel: dark board with the code in orange LED digits. Asks for what's still owed. */
+function PaymentBox({ ctx, amount = ctx.remaining }: { ctx: EmailContext; amount?: string }) {
   return (
     <Section style={s.board}>
       <Text style={s.boardText}>
