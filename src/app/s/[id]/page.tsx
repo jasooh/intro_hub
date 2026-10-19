@@ -142,12 +142,6 @@ async function SessionView({
                   </span>
                 )}
               </p>
-              {!cancelled && (
-                <p className="max-w-xl text-sm text-ink-soft">
-                  Please note that refunds can only be issued if notification of absence is received before 4:00PM on
-                  the day of the session.
-                </p>
-              )}
             </div>
           </div>
           {!cancelled && (
@@ -220,6 +214,7 @@ async function SessionView({
                 Sign in with Google
               </Link>
             </div>
+            <RefundCutoff cutoff={session.cancel_cutoff} className="mt-5" />
           </Sheet>
         )}
       </div>
@@ -327,7 +322,10 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
             <textarea name="note" rows={2} maxLength={1000} className={inputClass} />
           </Field>
 
-          <SubmitButton>{full && !hasInstructional ? "Join waitlist" : "Sign up"}</SubmitButton>
+          <div className="space-y-4">
+            <SubmitButton>{full && !hasInstructional ? "Join waitlist" : "Sign up"}</SubmitButton>
+            <RefundCutoff cutoff={session.cancel_cutoff} />
+          </div>
         </form>
       </Sheet>
     );
@@ -545,5 +543,24 @@ async function AttendeeList({ session }: { session: Session }) {
         {instructionalSheet}
       </div>
     </div>
+  );
+}
+
+/** The refund rule, next to the sign-up button: cancel before the session's cutoff to get your money back. */
+function RefundCutoff({ cutoff, className }: { cutoff: string; className?: string }) {
+  const passed = new Date(cutoff) <= new Date();
+  return (
+    <p className={`max-w-xl border-l-4 border-line py-1 pl-3 ${className ?? ""}`}>
+      <span className="font-display text-sm font-bold tracking-[0.15em] uppercase">Refunds</span>
+      <br />
+      {passed ? (
+        <>The refund cutoff has passed. Spots cancelled now aren&apos;t refunded.</>
+      ) : (
+        <>
+          Can&apos;t make it? Cancel before <b>{formatDateTime(cutoff)}</b> to get your money back. After that, no
+          refunds.
+        </>
+      )}
+    </p>
   );
 }
