@@ -38,7 +38,7 @@ async function EditTemplate({
         <BackLink href="/admin/templates">Weekly schedule</BackLink>
         <PageTitle
           eyebrow={`Every ${WEEKDAYS[template.weekday]}`}
-          sub="Changes apply to sessions created from now on. Edit sessions that already exist from the dashboard."
+          sub="Changes apply to sessions created from now on. Edit sessions that already exist from the Sessions page."
         >
           {template.title}
         </PageTitle>
@@ -56,7 +56,7 @@ async function EditTemplate({
             confirm={{
               title: `Delete ${WEEKDAYS[template.weekday]} ${template.title}?`,
               description:
-                "No new sessions will be created from it. Sessions it already created stay; cancel those from the dashboard if needed.",
+                "No new sessions will be created from it. Sessions it already created stay; cancel those from the Sessions page if needed.",
               action: "Delete",
             }}
           >

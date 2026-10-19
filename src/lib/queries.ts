@@ -127,7 +127,7 @@ export async function paymentWindowStart() {
 export type AdminSessionView = "upcoming" | "past" | "cancelled";
 
 /**
- * Sessions for the host dashboard, split into upcoming / past / cancelled and
+ * Sessions for the host Sessions page, split into upcoming / past / cancelled and
  * optionally filtered by a search over title, location and notes. Also returns
  * how many sessions match the search in each view, for the tab counts.
  */

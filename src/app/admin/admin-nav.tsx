@@ -3,7 +3,7 @@
 import { BoardNav } from "@/components/board-nav";
 
 const links = [
-  { href: "/admin", label: "Dashboard" },
+  { href: "/admin", label: "Sessions" },
   { href: "/admin/payments", label: "Payments" },
   { href: "/admin/refunds", label: "Refunds" },
   { href: "/admin/players", label: "Players" },

@@ -134,7 +134,7 @@ async function AdminSession({
     <div className="space-y-12">
       <LiveRefresh sessionId={id} />
       <div>
-        <BackLink href="/admin">Dashboard</BackLink>
+        <BackLink href="/admin">Sessions</BackLink>
       <div className="reveal flex flex-wrap items-end justify-between gap-4" style={reveal(0)}>
         <div className="flex gap-5">
           <DateBlock iso={session.starts_at} className="pt-1" />

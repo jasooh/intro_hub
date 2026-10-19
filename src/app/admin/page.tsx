@@ -16,18 +16,18 @@ const VIEWS: { key: AdminSessionView; label: string }[] = [
 ];
 
 export const metadata: Metadata = {
-  title: "Dashboard",
+  title: "Sessions",
 };
 
-export default function AdminDashboard(props: PageProps<"/admin">) {
+export default function AdminSessionsPage(props: PageProps<"/admin">) {
   return (
     <Suspense fallback={<PageSpinner />}>
-      <Dashboard searchParams={props.searchParams} />
+      <Sessions searchParams={props.searchParams} />
     </Suspense>
   );
 }
 
-async function Dashboard({ searchParams }: { searchParams: PageProps<"/admin">["searchParams"] }) {
+async function Sessions({ searchParams }: { searchParams: PageProps<"/admin">["searchParams"] }) {
   await requireAdmin();
   const params = await searchParams;
   const view: AdminSessionView = VIEWS.some((v) => v.key === params.view) ? (params.view as AdminSessionView) : "upcoming";
@@ -53,7 +53,7 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/admin">["
   return (
     <div className="space-y-12">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <PageTitle>Dashboard</PageTitle>
+        <PageTitle>Sessions</PageTitle>
         <Link href="/admin/sessions/new" className={buttonClass()}>
           + New session
         </Link>

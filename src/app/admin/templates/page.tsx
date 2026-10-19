@@ -115,7 +115,7 @@ function TemplateRow({ t }: { t: SessionTemplate }) {
             confirm={{
               title: `Delete ${WEEKDAYS[t.weekday]} ${t.title}?`,
               description:
-                "No new sessions will be created from it. Sessions it already created stay on the schedule; cancel those from the dashboard if needed. To stop it temporarily, use Pause instead.",
+                "No new sessions will be created from it. Sessions it already created stay on the schedule; cancel those from the Sessions page if needed. To stop it temporarily, use Pause instead.",
               action: "Delete",
             }}
           >

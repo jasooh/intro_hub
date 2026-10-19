@@ -23,7 +23,7 @@ async function NewSession() {
   return (
     <div className="space-y-10">
       <div>
-        <BackLink href="/admin">Dashboard</BackLink>
+        <BackLink href="/admin">Sessions</BackLink>
         <PageTitle
           sub={
             <>
