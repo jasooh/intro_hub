@@ -12,6 +12,15 @@ export function ScheduleBoard({ session, teams, matches }: { session: Session; t
   if (teams.length < 2) return null;
   const games = (teams.length * (teams.length - 1)) / 2;
   const courtsUsed = Math.max(1, ...matches.map((m) => m.court));
+  // Each game takes two teams, so this many games can run at once.
+  const maxCourts = Math.min(3, Math.floor(teams.length / 2));
+  const courtsNote =
+    maxCourts < 3 ? (
+      <p className="basis-full text-sm text-ink-soft">
+        {teams.length} teams can fill {maxCourts === 1 ? "one court" : `${maxCourts} courts`} at a time.
+        {" "}To use more courts, make {2 * (maxCourts + 1)} or more teams first.
+      </p>
+    ) : null;
   const start = session.dropin_starts_at ?? session.starts_at;
 
   return (
@@ -25,9 +34,10 @@ export function ScheduleBoard({ session, teams, matches }: { session: Session; t
             in a round sit out. Leave minutes blank when games go to a score; set it to show clock times. You can swap
             matchups afterwards; players see it with the teams.
           </p>
-          <CourtsField defaultValue={2} />
+          <CourtsField defaultValue={Math.min(2, maxCourts)} max={maxCourts} />
           <MinutesField defaultValue={null} />
           <SubmitButton>Make schedule</SubmitButton>
+          {courtsNote}
         </form>
       ) : (
         <>
@@ -62,7 +72,7 @@ export function ScheduleBoard({ session, teams, matches }: { session: Session; t
             </form>
             <form action={makeSchedule.bind(null, session.id)} className="flex items-end gap-3">
               <input type="hidden" name="minutes" value={session.schedule_game_minutes ?? ""} />
-              <CourtsField defaultValue={courtsUsed} />
+              <CourtsField defaultValue={Math.min(courtsUsed, maxCourts)} max={maxCourts} />
               <SubmitButton
                 size="sm"
                 variant="secondary"
@@ -91,12 +101,12 @@ export function ScheduleBoard({ session, teams, matches }: { session: Session; t
   );
 }
 
-function CourtsField({ defaultValue }: { defaultValue: number }) {
+function CourtsField({ defaultValue, max }: { defaultValue: number; max: number }) {
   return (
     <label className="block space-y-1">
       <span className="font-display text-sm font-bold tracking-[0.15em] uppercase">Courts</span>
       <select name="courts" defaultValue={defaultValue} className={`${inputClass} w-20`}>
-        {[1, 2, 3].map((n) => (
+        {[1, 2, 3].filter((n) => n <= max).map((n) => (
           <option key={n} value={n}>
             {n}
           </option>

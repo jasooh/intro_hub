@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { roundRobin, sittingOut, slotTimes } from "@/lib/schedule";
+import { minimumSlots, roundRobin, sittingOut, slotTimes } from "@/lib/schedule";
 
 const teams = (n: number) => Array.from({ length: n }, (_, i) => `t${i + 1}`);
 
 describe("roundRobin", () => {
-  for (let n = 2; n <= 8; n++) {
+  for (let n = 2; n <= 12; n++) {
     for (let courts = 1; courts <= 3; courts++) {
       it(`${n} teams on ${courts} court(s): every pair once, nobody twice in a slot`, () => {
         const games = roundRobin(teams(n), courts);
@@ -19,6 +19,8 @@ describe("roundRobin", () => {
           expect(new Set(playing).size).toBe(playing.length);
           expect(slot.map((g) => g.court)).toEqual(slot.map((_, i) => i + 1));
         }
+        // As few slots as the courts allow: no court left empty while teams wait.
+        expect(bySlot.size).toBe(minimumSlots(n, courts));
         // Slots are numbered 1..N with no gaps.
         expect([...bySlot.keys()]).toEqual(Array.from({ length: bySlot.size }, (_, i) => i + 1));
       });
@@ -37,6 +39,19 @@ describe("roundRobin", () => {
     );
     expect(byes.every((b) => b.length === 1)).toBe(true);
     expect(new Set(byes.flat()).size).toBe(5);
+  });
+
+  it("keeps both courts busy when a round doesn't split evenly (6 teams, 2 courts)", () => {
+    const games = roundRobin(teams(6), 2);
+    const bySlot = Map.groupBy(games, (g) => g.slot);
+    expect(bySlot.size).toBe(8); // was 10, with a court empty every other slot
+    // 15 games on 2 courts: only the last slot has a single game.
+    expect([...bySlot.values()].filter((slot) => slot.length === 1)).toHaveLength(1);
+  });
+
+  it("uses only as many courts as the teams can fill", () => {
+    expect(Math.max(...roundRobin(teams(3), 3).map((g) => g.court))).toBe(1);
+    expect(Math.max(...roundRobin(teams(5), 3).map((g) => g.court))).toBe(2);
   });
 
   it("needs at least two teams", () => {

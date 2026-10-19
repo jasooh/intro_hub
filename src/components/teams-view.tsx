@@ -2,6 +2,8 @@ import { MatchSchedule } from "@/components/match-schedule";
 import { TeamBlocks } from "@/components/team-blocks";
 import { AttendeeRow } from "@/components/signup-parts";
 import { Mark, Sheet } from "@/components/ui";
+import { formatTime, pad2 } from "@/lib/format";
+import { slotTimes } from "@/lib/schedule";
 import type { Attendee, Match, Team } from "@/lib/types";
 
 /** Published teams as stacked team blocks, with the viewer's own team called out, then the game schedule. */
@@ -73,8 +75,64 @@ export function TeamsView({
           ) : undefined
         }
       >
-        <MatchSchedule teams={teams} matches={matches} startIso={scheduleStart} minutes={gameMinutes} highlightTeamId={myTeam} />
+        <div className="space-y-6">
+          {myTeam && myGames > 0 && (
+            <YourGames teams={teams} matches={matches} myTeam={myTeam} startIso={scheduleStart} minutes={gameMinutes} />
+          )}
+          <MatchSchedule teams={teams} matches={matches} startIso={scheduleStart} minutes={gameMinutes} highlightTeamId={myTeam} />
+        </div>
       </Sheet>
     </div>
+  );
+}
+
+/** The viewer's own games, in order: when, which court, and who against. */
+function YourGames({
+  teams,
+  matches,
+  myTeam,
+  startIso,
+  minutes,
+}: {
+  teams: Team[];
+  matches: Match[];
+  myTeam: string;
+  startIso: string;
+  minutes: number | null;
+}) {
+  const nameOf = new Map(teams.map((t) => [t.id, t.name]));
+  const slots = [...new Set(matches.map((m) => m.slot))].sort((a, b) => a - b);
+  const times = slotTimes(startIso, minutes, slots.length);
+  const timeOf = (slot: number) => (times ? formatTime(times[slots.indexOf(slot)]) : null);
+  const multiCourt = matches.some((m) => m.court > 1);
+  const mine = matches
+    .filter((m) => m.team_a_id === myTeam || m.team_b_id === myTeam)
+    .sort((a, b) => a.slot - b.slot);
+
+  return (
+    <section className="border-2 border-ink bg-maple-deep/40 p-4">
+      <p className="mb-2 font-display text-sm font-bold tracking-[0.2em] uppercase">
+        Your games · {nameOf.get(myTeam)}
+      </p>
+      <ol className="divide-y divide-ink/20">
+        {mine.map((m) => {
+          const opponent = m.team_a_id === myTeam ? m.team_b_id : m.team_a_id;
+          return (
+            <li key={m.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 py-2">
+              <span className="font-score text-lg font-black">{pad2(m.slot)}</span>
+              {timeOf(m.slot) && <span className="text-sm text-ink-soft">{timeOf(m.slot)}</span>}
+              {multiCourt && (
+                <span className="bg-ink px-2 py-0.5 font-display text-sm font-bold tracking-[0.15em] text-maple uppercase">
+                  Court {m.court}
+                </span>
+              )}
+              <span className="min-w-0 font-display text-base font-bold tracking-wide uppercase [overflow-wrap:anywhere]">
+                vs {nameOf.get(opponent)}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
   );
 }

@@ -142,6 +142,12 @@ async function SessionView({
                   </span>
                 )}
               </p>
+              {!cancelled && (
+                <p className="max-w-xl text-sm text-ink-soft">
+                  Please note that refunds can only be issued if notification of absence is received before 4:00PM on
+                  the day of the session.
+                </p>
+              )}
             </div>
           </div>
           {!cancelled && (

@@ -62,6 +62,10 @@ export function TeamsBoard({
             Split the {players.length} drop-in player{players.length === 1 ? "" : "s"} into teams, balanced by skill level.
             You can move people around afterwards, then show the teams to players.
           </p>
+          <p className="w-full max-w-xl text-sm text-ink-soft">
+            Playing on more than one court? Each game needs two teams, so make at least 4 teams for 2 courts, or 6 for
+            3, to keep every court busy.
+          </p>
           <label className="block space-y-1">
             <span className="font-display text-sm font-bold tracking-[0.15em] uppercase">Teams</span>
             <input
