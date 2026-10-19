@@ -80,3 +80,23 @@ export function utcToZonedLocal(iso: string, timeZone = env.timezone()): string 
   const wall = new Date(instant.getTime() + tzOffsetMs(instant, timeZone));
   return wall.toISOString().slice(0, 16);
 }
+
+/** "YYYY-MM-DD" of an instant on the club's wall clock. */
+export function zonedDayKey(iso: string, timeZone = env.timezone()) {
+  return utcToZonedLocal(iso, timeZone).slice(0, 10);
+}
+
+const DAY_MS = 86_400_000;
+
+/**
+ * Calendar squares: `weeks` full Sun–Sat weeks starting with the week holding `today` ("YYYY-MM-DD").
+ * Plain dates in UTC, so clock changes never skip or repeat a day.
+ */
+export function calendarDays(today: string, weeks: number) {
+  const t = new Date(`${today}T00:00:00Z`);
+  const start = t.getTime() - t.getUTCDay() * DAY_MS;
+  return Array.from({ length: weeks * 7 }, (_, i) => {
+    const d = new Date(start + i * DAY_MS);
+    return { key: d.toISOString().slice(0, 10), day: d.getUTCDate(), month: d.getUTCMonth() };
+  });
+}

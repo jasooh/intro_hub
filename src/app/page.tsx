@@ -2,10 +2,11 @@ import Link from "next/link";
 import { cache, Suspense } from "react";
 import { FeaturedPost } from "@/components/featured-post";
 import { LiveRefresh } from "@/components/live-refresh";
+import { SessionCalendar } from "@/components/session-calendar";
 import { isLive, SessionCard } from "@/components/session-card";
 import { buttonClass, EmptyState, PageSpinner, reveal, Scoreboard, Sheet } from "@/components/ui";
 import { env } from "@/lib/env";
-import { dateParts, pad2 } from "@/lib/format";
+import { calendarDays, dateParts, pad2, zonedDayKey } from "@/lib/format";
 import { getCounts, getFeaturedPost, getUpcomingSessions } from "@/lib/queries";
 
 // Shared by the hero scoreboard and the "Next session" row within one request.
@@ -71,6 +72,12 @@ export default function Home() {
         </Suspense>
       </Sheet>
 
+      <Sheet label="Calendar" className="reveal" style={reveal(6)}>
+        <Suspense fallback={<PageSpinner />}>
+          <Calendar />
+        </Suspense>
+      </Sheet>
+
       <Playlist />
       <LiveRefresh />
     </div>
@@ -108,13 +115,25 @@ async function NextSession() {
   return <SessionCard session={next.session} counts={next.counts} href={`/s/${next.session.id}`} />;
 }
 
+const CALENDAR_WEEKS = 5;
+
+/** The next few weeks at a glance; session days link to their sign-up page. */
+async function Calendar() {
+  const upcoming = await getUpcomingSessions(20, { includeCancelled: false });
+  const today = zonedDayKey(new Date().toISOString());
+  const lastDay = calendarDays(today, CALENDAR_WEEKS).at(-1)!.key;
+  const sessions = upcoming.filter((s) => zonedDayKey(s.starts_at) <= lastDay);
+  const counts = await getCounts(sessions.map((s) => s.id));
+  return <SessionCalendar sessions={sessions} counts={counts} today={today} weeks={CALENDAR_WEEKS} />;
+}
+
 /** The host's Spotify playlist, embedded when SPOTIFY_PLAYLIST_URL is set. */
 function Playlist() {
   const url = env.spotifyPlaylistUrl();
   const id = url?.match(/playlist\/([A-Za-z0-9]+)/)?.[1];
   if (!id) return null;
   return (
-    <Sheet label="Hype song playlist" className="reveal" style={reveal(6)}>
+    <Sheet label="Hype song playlist" className="reveal" style={reveal(7)}>
       <div className="grid grid-cols-1 gap-5 bg-board p-4 shadow-[inset_0_0_0_2px_#2a241f,6px_6px_0_var(--line)] sm:grid-cols-[14rem_1fr] sm:p-5">
         <div className="flex flex-col justify-between gap-5">
           <div className="space-y-3">
