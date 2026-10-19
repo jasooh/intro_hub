@@ -14,7 +14,7 @@
 -- like they happened over the past days.
 --
 -- What it makes (dates relative to today):
---   * 26 players (emails @demo.intro2volleyball.test, which can't receive mail;
+--   * 30 players (emails @demo.intro2volleyball.test, which can't receive mail;
 --     announcement emails off).
 --   * Session A = the weekly template's next session: full, 3 on the waitlist,
 --     3 instructional-only (one switched from drop-in), two team-request groups
@@ -25,6 +25,10 @@
 --     game schedule, one cancelled spot already refunded.
 --   * Session D = a past Sunday clinic with a refundable deposit: deposits owed
 --     back (Refunds -> Deposit), two already refunded, one cancelled spot to refund.
+--   * Sessions E and F = Saturdays 6 and 8 weeks before A: everyone paid. Four
+--     regulars from back then (Nina, Omar, Rachel, Victor) never came back, so
+--     Stats -> "Haven't been back" lists the three who played twice (Victor only
+--     played once, so he isn't a regular).
 --   * Payments inbox: e-transfers matched by ref code, one by name + amount,
 --     one unmatched ("M CHEN") to assign live.
 --   * Two published posts on the Updates board, the newer one featured.
@@ -181,15 +185,15 @@ create temp table demo_players (
 ) on commit drop;
 
 insert into demo_players values
-  ( 1, 'maya.tran',      'Maya',    'Tran',      'experienced', true,  'instagram',     'Eye of the Tiger – Survivor',                 'Cleaner overhand serve', 60),
-  ( 2, 'daniel.okafor',  'Daniel',  'Okafor',    'experienced', true,  'word_of_mouth', 'Can''t Hold Us – Macklemore & Ryan Lewis',    'Hitting from the left side', 58),
-  ( 3, 'priya.raman',    'Priya',   'Raman',     'some',        true,  'instagram',     'Dancing Queen – ABBA',                        'Getting comfortable setting', 55),
-  ( 4, 'kevin.liu',      'Kevin',   'Liu',       'experienced', true,  'word_of_mouth', null,                                          null, 54),
+  ( 1, 'maya.tran',      'Maya',    'Tran',      'experienced', true,  'instagram',     'Eye of the Tiger – Survivor',                 'Cleaner overhand serve', 95),
+  ( 2, 'daniel.okafor',  'Daniel',  'Okafor',    'experienced', true,  'word_of_mouth', 'Can''t Hold Us – Macklemore & Ryan Lewis',    'Hitting from the left side', 92),
+  ( 3, 'priya.raman',    'Priya',   'Raman',     'some',        true,  'instagram',     'Dancing Queen – ABBA',                        'Getting comfortable setting', 90),
+  ( 4, 'kevin.liu',      'Kevin',   'Liu',       'experienced', true,  'word_of_mouth', null,                                          null, 88),
   ( 5, 'sofia.martinez', 'Sofia',   'Martinez',  'some',        true,  'instagram',     'Titanium – David Guetta ft. Sia',             'Passing consistency', 50),
   ( 6, 'arjun.patel',    'Arjun',   'Patel',     'some',        true,  'word_of_mouth', null,                                          'Footwork', 49),
   ( 7, 'hannah.kim',     'Hannah',  'Kim',       'never',       true,  'javelin',       null,                                          'Learning the rules', 45),
-  ( 8, 'marcus.brown',   'Marcus',  'Brown',     'experienced', true,  'word_of_mouth', 'Lose Yourself – Eminem',                      null, 44),
-  ( 9, 'emily.chen',     'Emily',   'Chen',      'some',        true,  'instagram',     null,                                          'Serving overhand', 40),
+  ( 8, 'marcus.brown',   'Marcus',  'Brown',     'experienced', true,  'word_of_mouth', 'Lose Yourself – Eminem',                      null, 80),
+  ( 9, 'emily.chen',     'Emily',   'Chen',      'some',        true,  'instagram',     null,                                          'Serving overhand', 75),
   (10, 'jordan.lee',     'Jordan',  'Lee',       'some',        true,  'other',         null,                                          null, 38),
   (11, 'mei.chen',       'Mei',     'Chen',      'never',       true,  'instagram',     null,                                          'Just want to have fun and meet people', 35),
   (12, 'tyler.nguyen',   'Tyler',   'Nguyen',    'experienced', true,  'word_of_mouth', 'Thunderstruck – AC/DC',                       null, 33),
@@ -206,7 +210,12 @@ insert into demo_players values
   (23, 'isabel.rossi',   'Isabel',  'Rossi',     'some',        true,  'instagram',     'Mr. Brightside – The Killers',                null, 18),
   (24, 'sam.rivera',     'Sam',     'Rivera',    'prefer_not',  true,  'word_of_mouth', null,                                          null, 15),
   (25, 'lucas.martin',   'Lucas',   'Martin',    'never',       true,  'javelin',       null,                                          'Serving', 12),
-  (26, 'julia.novak',    'Julia',   'Novak',     'some',        true,  'instagram',     null,                                          null, 10);
+  (26, 'julia.novak',    'Julia',   'Novak',     'some',        true,  'instagram',     null,                                          null, 10),
+  -- Came for a while this summer, then stopped (Stats -> "Haven't been back").
+  (27, 'nina.kowalski',  'Nina',    'Kowalski',  'some',        true,  'instagram',     'Levitating – Dua Lipa',                       'Better passing', 85),
+  (28, 'omar.siddiqui',  'Omar',    'Siddiqui',  'experienced', true,  'word_of_mouth', null,                                          null, 84),
+  (29, 'rachel.adams',   'Rachel',  'Adams',     'never',       true,  'javelin',       null,                                          'Learn to serve', 80),
+  (30, 'victor.huang',   'Victor',  'Huang',     'some',        true,  'other',         null,                                          null, 78);
 
 -- auth.users rows (no password, no identity: nobody can sign in as them). The
 -- on_auth_user_created trigger makes each profile.
@@ -257,6 +266,9 @@ declare
   v_b uuid := 'de3a0000-0000-4000-a000-00000000000b';
   v_c uuid := 'de3a0000-0000-4000-a000-00000000000c';
   v_d uuid := 'de3a0000-0000-4000-a000-00000000000d';
+  v_old uuid;
+  v_old_start timestamptz;
+  v_weeks int;
   v_a_date date;
   v_b_start timestamptz;
   v_c_start timestamptz;
@@ -544,6 +556,44 @@ begin
   update public.registrations
      set refunded_at = least(v_d_start + interval '20 hours', v_now - interval '1 hour')
    where id in ((v_regs ->> 'priya.raman')::uuid, (v_regs ->> 'daniel.okafor')::uuid);
+
+  ---------------------------------------------------------------------------
+  -- E and F: Saturdays 6 and 8 weeks before A. Nina, Omar and Rachel played
+  -- both and haven't been back since; Victor came once.
+  ---------------------------------------------------------------------------
+  foreach v_weeks in array array[8, 6] loop
+    v_old := case v_weeks when 8 then 'de3a0000-0000-4000-a000-00000000000f'::uuid
+                          else 'de3a0000-0000-4000-a000-00000000000e'::uuid end;
+    v_old_start := (v_a_date - v_weeks * 7 + t.start_time) at time zone v_tz;
+    insert into public.sessions (
+      id, template_id, title, starts_at, ends_at, location, capacity, price_cents, opens_at, hold_hours,
+      cancel_cutoff, instructional_price_cents
+    ) values (
+      v_old, null, t.title, v_now + interval '3 days', v_now + interval '3 days' + make_interval(mins => t.duration_minutes),
+      t.location, 18, t.price_cents, v_now - interval '30 days', t.hold_hours, v_now + interval '2 days',
+      coalesce(t.instructional_price_cents, 1000)
+    );
+    v_i := 0;
+    foreach v_key in array (case v_weeks
+      when 8 then array['maya.tran', 'daniel.okafor', 'priya.raman', 'kevin.liu', 'marcus.brown', 'emily.chen',
+                        'nina.kowalski', 'omar.siddiqui', 'rachel.adams', 'victor.huang']
+      else array['maya.tran', 'daniel.okafor', 'priya.raman', 'kevin.liu', 'marcus.brown', 'emily.chen',
+                 'nina.kowalski', 'omar.siddiqui', 'rachel.adams']
+    end) loop
+      v_i := v_i + 1;
+      v_reg := pg_temp.signup(v_key, v_old, 'full', v_old_start - interval '4 days' + make_interval(hours => v_i * 3));
+      perform pg_temp.pay_ref(v_reg, v_old_start - interval '4 days' + make_interval(hours => v_i * 3 + 1));
+    end loop;
+    update public.sessions
+       set starts_at = v_old_start,
+           ends_at = v_old_start + make_interval(mins => t.duration_minutes),
+           opens_at = v_old_start - make_interval(hours => t.open_hours_before),
+           cancel_cutoff = v_old_start - make_interval(hours => t.cancel_cutoff_hours),
+           instructional_ends_at = v_old_start + make_interval(mins => coalesce(t.instructional_minutes, 45)),
+           dropin_starts_at = v_old_start + make_interval(mins => coalesce(t.dropin_offset_minutes, 60)),
+           reminder_sent_at = v_old_start - interval '23 hours'
+     where id = v_old;
+  end loop;
 
   ---------------------------------------------------------------------------
   -- Updates board
