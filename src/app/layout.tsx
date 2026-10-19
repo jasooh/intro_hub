@@ -1,3 +1,4 @@
+import { Analytics } from "@vercel/analytics/next";
 import type { Metadata, Viewport } from "next";
 import { Atkinson_Hyperlegible_Next, Big_Shoulders, Doto } from "next/font/google";
 import Link from "next/link";
@@ -70,6 +71,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         </Suspense>
         <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-8 sm:py-10">{children}</main>
         <SiteFooter />
+        <Suspense>
+          <Analytics />
+        </Suspense>
       </body>
     </html>
   );
