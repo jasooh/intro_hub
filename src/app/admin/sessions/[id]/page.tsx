@@ -4,8 +4,10 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import {
   cancelSession,
+  emailRoster,
   markPaid,
   moveWaitlist,
+  nudgeUnpaid,
   removeFriendDiscount,
   removeRegistration,
   updateSession,
@@ -32,8 +34,12 @@ import { createClient } from "@/lib/supabase/server";
 import { DateBlock } from "@/components/session-card";
 import { PlayerDetails } from "@/components/player-details";
 import type { Match, Payment, Profile, Registration, Session, Team } from "@/lib/types";
+import { AUDIENCE_LABELS, AUDIENCES, audienceOf, type Audience } from "@/lib/audiences";
 import { SessionForm } from "../session-form";
+import { RosterEmailForm } from "./roster-email-form";
 import { TeamsBoard, type TeamRow } from "./teams-board";
+
+type SentMessage = { id: string; subject: string; audiences: Audience[]; recipient_count: number; created_at: string };
 
 type Row = Registration & { profile: Profile; payments: Pick<Payment, "matched_by" | "sender_name" | "amount_cents">[] };
 
@@ -58,7 +64,7 @@ async function AdminSession({
   const { id } = await params;
   const supabase = await createClient();
 
-  const [{ data: session }, { data: regs }, { data: teamRows }, { data: matchRows }] = await Promise.all([
+  const [{ data: session }, { data: regs }, { data: teamRows }, { data: matchRows }, { data: messageRows }] = await Promise.all([
     supabase.from("sessions").select("*").eq("id", id).maybeSingle<Session>(),
     supabase
       .from("registrations")
@@ -67,6 +73,11 @@ async function AdminSession({
       .order("created_at"),
     supabase.from("session_teams").select("*").eq("session_id", id).order("position"),
     supabase.from("session_matches").select("*").eq("session_id", id).order("slot").order("court"),
+    supabase
+      .from("session_messages")
+      .select("id, subject, audiences, recipient_count, created_at")
+      .eq("session_id", id)
+      .order("created_at", { ascending: false }),
   ]);
   if (!session) notFound();
   const teams = (teamRows ?? []) as Team[];
@@ -111,6 +122,13 @@ async function AdminSession({
   const holdingCount = dropIn.length - confirmedCount;
   const instructionalCount = going.length - dropIn.length;
   const cancelled = session.status === "cancelled";
+  const unpaidCount = going.filter((r) => r.status === "pending_payment").length;
+  const audienceCounts = Object.fromEntries(AUDIENCES.map((a) => [a, 0])) as Record<Audience, number>;
+  for (const r of rows) {
+    const a = audienceOf(r);
+    if (a) audienceCounts[a] += 1;
+  }
+  const messages = (messageRows ?? []) as SentMessage[];
 
   return (
     <div className="space-y-12">
@@ -156,6 +174,23 @@ async function AdminSession({
           <Scoreboard size="sm" className="w-full" value={formatMoney(collected)} label="e-Transfers in" />
         </ScoreboardRow>
         <SpotDots capacity={session.capacity} confirmed={confirmedCount} holding={holdingCount} />
+        {!cancelled && unpaidCount > 0 && new Date(session.starts_at) > new Date() && (
+          <form action={nudgeUnpaid.bind(null, id)} className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <SubmitButton
+              size="sm"
+              variant="secondary"
+              confirm={{
+                title: `Remind ${unpaidCount} unpaid player${unpaidCount === 1 ? "" : "s"}?`,
+                description:
+                  "Each one gets an email with their ref code, what they still owe and when their hold ends. Players are also reminded automatically about 2 hours before their hold runs out.",
+                action: "Send reminders",
+              }}
+            >
+              Remind unpaid ({unpaidCount})
+            </SubmitButton>
+            <span className="text-sm text-ink-soft">Emails everyone still holding a spot without paying.</span>
+          </form>
+        )}
       </div>
 
       <Sheet label={`Roster · ${going.length}`} className="reveal" style={reveal(2)}>
@@ -266,6 +301,39 @@ async function AdminSession({
           </ul>
         </details>
       )}
+
+      <details className="group space-y-8">
+        <summary className="flex cursor-pointer list-none flex-wrap items-end gap-x-3 gap-y-1 border-b-2 border-ink">
+          <span className="inline-flex items-center gap-2.5 bg-ink px-3 pt-1.5 pb-1 font-display text-sm font-bold tracking-[0.2em] whitespace-nowrap text-maple uppercase">
+            <span aria-hidden className="text-line transition-transform group-open:rotate-90">▸</span>
+            Email players
+          </span>
+          <span className="pb-1 text-sm text-ink-soft">
+            Gym changes, what to bring{messages.length > 0 && ` · ${messages.length} sent`}
+          </span>
+        </summary>
+        {!cancelled && <RosterEmailForm action={emailRoster.bind(null, id)} counts={audienceCounts} />}
+        {messages.length > 0 && (
+          <div className="space-y-2">
+            <p className="font-display text-sm font-bold tracking-[0.15em] uppercase">Sent</p>
+            <ul className="divide-y divide-ink/20">
+              {messages.map((m) => (
+                <li key={m.id} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-3">
+                  <div className="min-w-0">
+                    <p className="font-bold [overflow-wrap:anywhere]">{m.subject}</p>
+                    <p className="text-sm text-ink-soft">
+                      {formatDateTime(m.created_at)} · {m.audiences.map((a) => AUDIENCE_LABELS[a]).join(", ")}
+                    </p>
+                  </div>
+                  <span className="font-score font-black">
+                    {pad2(m.recipient_count)} <span className="font-sans text-sm font-normal text-ink-soft">sent</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </details>
 
       {/* Collapsible so the form's own section tabs don't sit under another tab. */}
       <details className="group space-y-8">

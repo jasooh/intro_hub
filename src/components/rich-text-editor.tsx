@@ -22,7 +22,16 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
  * submits with a normal server-action form, and fires an input event so
  * `SubmitButton requireChange` notices edits. The server sanitizes it.
  */
-export function RichTextEditor({ name, defaultValue = "" }: { name: string; defaultValue?: string }) {
+export function RichTextEditor({
+  name,
+  defaultValue = "",
+  label = "Post body",
+}: {
+  name: string;
+  defaultValue?: string;
+  /** Accessible name of the editing area. */
+  label?: string;
+}) {
   const hidden = useRef<HTMLInputElement>(null);
   // Controlled: for hidden inputs the browser treats defaultValue as the value,
   // so React would reset it on every re-render.
@@ -40,7 +49,7 @@ export function RichTextEditor({ name, defaultValue = "" }: { name: string; defa
       }),
     ],
     content: defaultValue,
-    editorProps: { attributes: { class: "prose-post min-h-48 px-4 py-3 outline-none", "aria-label": "Post body" } },
+    editorProps: { attributes: { class: "prose-post min-h-48 px-4 py-3 outline-none", "aria-label": label } },
     onUpdate: ({ editor }) => setHtml(editor.isEmpty ? "" : editor.getHTML()),
   });
 

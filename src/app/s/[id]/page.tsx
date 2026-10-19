@@ -4,6 +4,7 @@ import { MapLink } from "@/components/map-link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { cancelRegistration, changeOption, registerForSession, setBroughtBy, setTeammates } from "@/app/actions";
+import { AddToCalendar } from "@/components/add-to-calendar";
 import { BringAFriendField } from "@/components/bring-a-friend-field";
 import { LiveRefresh } from "@/components/live-refresh";
 import { PaymentInstructions } from "@/components/payment-instructions";
@@ -359,6 +360,9 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
             {reg.option === "instructional" ? "See you at the class" : "See you on court"}
             <span className="text-line">.</span>
           </p>
+        )}
+        {(reg.status === "pending_payment" || reg.status === "confirmed") && !started && (
+          <AddToCalendar session={session} instructionalOnly={reg.option === "instructional"} />
         )}
         {reg.status === "waitlisted" && (
           <p className="text-lg">

@@ -18,7 +18,7 @@ function fail(path: string, message: string): never {
 }
 
 const STATUSES: RegistrationStatus[] = ["pending_payment", "confirmed", "waitlisted", "expired", "cancelled"];
-const EMAIL_EVENTS = new Set<string>(["signed_up", "waitlisted", "promoted", "confirmed", "expired", "reminder", "session_cancelled"]);
+const EMAIL_EVENTS = new Set<string>(["signed_up", "waitlisted", "promoted", "confirmed", "expired", "reminder", "hold_reminder", "session_cancelled"]);
 
 // ---------------------------------------------------------------------------
 // Table editor

@@ -21,6 +21,9 @@ export type EmailContext = {
   myUrl: string;
   /** Host's optional message when a session is cancelled. */
   cancelReason?: string | null;
+  /** "Add to calendar" links: the .ics file and Google Calendar. */
+  calendarUrl?: string;
+  googleCalendarUrl?: string;
 };
 
 // The site's "gym-floor scoreboard" look, in email-safe inline styles. Web fonts
@@ -219,6 +222,24 @@ function PaymentBox({ ctx, amount = ctx.remaining }: { ctx: EmailContext; amount
   );
 }
 
+/** Small "Add to calendar: Apple / Outlook · Google" line under the button. */
+function CalendarLinks({ ctx }: { ctx: EmailContext }) {
+  if (!ctx.calendarUrl || !ctx.googleCalendarUrl) return null;
+  const link = { color: c.ink, textDecoration: "underline", textDecorationColor: c.line };
+  return (
+    <Text style={{ ...s.text, fontSize: 14, color: c.inkSoft, margin: "18px 0 0" }}>
+      Add to calendar:{" "}
+      <Link href={ctx.calendarUrl} style={link}>
+        Apple / Outlook
+      </Link>{" "}
+      ·{" "}
+      <Link href={ctx.googleCalendarUrl} style={link}>
+        Google
+      </Link>
+    </Text>
+  );
+}
+
 type Built = { subject: string; element: ReactNode };
 
 export function buildEmail(kind: RegistrationEvent["event"], ctx: EmailContext): Built {
@@ -240,6 +261,7 @@ export function buildEmail(kind: RegistrationEvent["event"], ctx: EmailContext):
             <Text style={s.text}>We&apos;re holding a spot for you. It&apos;s confirmed once your payment arrives.</Text>
             <PaymentBox ctx={ctx} />
             {viewButton}
+            <CalendarLinks ctx={ctx} />
           </Layout>
         ),
       };
@@ -253,6 +275,7 @@ export function buildEmail(kind: RegistrationEvent["event"], ctx: EmailContext):
             <Text style={s.text}>You&apos;ve moved off the waitlist. Pay soon to keep the spot.</Text>
             <PaymentBox ctx={ctx} />
             {viewButton}
+            <CalendarLinks ctx={ctx} />
           </Layout>
         ),
       };
@@ -284,6 +307,7 @@ export function buildEmail(kind: RegistrationEvent["event"], ctx: EmailContext):
               Payment received. See you at <b>{ctx.location}</b> on <b>{ctx.when}</b>.
             </Text>
             {viewButton}
+            <CalendarLinks ctx={ctx} />
           </Layout>
         ),
       };
@@ -329,6 +353,28 @@ export function buildEmail(kind: RegistrationEvent["event"], ctx: EmailContext):
             <Text style={s.text}>
               Reminder: you&apos;re confirmed for <b>{ctx.when}</b> at <b>{ctx.location}</b>.
             </Text>
+            {viewButton}
+          </Layout>
+        ),
+      };
+    case "hold_reminder":
+      return {
+        subject: `Payment reminder: ${ctx.sessionTitle} (${ctx.when})`,
+        element: (
+          <Layout preview={`Send ${ctx.remaining} with code ${ctx.refCode} to keep your spot`} ctx={ctx}>
+            <Title>Still holding your spot</Title>
+            {hi}
+            <Text style={s.text}>
+              We haven&apos;t received your payment yet
+              {ctx.holdUntil ? (
+                <>
+                  , and your hold ends <b>{ctx.holdUntil}</b>
+                </>
+              ) : null}
+              . Send it soon so your spot doesn&apos;t go to the waitlist. Already sent it? It can take a few minutes
+              to show up, so you can ignore this.
+            </Text>
+            <PaymentBox ctx={ctx} />
             {viewButton}
           </Layout>
         ),
@@ -416,6 +462,45 @@ export function buildAnnouncementEmail({
         <div dangerouslySetInnerHTML={{ __html: inlinePostStyles(bodyHtml) }} />
         <Button href={postUrl} style={s.button}>
           Read on the site
+        </Button>
+      </Layout>
+    ),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Host message to one session's players
+// ---------------------------------------------------------------------------
+
+export function buildSessionMessageEmail({
+  subject,
+  bodyHtml,
+  playerName,
+  sessionTitle,
+  when,
+  sessionUrl,
+}: {
+  subject: string;
+  /** Already sanitized (sanitizePostHtml). */
+  bodyHtml: string;
+  playerName: string;
+  sessionTitle: string;
+  when: string;
+  sessionUrl: string;
+}): Built {
+  return {
+    subject: `${subject} · ${sessionTitle} (${when})`,
+    element: (
+      <Layout
+        preview={subject}
+        eyebrow={`${sessionTitle} · ${when}`}
+        footerNote={<>You&apos;re getting this because you signed up for this session.</>}
+      >
+        <Title>{subject.replace(/[.!?]$/, "")}</Title>
+        <Text style={s.text}>Hi {playerName},</Text>
+        <div dangerouslySetInnerHTML={{ __html: inlinePostStyles(bodyHtml) }} />
+        <Button href={sessionUrl} style={s.button}>
+          View session
         </Button>
       </Layout>
     ),

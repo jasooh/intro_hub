@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { z } from "zod";
 import { countAnnouncementRecipients, sendPostToPlayers } from "@/lib/announcements";
+import { AUDIENCES, audienceOf } from "@/lib/audiences";
 import { requireAdmin } from "@/lib/auth";
 import { env } from "@/lib/env";
 import { flash } from "@/lib/flash";
@@ -12,6 +13,7 @@ import { zonedLocalToUtc } from "@/lib/format";
 import { dispatchEvents, parseEvents } from "@/lib/registrations";
 import { isEmptyPost, sanitizePostHtml } from "@/lib/rich-text";
 import { roundRobin } from "@/lib/schedule";
+import { sendSessionMessage } from "@/lib/session-messages";
 import { balanceTeams } from "@/lib/teams";
 import type { SkillLevel } from "@/lib/types";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
@@ -146,9 +148,71 @@ export async function cancelSession(sessionId: string, formData: FormData) {
   revalidatePath("/", "layout");
 }
 
+const RosterEmailForm = z.object({
+  subject: z.string().trim().min(1, "Give the email a subject").max(150, "Subjects can be up to 150 characters"),
+  body_html: z.string().max(50_000, "That message is too long").default(""),
+  audiences: z.array(z.enum(AUDIENCES)).min(1, "Pick at least one group to email"),
+});
+
+/** Email this session's players (the ticked groups). Sends in the background after the redirect. */
+export async function emailRoster(sessionId: string, formData: FormData) {
+  const me = await requireAdmin();
+  const path = `/admin/sessions/${sessionId}`;
+  const parsed = RosterEmailForm.safeParse({
+    subject: formData.get("subject"),
+    body_html: formData.get("body_html") ?? "",
+    audiences: formData.getAll("audiences"),
+  });
+  if (!parsed.success) fail(path, parsed.error.issues[0].message);
+  const f = parsed.data;
+  const body = sanitizePostHtml(f.body_html);
+  if (isEmptyPost(body)) fail(path, "Write a message before sending");
+
+  const supabase = await createClient();
+  const { data: regs, error: regError } = await supabase
+    .from("registrations")
+    .select("status, option")
+    .eq("session_id", sessionId);
+  if (regError) fail(path, regError.message);
+  const recipients = (regs ?? []).filter((r) => {
+    const audience = audienceOf(r);
+    return audience != null && f.audiences.includes(audience);
+  }).length;
+  if (recipients === 0) fail(path, "Nobody in those groups to email");
+
+  const { data: message, error } = await supabase
+    .from("session_messages")
+    .insert({ session_id: sessionId, subject: f.subject, body_html: body, audiences: f.audiences, sent_by: me.id, recipient_count: recipients })
+    .select("id")
+    .single();
+  if (error || !message) fail(path, error?.message ?? "Couldn't save the email");
+
+  after(() => sendSessionMessage(message.id).catch((err) => console.error("Session message send failed", err)));
+  revalidatePath(path);
+  await flash("success", `Emailing ${recipients} player${recipients === 1 ? "" : "s"}`);
+}
+
 // ---------------------------------------------------------------------------
 // Roster
 // ---------------------------------------------------------------------------
+
+/** Email everyone in the session who still owes money (skips anyone reminded in the last few minutes). */
+export async function nudgeUnpaid(sessionId: string) {
+  await requireAdmin();
+  const path = `/admin/sessions/${sessionId}`;
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_nudge_unpaid", { p_session_id: sessionId });
+  if (error) fail(path, error.message);
+  const events = parseEvents(data);
+  after(() => dispatchEvents(events));
+  revalidatePath(path);
+  await flash(
+    "success",
+    events.length
+      ? `Reminding ${events.length} player${events.length === 1 ? "" : "s"} to pay`
+      : "Nobody to remind (everyone was just reminded)",
+  );
+}
 
 export async function markPaid(registrationId: string, sessionId: string) {
   await requireAdmin();

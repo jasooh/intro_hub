@@ -74,6 +74,7 @@ export function SubmitButton({
   confirm,
   requireChange = false,
   bare = false,
+  disabled = false,
   name,
   value,
   className,
@@ -86,6 +87,8 @@ export function SubmitButton({
   requireChange?: boolean;
   /** Skip the standard button styles (style it entirely with className). */
   bare?: boolean;
+  /** Can't be pressed right now (e.g. nothing to send). */
+  disabled?: boolean;
   /** Like a native submit button: sent with the form when this button submits it. */
   name?: string;
   value?: string;
@@ -103,7 +106,7 @@ export function SubmitButton({
       type={confirm ? "button" : "submit"}
       name={confirm ? undefined : name}
       value={confirm ? undefined : value}
-      disabled={pending || !changed}
+      disabled={pending || !changed || disabled}
       title={changed ? undefined : "No changes to save"}
       className={`${bare ? "disabled:pointer-events-none disabled:opacity-40" : buttonClass(variant, size)} ${className ?? ""}`}
       onClick={confirm ? () => setOpen(true) : undefined}

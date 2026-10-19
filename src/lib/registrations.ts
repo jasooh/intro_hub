@@ -4,6 +4,7 @@ import { buildEmail } from "@/lib/email/templates";
 import { sendEmail } from "@/lib/email/send";
 import { env } from "@/lib/env";
 import { formatDateTime, formatMoney } from "@/lib/format";
+import { googleCalendarUrl, icsPath } from "@/lib/ics";
 import { createAdminClient } from "@/lib/supabase/server";
 import type { Profile, Registration, RegistrationEvent, Session } from "@/lib/types";
 
@@ -43,9 +44,14 @@ async function sendForEvent(event: RegistrationEvent, reg: Loaded) {
   const admin = createAdminClient();
 
   // Claim the email first so retries / overlapping cron ticks never double-send.
-  // Each partial payment gets its own email; everything else once per sign-up.
+  // Each partial payment and each payment reminder gets its own email; everything
+  // else once per sign-up.
   const dedupeKey =
-    event.event === "partial_payment" && event.payment_id ? `partial_payment:${event.payment_id}` : `${event.event}:${reg.id}`;
+    event.event === "partial_payment" && event.payment_id
+      ? `partial_payment:${event.payment_id}`
+      : event.event === "hold_reminder" && event.nudged_at
+        ? `hold_reminder:${reg.id}:${event.nudged_at}`
+        : `${event.event}:${reg.id}`;
   const { error: claimError } = await admin
     .from("email_log")
     .insert({ dedupe_key: dedupeKey, registration_id: reg.id, kind: event.event });
@@ -66,6 +72,8 @@ async function sendForEvent(event: RegistrationEvent, reg: Loaded) {
   }
 
   const appUrl = env.appUrl();
+  const sessionUrl = `${appUrl}/s/${reg.session_id}`;
+  const instructionalOnly = reg.option === "instructional";
   const { subject, element } = buildEmail(event.event, {
     playerName: reg.profile.display_name ?? reg.profile.full_name ?? "there",
     sessionTitle: reg.option === "instructional" ? `${reg.session.title} (Instructional only)` : reg.session.title,
@@ -79,9 +87,11 @@ async function sendForEvent(event: RegistrationEvent, reg: Loaded) {
     holdUntil: reg.hold_expires_at ? formatDateTime(reg.hold_expires_at) : null,
     waitlistPosition,
     etransferEmail: env.etransferEmail(),
-    sessionUrl: `${appUrl}/s/${reg.session_id}`,
+    sessionUrl,
     myUrl: `${appUrl}/me/signups`,
     cancelReason: reg.session.cancel_reason,
+    calendarUrl: `${appUrl}${icsPath(reg.session_id, instructionalOnly)}`,
+    googleCalendarUrl: googleCalendarUrl(reg.session, sessionUrl, { instructionalOnly }),
   });
 
   try {

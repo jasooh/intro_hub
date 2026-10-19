@@ -1,6 +1,6 @@
 import { render } from "@react-email/components";
 import { describe, expect, it } from "vitest";
-import { buildAnnouncementEmail, buildEmail, type EmailContext } from "@/lib/email/templates";
+import { buildAnnouncementEmail, buildEmail, buildSessionMessageEmail, type EmailContext } from "@/lib/email/templates";
 import type { RegistrationEvent } from "@/lib/types";
 
 const ctx: EmailContext = {
@@ -27,6 +27,7 @@ const kinds: RegistrationEvent["event"][] = [
   "partial_payment",
   "expired",
   "reminder",
+  "hold_reminder",
   "session_cancelled",
 ];
 
@@ -102,5 +103,37 @@ describe("announcement email", () => {
     expect(text).toContain("Hi Jane");
     expect(text).toContain("Turn off announcement emails");
     expect(text).toContain("Please do not reply. This inbox is not monitored for replies.");
+  });
+});
+
+describe("host tools emails", () => {
+  it("payment reminders show the ref code, what's left and the hold deadline", async () => {
+    const text = await render(buildEmail("hold_reminder", ctx).element, { plainText: true });
+    expect(text).toContain("VB-7K3Q");
+    expect(text).toContain("$4.00");
+    expect(text).toContain("Sat, Oct 17, 9:00 a.m.");
+  });
+
+  it("adds calendar links to sign-up emails when given", async () => {
+    const withLinks = { ...ctx, calendarUrl: "https://example.com/s/1/calendar.ics", googleCalendarUrl: "https://calendar.google.com/x" };
+    const html = await render(buildEmail("confirmed", withLinks).element);
+    expect(html).toContain("https://example.com/s/1/calendar.ics");
+    expect(html).toContain("https://calendar.google.com/x");
+    expect(await render(buildEmail("confirmed", ctx).element)).not.toContain("Add to calendar");
+  });
+
+  it("session messages include the host's message and the session", async () => {
+    const { subject, element } = buildSessionMessageEmail({
+      subject: "We're in Gym 2",
+      bodyHtml: "<p>Bring a dark shirt.</p>",
+      playerName: "Jane",
+      sessionTitle: "Intro 2 Volleyball",
+      when: "Sat, Oct 17, 6:00 p.m.",
+      sessionUrl: "https://example.com/s/1",
+    });
+    expect(subject).toBe("We're in Gym 2 · Intro 2 Volleyball (Sat, Oct 17, 6:00 p.m.)");
+    const text = await render(element, { plainText: true });
+    expect(text).toContain("Hi Jane");
+    expect(text).toContain("Bring a dark shirt.");
   });
 });

@@ -170,8 +170,11 @@ export type RegistrationEvent = {
     | "partial_payment"
     | "expired"
     | "reminder"
+    | "hold_reminder"
     | "session_cancelled";
   registration_id: string;
   /** partial_payment only: the payment that arrived (each one gets its own email). */
   payment_id?: string;
+  /** hold_reminder only: when it was sent (each reminder gets its own email). */
+  nudged_at?: string;
 };
