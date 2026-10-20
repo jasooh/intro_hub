@@ -49,6 +49,7 @@ async function rpc(fn: string, args: Record<string, unknown>, path: string, succ
 // ---------------------------------------------------------------------------
 
 const HostNotificationsForm = z.object({
+  host_emails: z.literal("on").optional(),
   host_digest: z.enum(["off", "3h", "daily"]),
   host_session_day: z.literal("on").optional(),
   host_alert_late_cancel: z.literal("on").optional(),
@@ -64,6 +65,8 @@ export async function saveHostNotifications(formData: FormData) {
   const { error } = await supabase
     .from("profiles")
     .update({
+      // The main switch; the choices below it are kept as picked even while it's off.
+      host_emails: f.host_emails === "on",
       host_digest: f.host_digest,
       host_session_day: f.host_session_day === "on",
       host_alert_late_cancel: f.host_alert_late_cancel === "on",

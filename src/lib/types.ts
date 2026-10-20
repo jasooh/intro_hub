@@ -31,14 +31,22 @@ export type Profile = {
   heard_about: HeardAbout | null;
   heard_about_other: string | null;
   media_consent: boolean | null;
-  /** Host announcement emails (opt-out). Sign-up/payment emails are always sent. */
+  /** Main switch for optional emails ("email me about the club"). Sign-up/payment emails are always sent. */
   announcement_emails: boolean;
+  /** Under that switch: posts from the hosts. */
+  email_updates: boolean;
+  /** Under that switch: "sign-ups are open" for new sessions. */
+  email_session_open: boolean;
+  /** Under that switch: the day-before reminder for sessions they're in. */
+  email_reminders: boolean;
   media_consent_at: string | null;
   waiver_accepted_at: string | null;
   waiver_version: string | null;
   /** Added by a host without an account: no sign-in, no emails. */
   guest: boolean;
   /** Host notification settings (only used for hosts). */
+  /** Host main email switch; the summary and alerts below only apply while it's on. */
+  host_emails: boolean;
   host_digest: "off" | "3h" | "daily";
   host_session_day: boolean;
   host_alert_late_cancel: boolean;

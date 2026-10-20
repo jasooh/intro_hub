@@ -57,6 +57,9 @@ export async function dispatchEvents(all: RegistrationEvent[]): Promise<void> {
 async function sendForEvent(event: RegistrationEvent, reg: Loaded) {
   // Guests a host added by hand have no inbox here (or a placeholder address).
   if (reg.profile.guest || reg.profile.email.endsWith(".invalid")) return;
+  // The day-before reminder is optional (profile email settings); everything else
+  // here is about their own sign-up or payment and always goes out.
+  if (event.event === "reminder" && !(reg.profile.announcement_emails && reg.profile.email_reminders)) return;
   const admin = createAdminClient();
 
   // Claim the email first so retries / overlapping cron ticks never double-send.

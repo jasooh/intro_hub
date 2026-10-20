@@ -33,7 +33,7 @@ export async function sendSessionOpen(sessionId: string): Promise<void> {
     time: o === "instructional" ? times.instructional : o === "dropin" ? times.dropin : times.full,
   }));
 
-  for (const r of await announcementRecipients()) {
+  for (const r of await announcementRecipients("session_open")) {
     const dedupeKey = `session_open:${session.id}:${r.id}`;
     const { error: claimError } = await admin.from("email_log").insert({ dedupe_key: dedupeKey, kind: "session_open" });
     if (claimError) {

@@ -62,7 +62,8 @@ export async function sendHostNotifications(now = new Date()) {
       "id, email, display_name, full_name, host_digest, host_session_day, host_alert_late_cancel, host_alert_unmatched, host_digest_sent_at",
     )
     .eq("role", "admin")
-    .eq("guest", false);
+    .eq("guest", false)
+    .eq("host_emails", true); // the host's main email switch
   if (error) throw error;
   const hosts = (data ?? []) as Host[];
   if (hosts.length === 0) return;

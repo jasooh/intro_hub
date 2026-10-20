@@ -201,6 +201,9 @@ const ProfileForm = z
     media_consent: z.enum(["agree", "disagree"], { message: "Please answer the media release" }),
     waiver: z.literal("on", { message: "Please accept the waiver to play" }),
     announcement_emails: z.literal("on").optional(),
+    email_updates: z.literal("on").optional(),
+    email_session_open: z.literal("on").optional(),
+    email_reminders: z.literal("on").optional(),
     etransfer_names: z.string().max(300).default(""),
     next: z.string().default("/"),
     return_to: z.string().default("/onboarding"),
@@ -249,6 +252,10 @@ export async function saveProfile(_prev: ProfileFormState, formData: FormData): 
       waiver_version: WAIVER_VERSION,
       etransfer_names: names.length ? names : [`${f.first_name} ${f.last_name}`],
       announcement_emails: f.announcement_emails === "on",
+      // Which optional emails. Kept as picked even while the main switch is off.
+      email_updates: f.email_updates === "on",
+      email_session_open: f.email_session_open === "on",
+      email_reminders: f.email_reminders === "on",
       onboarded_at: profile.onboarded_at ?? now,
     })
     .eq("id", profile.id);

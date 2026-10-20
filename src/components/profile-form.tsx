@@ -3,6 +3,7 @@
 import { type ReactNode, useActionState, useEffect } from "react";
 import { toast } from "sonner";
 import { saveProfile } from "@/app/actions";
+import { EmailChoice, EmailSwitch } from "@/components/email-switch";
 import { SubmitButton } from "@/components/submit-button";
 import { PhoneInput } from "@/components/phone-input";
 import { Field, inputClass, RequiredMark } from "@/components/ui";
@@ -190,20 +191,32 @@ export function ProfileForm({
       </Group>
 
       <Group title="Emails">
-        <label className="flex items-start gap-3">
-          <input
-            type="checkbox"
-            name="announcement_emails"
-            defaultChecked={ticked("announcement_emails", profile.announcement_emails ?? true)}
-            className="mt-1 size-5 shrink-0 accent-[var(--line)]"
+        <EmailSwitch
+          name="announcement_emails"
+          defaultOn={ticked("announcement_emails", profile.announcement_emails ?? true)}
+          label="Email me about the club"
+          hint="You'll always get emails about your own sign-ups and payments."
+          total={3}
+        >
+          <EmailChoice
+            name="email_updates"
+            defaultChecked={ticked("email_updates", profile.email_updates ?? true)}
+            title="Updates from the hosts"
+            hint="News, gym changes, what's coming up."
           />
-          <span>
-            Email me announcements from the hosts
-            <span className="block text-sm text-ink-soft">
-              News and updates. You&apos;ll always get emails about your own sign-ups and payments.
-            </span>
-          </span>
-        </label>
+          <EmailChoice
+            name="email_session_open"
+            defaultChecked={ticked("email_session_open", profile.email_session_open ?? true)}
+            title="When sign-ups open"
+            hint="One email when a new session opens, so you can grab a spot."
+          />
+          <EmailChoice
+            name="email_reminders"
+            defaultChecked={ticked("email_reminders", profile.email_reminders ?? true)}
+            title="Day-before reminders"
+            hint="For sessions you're signed up for."
+          />
+        </EmailSwitch>
       </Group>
 
       <SubmitButton className={submitClassName} requireChange={requireChange}>

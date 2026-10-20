@@ -324,3 +324,21 @@ describe("guests", () => {
     expect(s.rows[0].s.players.new).toBe(0);
   });
 });
+
+describe("email preferences", () => {
+  it("default to every optional email on", async () => {
+    const a = await createUser(db, "A");
+    const res = await db.query(
+      `select announcement_emails, email_updates, email_session_open, email_reminders from public.profiles where id = $1`,
+      [a],
+    );
+    expect(res.rows[0]).toEqual({ announcement_emails: true, email_updates: true, email_session_open: true, email_reminders: true });
+  });
+
+  it("players can change their own", async () => {
+    const a = await createUser(db, "A");
+    await asUser(db, a, `update public.profiles set email_session_open = false where id = $1`, [a]);
+    const res = await db.query<{ email_session_open: boolean }>(`select email_session_open from public.profiles where id = $1`, [a]);
+    expect(res.rows[0].email_session_open).toBe(false);
+  });
+});
