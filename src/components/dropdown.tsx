@@ -59,13 +59,25 @@ export function Dropdown({
   const shown = options.filter((o) => !q || o.label.toLowerCase().includes(q));
   const current = options.find((o) => o.value === value);
 
-  // Position the list under the button while it's open.
-  const [rect, setRect] = useState<{ left: number; top: number; width: number } | null>(null);
+  // Position the list under the button while it's open. Inside a modal the list
+  // goes into the modal itself (positioned against it): a list in <body> would sit
+  // under the modal, and the modal treats clicks outside it as "close".
+  const [rect, setRect] = useState<{ left: number; top: number; width: number; host: HTMLElement | null } | null>(null);
   useLayoutEffect(() => {
     if (!open) return;
     const place = () => {
       const r = button.current?.getBoundingClientRect();
-      if (r) setRect({ left: r.left, top: r.bottom + 4, width: Math.max(r.width, 176) });
+      if (!r) return;
+      const host = button.current?.closest<HTMLElement>('[role="dialog"]') ?? null;
+      const width = Math.max(r.width, 176);
+      if (!host) return setRect({ left: r.left, top: r.bottom + 4, width, host });
+      const h = host.getBoundingClientRect();
+      setRect({
+        left: Math.min(r.left - h.left - host.clientLeft, host.clientWidth - width - 8),
+        top: r.bottom + 4 - h.top - host.clientTop + host.scrollTop,
+        width,
+        host,
+      });
     };
     place();
     window.addEventListener("scroll", place, true);
@@ -161,7 +173,7 @@ export function Dropdown({
           <div
             id={`${listId}-panel`}
             style={{ left: rect.left, top: rect.top, width: rect.width }}
-            className="fixed z-40 border-2 border-ink bg-[#fbf3e3] font-sans text-base font-normal tracking-normal normal-case shadow-[4px_4px_0_var(--ink)]"
+            className={`${rect.host ? "absolute" : "fixed"} z-40 border-2 border-ink bg-[#fbf3e3] font-sans text-base font-normal tracking-normal normal-case shadow-[4px_4px_0_var(--ink)]`}
           >
             {searchable && (
               <input
@@ -208,7 +220,7 @@ export function Dropdown({
               {shown.length === 0 && <li className="px-3 py-2 text-sm text-ink-soft">No matches</li>}
             </ul>
           </div>,
-          document.body,
+          rect.host ?? document.body,
         )}
     </span>
   );

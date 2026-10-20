@@ -149,7 +149,7 @@ export function CourtMode({
   };
 
   return (
-    <div className="fixed inset-0 z-[60] overflow-y-auto bg-board text-maple" role="region" aria-label="Court mode">
+    <div data-court-mode className="fixed inset-0 z-[60] overflow-y-auto overscroll-contain bg-board text-maple" role="region" aria-label="Court mode">
       <header className="sticky top-0 z-10 border-b-[3px] border-line bg-board">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5">
           <Link href={backHref} className="font-display text-base font-bold tracking-[0.12em] uppercase hover:text-line">

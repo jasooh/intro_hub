@@ -279,3 +279,11 @@
   height: 0;
   pointer-events: none;
 }
+
+/* Court mode takes the whole screen: hide the site's header and footer, and stop the page behind it scrolling. */
+body:has([data-court-mode]) {
+  overflow: hidden;
+}
+body:has([data-court-mode]) :is(header, footer):not([data-court-mode] *) {
+  display: none;
+}
