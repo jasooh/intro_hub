@@ -5,7 +5,8 @@ import { EmptyState, PageSpinner, PageTitle, reveal, Sheet } from "@/components/
 import { requireAdmin } from "@/lib/auth";
 import { profileComplete } from "@/lib/profile";
 import { createClient } from "@/lib/supabase/server";
-import { getPlayerHistory } from "@/lib/queries";
+import { owedTotals } from "@/lib/owed";
+import { getOwedSignups, getPlayerHistory } from "@/lib/queries";
 import type { Profile } from "@/lib/types";
 import { PlayerRow, type PlayerStats } from "./player-row";
 
@@ -47,11 +48,13 @@ async function Players({ searchParams }: { searchParams: PageProps<"/admin/playe
   const q = (typeof params.q === "string" ? params.q : "").trim().toLowerCase();
 
   const supabase = await createClient();
-  const [{ data: profileRows }, stats] = await Promise.all([
+  const [{ data: profileRows }, stats, owing] = await Promise.all([
     // Guests a host added to one session aren't accounts: they stay on that session's roster only.
     supabase.from("profiles").select("*").eq("guest", false).limit(2000),
     getPlayerHistory(),
+    getOwedSignups(),
   ]);
+  const owed = owedTotals(owing);
 
   const players = ((profileRows ?? []) as Profile[]).map((p) => {
     const s = stats.get(p.id) ?? { played: 0, upcoming: 0, last: null };
@@ -60,6 +63,7 @@ async function Players({ searchParams }: { searchParams: PageProps<"/admin/playe
       upcoming: s.upcoming,
       lastPlayed: s.last ? shortDate(s.last) : null,
       memberSince: shortDate(p.created_at),
+      owedCents: owed.get(p.id) ?? 0,
     };
     return { p, stats: playerStats, complete: profileComplete(p) };
   });

@@ -15,6 +15,7 @@ const groups = [
     label: "Money",
     links: [
       { href: "/admin/payments", label: "Payments" },
+      { href: "/admin/owed", label: "Owed" },
       { href: "/admin/refunds", label: "Refunds" },
     ],
   },

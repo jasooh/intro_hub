@@ -1,5 +1,6 @@
 import "server-only";
 import { cache } from "react";
+import { stillOwing, type OwedSignup } from "@/lib/owed";
 import { signupView } from "@/lib/signups";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
@@ -163,6 +164,19 @@ export async function getAdminSessions(view: AdminSessionView, search: string) {
     sessions: (list.data ?? []) as Session[],
     totals: { upcoming: upcoming.count ?? 0, past: past.count ?? 0, cancelled: cancelled.count ?? 0 },
   };
+}
+
+/** Every sign-up still owing money (Owed page, Players list). Hosts only, by RLS. */
+export async function getOwedSignups(): Promise<OwedSignup[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("registrations")
+    .select(
+      "id, profile_id, option, amount_cents, paid_cents, hold_expires_at, ref_code, friend_discount, profile:profiles(id, display_name, full_name, first_name, last_name, email, guest), session:sessions(id, title, starts_at, status)",
+    )
+    .eq("status", "pending_payment")
+    .limit(5000);
+  return stillOwing((data ?? []) as unknown as OwedSignup[]);
 }
 
 /** Per-player history for the Players page: confirmed sessions already played, upcoming sign-ups, last played. */

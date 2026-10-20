@@ -1,10 +1,19 @@
+import Link from "next/link";
 import { deleteAccount, setRole, updateEtransferNames } from "@/app/admin/actions";
 import { PlayerDetails } from "@/components/player-details";
 import { SubmitButton } from "@/components/submit-button";
 import { Avatar, inputClass, Mark } from "@/components/ui";
+import { formatMoney } from "@/lib/format";
 import type { Profile } from "@/lib/types";
 
-export type PlayerStats = { played: number; upcoming: number; lastPlayed: string | null; memberSince: string };
+export type PlayerStats = {
+  played: number;
+  upcoming: number;
+  lastPlayed: string | null;
+  memberSince: string;
+  /** Still owed across their sign-ups (see /admin/owed). */
+  owedCents: number;
+};
 
 /** A compact player row; the name opens the details modal with host actions. */
 export function PlayerRow({
@@ -110,6 +119,16 @@ export function PlayerRow({
             <Mark tone="bad" glyph="✕">
               No photos
             </Mark>
+          )}
+          {stats.owedCents > 0 && (
+            <Link
+              href={`/admin/owed?q=${encodeURIComponent(p.email)}`}
+              className="underline decoration-warn decoration-2 underline-offset-4"
+            >
+              <Mark tone="warn" glyph="$">
+                Owes {formatMoney(stats.owedCents)}
+              </Mark>
+            </Link>
           )}
         </div>
       </div>

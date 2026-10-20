@@ -271,6 +271,30 @@ export async function markPaid(registrationId: string, sessionId: string) {
   await rpc("admin_mark_paid", { p_registration_id: registrationId }, `/admin/sessions/${sessionId}`, "Marked as paid");
 }
 
+/** Mark paid from the Owed page: same as markPaid, but stays on (and refreshes) /admin/owed. */
+export async function markPaidFromOwed(registrationId: string, sessionId: string) {
+  await requireAdmin();
+  await rpc("admin_mark_paid", { p_registration_id: registrationId }, "/admin/owed", "Marked as paid");
+  revalidatePath(`/admin/sessions/${sessionId}`);
+}
+
+/** Owed page: email one player about everything they still owe on upcoming sessions. */
+export async function remindPlayer(profileId: string) {
+  await requireAdmin();
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_nudge_player", { p_profile_id: profileId });
+  if (error) fail("/admin/owed", error.message);
+  const events = parseEvents(data);
+  after(() => dispatchEvents(events));
+  revalidatePath("/admin/owed");
+  await flash(
+    "success",
+    events.length
+      ? `Reminder sent for ${events.length} sign-up${events.length === 1 ? "" : "s"}`
+      : "Nothing to remind about (already reminded, or nothing upcoming)",
+  );
+}
+
 export async function removeRegistration(registrationId: string, sessionId: string) {
   await requireAdmin();
   await rpc(

@@ -34,7 +34,7 @@ export type PlayerDetailsData = {
   /** Players they asked to be teamed with. */
   teammates?: string[];
   /** Present when opened from the Players page. lastPlayed is pre-formatted. */
-  history?: { played: number; upcoming: number; lastPlayed: string | null; memberSince: string };
+  history?: { played: number; upcoming: number; lastPlayed: string | null; memberSince: string; owedCents?: number };
 };
 
 /** The player's name; clicking it opens everything they told the host, plus optional host actions. */
@@ -124,6 +124,16 @@ export function PlayerDetails({
               <Row label="Last played">{data.history.lastPlayed}</Row>
               <Row label="Signed up for">{data.history.upcoming ? `${data.history.upcoming} upcoming` : null}</Row>
               <Row label="Member since">{data.history.memberSince}</Row>
+              <Row label="Owes">
+                {data.history.owedCents ? (
+                  <a
+                    href={`/admin/owed?q=${encodeURIComponent(p.email)}`}
+                    className="font-score font-black text-warn underline decoration-2 underline-offset-4"
+                  >
+                    ${(data.history.owedCents / 100).toFixed(2)}
+                  </a>
+                ) : null}
+              </Row>
             </Rows>
           </Section>
         )}
