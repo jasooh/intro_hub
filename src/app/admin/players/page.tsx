@@ -48,7 +48,8 @@ async function Players({ searchParams }: { searchParams: PageProps<"/admin/playe
 
   const supabase = await createClient();
   const [{ data: profileRows }, stats] = await Promise.all([
-    supabase.from("profiles").select("*").limit(2000),
+    // Guests a host added to one session aren't accounts: they stay on that session's roster only.
+    supabase.from("profiles").select("*").eq("guest", false).limit(2000),
     getPlayerHistory(),
   ]);
 

@@ -1,3 +1,4 @@
+import { Dropdown } from "@/components/dropdown";
 import { Field, inputClass } from "@/components/ui";
 import { inputKind, toInputValue, type ColumnInfo } from "@/lib/dev-tools";
 
@@ -25,20 +26,17 @@ export function RowFields({ columns, row }: { columns: ColumnInfo[]; row: Record
           <div key={col.name} className={wide ? "sm:col-span-2" : undefined}>
             <Field label={col.name} hint={hint} required={!col.nullable}>
               {kind === "bool" ? (
-                <select name={name} defaultValue={value} className={inputClass}>
-                  {col.nullable && <option value="">null</option>}
-                  <option value="true">true</option>
-                  <option value="false">false</option>
-                </select>
+                <Dropdown
+                  name={name}
+                  defaultValue={value}
+                  options={[...(col.nullable ? [{ value: "", label: "null" }] : []), { value: "true", label: "true" }, { value: "false", label: "false" }]}
+                />
               ) : kind === "enum" ? (
-                <select name={name} defaultValue={value} className={inputClass}>
-                  {col.nullable && <option value="">null</option>}
-                  {col.enum!.map((e) => (
-                    <option key={e} value={e}>
-                      {e}
-                    </option>
-                  ))}
-                </select>
+                <Dropdown
+                  name={name}
+                  defaultValue={value}
+                  options={[...(col.nullable ? [{ value: "", label: "null" }] : []), ...col.enum!.map((e) => ({ value: e, label: e }))]}
+                />
               ) : wide ? (
                 <textarea
                   name={name}

@@ -81,8 +81,8 @@ async function SessionView({
   const instructional = sessionCounts?.instructional ?? 0;
   const cancelled = session.status === "cancelled";
   const times = sessionTimes(session);
-  // Newcomers (and anyone signed out) get the "what to expect" section.
-  const showIntro = !cancelled && (!profile || (await isFirstTimer(profile)));
+  // Only players the system counts as new (same rule as Bring a Friend) get the "what to expect" section.
+  const showIntro = !cancelled && profile != null && (await isFirstTimer(profile));
 
   return (
     <div className="space-y-10">

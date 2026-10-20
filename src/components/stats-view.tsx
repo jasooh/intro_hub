@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { DateBlock } from "@/components/session-card";
-import { buttonClass, EmptyState, Mark, PageTitle, reveal, Scoreboard, ScoreboardRow, Sheet } from "@/components/ui";
+import { buttonClass, EmptyState, inputClass, Mark, PageTitle, reveal, Scoreboard, ScoreboardRow, Sheet } from "@/components/ui";
 import { formatMoney, pad2 } from "@/lib/format";
 import { STAT_RANGES, summarize, type SessionStat, type StatRange, type Stats } from "@/lib/stats";
 
@@ -8,7 +8,18 @@ const shortDate = (iso: string) =>
   new Intl.DateTimeFormat("en-CA", { month: "short", day: "numeric", year: "numeric" }).format(new Date(iso));
 
 /** The host stats page: money, how full sessions were, and who's coming (or not coming) back. */
-export function StatsView({ stats, range, now }: { stats: Stats; range: StatRange; now: number }) {
+export function StatsView({
+  stats,
+  range,
+  custom,
+  now,
+}: {
+  stats: Stats;
+  range: StatRange;
+  /** The picked dates when range is "custom". */
+  custom: { from: string; to: string } | null;
+  now: number;
+}) {
   const totals = summarize(stats.sessions, now);
   const upcoming = stats.sessions.filter((s) => Date.parse(s.starts_at) > now);
   const past = stats.sessions.filter((s) => Date.parse(s.starts_at) <= now).reverse();
@@ -20,18 +31,38 @@ export function StatsView({ stats, range, now }: { stats: Stats; range: StatRang
         Stats
       </PageTitle>
 
-      <nav className="reveal flex flex-wrap gap-3" style={reveal(1)} aria-label="Time range">
-        {STAT_RANGES.map((r) => (
-          <Link
-            key={r.key}
-            href={`/admin/stats?range=${r.key}`}
-            aria-current={r.key === range ? "page" : undefined}
-            className={buttonClass(r.key === range ? "primary" : "secondary", "sm")}
-          >
-            {r.label}
-          </Link>
-        ))}
-      </nav>
+      <div className="reveal space-y-4" style={reveal(1)}>
+        <nav className="flex flex-wrap gap-3" aria-label="Time range">
+          {STAT_RANGES.map((r) => (
+            <Link
+              key={r.key}
+              href={`/admin/stats?range=${r.key}`}
+              aria-current={r.key === range ? "page" : undefined}
+              className={buttonClass(r.key === range ? "primary" : "secondary", "sm")}
+            >
+              {r.label}
+            </Link>
+          ))}
+        </nav>
+        {/* A plain GET form: the dates land in the URL, so a custom range can be bookmarked or shared. */}
+        <form
+          action="/admin/stats"
+          className={`flex flex-wrap items-end gap-x-4 gap-y-3 border-l-4 py-1 pl-3 ${range === "custom" ? "border-line" : "border-ink/20"}`}
+        >
+          <input type="hidden" name="range" value="custom" />
+          <label className="block min-w-0 space-y-1">
+            <span className="font-display text-sm font-bold tracking-[0.15em] uppercase">From</span>
+            <input type="date" name="from" required defaultValue={custom?.from} className={`${inputClass} w-44`} />
+          </label>
+          <label className="block min-w-0 space-y-1">
+            <span className="font-display text-sm font-bold tracking-[0.15em] uppercase">To</span>
+            <input type="date" name="to" required defaultValue={custom?.to} className={`${inputClass} w-44`} />
+          </label>
+          <button type="submit" className={buttonClass(range === "custom" ? "primary" : "secondary", "sm")}>
+            {range === "custom" ? "Update range" : "Custom range"}
+          </button>
+        </form>
+      </div>
 
       <ScoreboardRow className="reveal" style={reveal(2)}>
         <Scoreboard size="sm" className="w-full" value={formatMoney(totals.collected)} label="Collected" />

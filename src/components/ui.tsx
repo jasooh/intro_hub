@@ -120,13 +120,14 @@ export function Mark({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 font-display text-sm font-bold tracking-[0.12em] whitespace-nowrap uppercase",
+        // Long tags ("Friend of … · half price") wrap inside their row instead of running into the next one.
+        "inline-flex max-w-full min-w-0 items-center gap-1.5 font-display text-sm font-bold tracking-[0.12em] uppercase",
         toneClass[tone],
         className,
       )}
     >
       <Glyph glyph={glyph} />
-      <span className={cn(struck && "line-through decoration-2")}>{children}</span>
+      <span className={cn("min-w-0 [overflow-wrap:break-word]", struck && "line-through decoration-2")}>{children}</span>
     </span>
   );
 }

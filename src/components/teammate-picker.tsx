@@ -2,6 +2,7 @@
 
 import { X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { PlayerSearch } from "@/components/player-search";
 import { MAX_TEAMMATES } from "@/lib/teams";
 
 export type TeammateOption = { id: string; name: string };
@@ -45,38 +46,31 @@ export function TeammatePicker({
       {selected.map((id) => (
         <input key={id} type="hidden" name={name} value={id} />
       ))}
-      <div className="flex flex-wrap items-center gap-2">
-        {selected.map((id) => (
-          <span key={id} className="inline-flex items-center gap-1.5 border-2 border-ink bg-[#fbf3e3] py-0.5 pr-1 pl-2.5">
-            <span className="font-semibold">{nameOf(id)}</span>
-            <button
-              type="button"
-              aria-label={`Remove ${nameOf(id)}`}
-              onClick={() => setSelected(selected.filter((x) => x !== id))}
-              className="-my-1 inline-flex size-9 items-center justify-center text-ink-soft hover:text-bad sm:my-0 sm:size-6"
-            >
-              <X className="size-4" aria-hidden />
-            </button>
-          </span>
-        ))}
-        {selected.length < max && remaining.length > 0 && (
-          <select
-            aria-label="Add a teammate"
-            value=""
-            onChange={(e) => {
-              if (e.target.value) setSelected([...selected, e.target.value]);
-            }}
-            className="min-w-0 border-0 border-b-2 border-ink bg-transparent py-1.5 pr-7 pl-0 font-display text-base font-bold sm:py-1 sm:text-sm tracking-wide uppercase focus:border-line focus:ring-0"
-          >
-            <option value="">+ Add a teammate</option>
-            {remaining.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.name}
-              </option>
-            ))}
-          </select>
-        )}
-      </div>
+      {selected.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          {selected.map((id) => (
+            <span key={id} className="inline-flex items-center gap-1.5 border-2 border-ink bg-[#fbf3e3] py-0.5 pr-1 pl-2.5">
+              <span className="font-semibold">{nameOf(id)}</span>
+              <button
+                type="button"
+                aria-label={`Remove ${nameOf(id)}`}
+                onClick={() => setSelected(selected.filter((x) => x !== id))}
+                className="-my-1 inline-flex size-9 items-center justify-center text-ink-soft hover:text-bad sm:my-0 sm:size-6"
+              >
+                <X className="size-4" aria-hidden />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      {selected.length < max && remaining.length > 0 && (
+        <PlayerSearch
+          label="Add a teammate"
+          placeholder="+ Add a teammate: search by name"
+          options={remaining}
+          onPick={(o) => setSelected([...selected, o.id])}
+        />
+      )}
     </div>
   );
 }

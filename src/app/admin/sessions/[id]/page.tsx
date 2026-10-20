@@ -89,7 +89,7 @@ async function AdminSession({
       .select("id, subject, audiences, recipient_count, created_at")
       .eq("session_id", id)
       .order("created_at", { ascending: false }),
-    supabase.from("profiles").select("id, display_name, full_name, email").order("display_name").limit(2000),
+    supabase.from("profiles").select("id, display_name, full_name, email").eq("guest", false).order("display_name").limit(2000),
   ]);
   if (!session) notFound();
   const teams = (teamRows ?? []) as Team[];
@@ -146,7 +146,7 @@ async function AdminSession({
   const activeIds = new Set(rows.filter((r) => r.status !== "expired" && r.status !== "cancelled").map((r) => r.profile_id));
   const addable: AddablePlayer[] = (playerRows ?? [])
     .filter((p) => !activeIds.has(p.id))
-    .map((p) => ({ id: p.id, name: p.display_name ?? p.full_name ?? p.email, email: p.email.endsWith(".invalid") ? "guest" : p.email }));
+    .map((p) => ({ id: p.id, name: p.display_name ?? p.full_name ?? p.email, email: p.email }));
   const offered = offeredOptions(session);
   const addFull = {
     full: dropIn.length >= session.capacity,
@@ -211,6 +211,15 @@ async function AdminSession({
           <Scoreboard size="sm" className="w-full" value={formatMoney(collected)} label="e-Transfers in" />
         </ScoreboardRow>
         <SpotDots capacity={session.capacity} confirmed={confirmedCount} holding={holdingCount} />
+        {(dropIn.length > session.capacity ||
+          (session.instructional_capacity != null && instructionalCount > session.instructional_capacity)) && (
+          <p className="border-l-4 border-warn py-1 pl-3 text-sm">
+            <b>Over the limit.</b> Lowering a limit moves the newest unpaid sign-ups to the waitlist, but paid players
+            are never bumped: {dropIn.length}/{session.capacity} drop-in
+            {session.instructional_capacity != null && `, ${instructionalCount}/${session.instructional_capacity} instructional`}.
+            Remove someone by hand, or raise the limit.
+          </p>
+        )}
         {!cancelled && unpaidCount > 0 && new Date(session.starts_at) > new Date() && (
           <form action={nudgeUnpaid.bind(null, id)} className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <SubmitButton
@@ -505,7 +514,7 @@ function PlayerRow({
               ` · paid ${formatMoney(reg.paid_cents)}`
             ))}
         </p>
-        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+        <div className="mt-1 flex min-w-0 flex-wrap gap-x-3 gap-y-1 sm:gap-x-4">
           <OptionMark option={reg.option} />
           {reg.profile.guest && (
             <Mark tone="muted" glyph="○">
@@ -556,8 +565,11 @@ function PlayerRow({
           </form>
         )}
       </div>
-      <StatusMark status={reg.status} />
-      <div className="flex flex-wrap items-center gap-3">{children}</div>
+      {/* Phones: status and actions get their own line under the player, so the tags keep the full width. */}
+      <div className="flex w-full flex-wrap items-center gap-3 pl-12 sm:w-auto sm:pl-0">
+        <StatusMark status={reg.status} />
+        {children}
+      </div>
     </li>
   );
 }

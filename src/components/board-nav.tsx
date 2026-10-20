@@ -55,3 +55,89 @@ function Tabs({
     </nav>
   );
 }
+
+export type BoardGroup = { label: string; links: readonly BoardLink[] };
+
+/**
+ * Two-row tab bar for many pages: categories on top (the active one is the
+ * orange block, and goes to its first page), the current category's pages
+ * underneath. Same active rules as BoardNav.
+ */
+export function GroupedBoardNav({
+  groups,
+  root,
+  rootAlso = [],
+}: {
+  groups: readonly BoardGroup[];
+  root: string;
+  rootAlso?: string[];
+}) {
+  return (
+    <Suspense fallback={<GroupedTabs groups={groups} root={root} rootAlso={rootAlso} path={null} />}>
+      <ActiveGroupedTabs groups={groups} root={root} rootAlso={rootAlso} />
+    </Suspense>
+  );
+}
+
+function ActiveGroupedTabs(props: { groups: readonly BoardGroup[]; root: string; rootAlso: string[] }) {
+  return <GroupedTabs {...props} path={usePathname()} />;
+}
+
+function GroupedTabs({
+  groups,
+  root,
+  rootAlso,
+  path,
+}: {
+  groups: readonly BoardGroup[];
+  root: string;
+  rootAlso: string[];
+  path: string | null;
+}) {
+  const active = (href: string) =>
+    path !== null &&
+    (href === root ? path === root || rootAlso.some((p) => path.startsWith(p)) : path.startsWith(href));
+  const current = groups.find((g) => g.links.some((l) => active(l.href))) ?? groups[0];
+  const scroll = "overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
+
+  return (
+    <nav aria-label="Host pages" className="bg-board shadow-[4px_4px_0_var(--line)]">
+      {/* Phones: one equal column per category so all of them fit. */}
+      <div className="grid grid-cols-4 gap-1 p-1.5 sm:flex">
+        {groups.map((g) => {
+          const on = g === current;
+          return (
+            <Link
+              key={g.label}
+              href={g.links[0].href}
+              aria-current={on ? "true" : undefined}
+              className={`px-1 py-1.5 text-center font-display text-base font-bold tracking-wide whitespace-nowrap uppercase transition-colors sm:px-3 sm:text-lg ${
+                on ? "bg-line text-board" : "text-maple/70 hover:bg-maple/10 hover:text-maple"
+              }`}
+            >
+              {g.label}
+            </Link>
+          );
+        })}
+      </div>
+      {current.links.length > 1 && (
+        <div className={`flex gap-x-5 border-t border-maple/15 px-3 py-1.5 ${scroll}`}>
+          {current.links.map((l) => (
+            <Link
+              key={l.href}
+              href={l.href}
+              aria-current={active(l.href) ? "page" : undefined}
+              className={`py-1 font-display text-base font-bold tracking-wide whitespace-nowrap uppercase underline-offset-[6px] transition-colors ${
+                active(l.href)
+                  ? "text-maple underline decoration-line decoration-2"
+                  : "text-maple/60 hover:text-maple"
+              }`}
+            >
+              {l.label}
+            </Link>
+          ))}
+        </div>
+      )}
+    </nav>
+  );
+}

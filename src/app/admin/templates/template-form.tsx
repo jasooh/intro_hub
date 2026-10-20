@@ -1,6 +1,7 @@
 import { LocationInput } from "@/components/location-input";
 import { SubmitButton } from "@/components/submit-button";
 import { Field, FormGroup as Group, inputClass } from "@/components/ui";
+import { Dropdown } from "@/components/dropdown";
 import { SessionTimes } from "@/components/session-times";
 import { DEFAULT_LOCATION } from "@/lib/club";
 import { TimingPreview } from "@/components/timing-preview";
@@ -49,13 +50,12 @@ export function TemplateForm({
       <Group title="When" hint="Instructional first, then drop-in.">
         <div className="space-y-5">
           <Field label="Day">
-            <select name="weekday" defaultValue={t?.weekday ?? 6} className={`${inputClass} sm:max-w-56`}>
-              {WEEKDAYS.map((d, i) => (
-                <option key={d} value={i}>
-                  {d}
-                </option>
-              ))}
-            </select>
+            <Dropdown
+              name="weekday"
+              defaultValue={String(t?.weekday ?? 6)}
+              options={WEEKDAYS.map((d, i) => ({ value: String(i), label: d }))}
+              className="sm:max-w-56"
+            />
           </Field>
           <SessionTimes defaultValue={t ? templateClocks(t) : DEFAULT_CLOCKS} />
         </div>

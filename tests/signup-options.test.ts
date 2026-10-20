@@ -266,3 +266,61 @@ describe("bring a friend", () => {
     expect(await reg(r, sid)).toMatchObject({ status: "confirmed", amount_cents: 750, friend_discount: true });
   });
 });
+
+describe("lowering a limit", () => {
+  const promote = (host: string, sid: string) =>
+    asUser<{ events: Event[] }>(db, host, `select public.admin_promote($1) as events`, [sid]);
+
+  it("moves the newest unpaid instructional sign-up to the front of the instructional waitlist", async () => {
+    const sid = await createSession(db, { instructionalPriceCents: 1000 });
+    const host = await createUser(db, "Host", { admin: true });
+    const [a, b, c] = await users(3);
+    await signUp(a, sid, "instructional");
+    await signUp(b, sid, "instructional");
+    await db.query(`update public.sessions set instructional_capacity = 2 where id = $1`, [sid]);
+    await signUp(c, sid, "instructional"); // waitlisted
+    await db.query(`update public.sessions set instructional_capacity = 1 where id = $1`, [sid]);
+
+    const res = await promote(host, sid);
+    expect(res.rows[0].events).toEqual([{ event: "waitlisted", registration_id: (await reg(b, sid)).id }]);
+    expect((await reg(a, sid)).status).toBe("pending_payment");
+    expect((await reg(b, sid)).status).toBe("waitlisted");
+    // b goes back in line ahead of c, who was already waiting.
+    const line = await db.query<{ profile_id: string }>(
+      `select profile_id from public.registrations where session_id = $1 and status = 'waitlisted' order by queued_at`,
+      [sid],
+    );
+    expect(line.rows.map((r) => r.profile_id)).toEqual([b, c]);
+  });
+
+  it("never bumps paid players when the drop-in spots go down", async () => {
+    const sid = await createSession(db, { capacity: 3 });
+    const host = await createUser(db, "Host", { admin: true });
+    const [a, b, c] = await users(3);
+    for (const u of [a, b, c]) await signUp(u, sid);
+    await asUser(db, host, `select public.admin_mark_paid($1)`, [(await reg(a, sid)).id]);
+    await asUser(db, host, `select public.admin_mark_paid($1)`, [(await reg(b, sid)).id]);
+    await db.query(`update public.sessions set capacity = 1 where id = $1`, [sid]);
+
+    await promote(host, sid);
+    expect((await reg(c, sid)).status).toBe("waitlisted");
+    expect((await reg(a, sid)).status).toBe("confirmed");
+    expect((await reg(b, sid)).status).toBe("confirmed");
+  });
+});
+
+describe("guests", () => {
+  it("don't count as new players in the stats", async () => {
+    const host = await createUser(db, "Host", { admin: true });
+    const sid = await createSession(db);
+    await asUser(db, host, `select public.admin_add_player($1, null, 'Walk In', null, 'full', true)`, [sid]);
+    // The session has happened.
+    await db.query(`update public.sessions set starts_at = now() - interval '2 days', ends_at = now() - interval '1 day' where id = $1`, [sid]);
+    const s = await asUser<{ s: { players: { new: number } } }>(
+      db,
+      host,
+      `select public.admin_stats(now() - interval '30 days', now() + interval '30 days') as s`,
+    );
+    expect(s.rows[0].s.players.new).toBe(0);
+  });
+});

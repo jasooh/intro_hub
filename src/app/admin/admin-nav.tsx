@@ -1,19 +1,40 @@
 "use client";
 
-import { BoardNav } from "@/components/board-nav";
+import { GroupedBoardNav } from "@/components/board-nav";
 
-const links = [
-  { href: "/admin", label: "Sessions" },
-  { href: "/admin/payments", label: "Payments" },
-  { href: "/admin/refunds", label: "Refunds" },
-  { href: "/admin/players", label: "Players" },
-  { href: "/admin/stats", label: "Stats" },
-  { href: "/admin/updates", label: "Updates" },
-  { href: "/admin/templates", label: "Weekly schedule" },
-  { href: "/admin/songs", label: "Songs" },
-  { href: "/admin/feedback", label: "Feedback" },
+// Host pages by what they're for. A category tab opens its first page.
+const groups = [
+  {
+    label: "Sessions",
+    links: [
+      { href: "/admin", label: "Sessions" },
+      { href: "/admin/templates", label: "Weekly schedule" },
+    ],
+  },
+  {
+    label: "Money",
+    links: [
+      { href: "/admin/payments", label: "Payments" },
+      { href: "/admin/refunds", label: "Refunds" },
+    ],
+  },
+  {
+    label: "Players",
+    links: [
+      { href: "/admin/players", label: "Players" },
+      { href: "/admin/feedback", label: "Feedback" },
+      { href: "/admin/songs", label: "Songs" },
+    ],
+  },
+  {
+    label: "Club",
+    links: [
+      { href: "/admin/updates", label: "Updates" },
+      { href: "/admin/stats", label: "Stats" },
+    ],
+  },
 ] as const;
 
 export function AdminNav() {
-  return <BoardNav links={links} root="/admin" rootAlso={["/admin/sessions"]} />;
+  return <GroupedBoardNav groups={groups} root="/admin" rootAlso={["/admin/sessions"]} />;
 }

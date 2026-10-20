@@ -1,11 +1,9 @@
 import { editMatch, makeSchedule, removeSchedule, setScheduleMinutes } from "@/app/admin/actions";
+import { Dropdown } from "@/components/dropdown";
 import { MatchSchedule } from "@/components/match-schedule";
 import { SubmitButton } from "@/components/submit-button";
 import { inputClass } from "@/components/ui";
 import type { Match, Session, Team } from "@/lib/types";
-
-const pickClass =
-  "min-w-0 max-w-40 truncate border-0 border-b-2 border-ink bg-transparent py-1.5 pr-6 pl-0 font-display text-base font-bold sm:py-1 sm:text-sm tracking-wide uppercase focus:border-line focus:ring-0";
 
 /** Host side of the game schedule: make a round robin, swap matchups, set the game length. */
 export function ScheduleBoard({ session, teams, matches }: { session: Session; teams: Team[]; matches: Match[] }) {
@@ -105,13 +103,12 @@ function CourtsField({ defaultValue, max }: { defaultValue: number; max: number 
   return (
     <label className="block space-y-1">
       <span className="font-display text-sm font-bold tracking-[0.15em] uppercase">Courts</span>
-      <select name="courts" defaultValue={defaultValue} className={`${inputClass} w-20`}>
-        {[1, 2, 3].filter((n) => n <= max).map((n) => (
-          <option key={n} value={n}>
-            {n}
-          </option>
-        ))}
-      </select>
+      <Dropdown
+        name="courts"
+        defaultValue={String(defaultValue)}
+        options={[1, 2, 3].filter((n) => n <= max).map((n) => ({ value: String(n), label: String(n) }))}
+        className="w-20"
+      />
     </label>
   );
 }
@@ -137,12 +134,13 @@ function MinutesField({ defaultValue }: { defaultValue: number | null }) {
 
 function TeamPick({ name, teams, value, label }: { name: string; teams: Team[]; value: string; label: string }) {
   return (
-    <select name={name} defaultValue={value} aria-label={label} className={pickClass}>
-      {teams.map((t) => (
-        <option key={t.id} value={t.id}>
-          {t.name}
-        </option>
-      ))}
-    </select>
+    <Dropdown
+      name={name}
+      defaultValue={value}
+      label={label}
+      look="compact"
+      className="max-w-40"
+      options={teams.map((t) => ({ value: t.id, label: t.name }))}
+    />
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { Dropdown } from "@/components/dropdown";
 import { FlashOnSettle } from "@/components/flash-toaster";
 import type { Team } from "@/lib/types";
 
@@ -21,29 +22,20 @@ export function TeamSelect({
   const move = mode === "move";
   return (
     <form action={action} className="min-w-0 shrink-0">
-      <select
+      <Dropdown
         name="team_id"
-        defaultValue={move ? "__" : (current ?? "")}
-        aria-label={move ? "Move to team" : "Team"}
-        onChange={(e) => e.currentTarget.form?.requestSubmit()}
-        className={`min-w-0 truncate border-0 border-b-2 border-ink bg-transparent py-1.5 pr-6 pl-0 font-display text-base font-bold sm:py-1 sm:text-sm tracking-wide uppercase focus:border-line focus:ring-0 ${
-          move ? "w-[5.75rem] text-ink-soft" : "w-full max-w-40"
-        }`}
-      >
-        {move && (
-          <option value="__" disabled>
-            Move
-          </option>
-        )}
-        {(!move || current) && <option value="">No team</option>}
-        {teams
-          .filter((t) => !move || t.id !== current)
-          .map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name}
-            </option>
-          ))}
-      </select>
+        submitOnChange
+        label={move ? "Move to team" : "Team"}
+        look="compact"
+        placeholder={move ? "Move" : "No team"}
+        // "Move" mode starts on no choice (shows "Move"); picking "No team" ("") still counts as a change.
+        defaultValue={move ? "__move" : (current ?? "")}
+        className={move ? "w-[5.75rem] text-ink-soft" : "w-full max-w-40"}
+        options={[
+          ...(!move || current ? [{ value: "", label: "No team" }] : []),
+          ...teams.filter((t) => !move || t.id !== current).map((t) => ({ value: t.id, label: t.name })),
+        ]}
+      />
       <FlashOnSettle />
     </form>
   );

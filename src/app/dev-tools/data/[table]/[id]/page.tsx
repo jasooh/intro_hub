@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { Dropdown } from "@/components/dropdown";
 import { SubmitButton } from "@/components/submit-button";
-import { BackLink, inputClass, PageSpinner, PageTitle, reveal, Sheet, StatusMark } from "@/components/ui";
+import { BackLink, PageSpinner, PageTitle, reveal, Sheet, StatusMark } from "@/components/ui";
 import { requireDevTools } from "@/lib/auth";
 import { isEditableTable, EDITABLE_TABLES, type ColumnInfo } from "@/lib/dev-tools";
 import { createClient } from "@/lib/supabase/server";
@@ -80,13 +81,13 @@ async function RowView({ params }: { params: PageProps<"/dev-tools/data/[table]/
               <p className="text-sm text-ink-soft">Now</p>
               <StatusMark status={r.status as RegistrationStatus} />
             </div>
-            <select name="status" defaultValue={String(r.status)} className={`${inputClass} w-auto`} aria-label="New status">
-              {STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
+            <Dropdown
+              name="status"
+              defaultValue={String(r.status)}
+              label="New status"
+              className="w-48"
+              options={STATUSES.map((st) => ({ value: st, label: st }))}
+            />
             <SubmitButton
               requireChange
               confirm={{

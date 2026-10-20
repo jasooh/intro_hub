@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { assignPayment, setPaymentDismissed } from "@/app/admin/actions";
+import { Dropdown } from "@/components/dropdown";
 import { SubmitButton } from "@/components/submit-button";
-import { inputClass, Mark, type Tone } from "@/components/ui";
+import { Mark, type Tone } from "@/components/ui";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { METHOD_LABELS, type PaymentMethod } from "@/lib/payments";
 import type { Payment, Profile, Registration, Session } from "@/lib/types";
@@ -79,17 +80,18 @@ export function PaymentRow({ p, method, options }: { p: Row; method: PaymentMeth
       </div>
       {method === "unmatched" && (
         <form action={assignPayment.bind(null, p.id)} className="flex flex-wrap items-end gap-4">
-          <select name="registration_id" required defaultValue="" className={`${inputClass} flex-1`}>
-            <option value="" disabled>
-              Assign to…
-            </option>
-            {options.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.profile.display_name ?? o.profile.full_name} · {o.session.title} {formatDateTime(o.session.starts_at)} ·{" "}
-                {o.status.replace("_", " ")} · owes {formatMoney(o.amount_cents)} · {o.ref_code}
-              </option>
-            ))}
-          </select>
+          <Dropdown
+            name="registration_id"
+            required
+            placeholder="Assign to…"
+            label="Assign this payment to a sign-up"
+            className="flex-1"
+            searchAt={6}
+            options={options.map((o) => ({
+              value: o.id,
+              label: `${o.profile.display_name ?? o.profile.full_name} · ${o.session.title} ${formatDateTime(o.session.starts_at)} · ${o.status.replace("_", " ")} · owes ${formatMoney(o.amount_cents)} · ${o.ref_code}`,
+            }))}
+          />
           <SubmitButton size="sm">Confirm player</SubmitButton>
         </form>
       )}

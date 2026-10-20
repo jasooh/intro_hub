@@ -3,9 +3,9 @@ import type { Metadata, Viewport } from "next";
 import { Atkinson_Hyperlegible_Next, Big_Shoulders, Doto } from "next/font/google";
 import Link from "next/link";
 import { Suspense } from "react";
-import { AsciiBall } from "@/components/ascii-ball";
 import { FlashToaster } from "@/components/flash-toaster";
 import { MaintenanceBanner } from "@/components/maintenance-banner";
+import { WireBall } from "@/components/wire-ball";
 import { SiteFooter } from "@/components/site-footer";
 import { UserMenu } from "@/components/user-menu";
 import { env } from "@/lib/env";
@@ -37,8 +37,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${display.variable} ${score.variable} ${body.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col font-sans">
-        {/* Lowkey spinning ASCII volleyball behind every page. */}
-        <AsciiBall />
+        {/* Lowkey spinning wireframe volleyball behind every page. */}
+        <WireBall />
         <FlashToaster />
         <header className="sticky top-0 z-20 bg-maple/90 backdrop-blur-sm">
           <div className="mx-auto flex h-16 max-w-4xl items-center justify-between gap-4 px-4">
