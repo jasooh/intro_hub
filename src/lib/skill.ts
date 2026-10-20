@@ -5,11 +5,11 @@ import type { SkillLevel } from "@/lib/types";
  * overrule it with a rating after watching them play. Weakest first.
  */
 export const SKILL_RANKS: readonly { value: SkillLevel; label: string; blurb: string }[] = [
-  { value: 1, label: "Beginner", blurb: "Never played, or only in gym class. Learning to bump and serve." },
-  { value: 2, label: "Learning", blurb: "Played here and there. Can keep a rally going sometimes." },
-  { value: 3, label: "Comfortable", blurb: "Play fairly often. Pass, set and serve over most of the time." },
-  { value: 4, label: "Strong", blurb: "Played on a team or in a league. Consistent, can hit and read the play." },
-  { value: 5, label: "Advanced", blurb: "Competitive experience (school, club, rep). Solid at every skill." },
+  { value: 1, label: "Beginner", blurb: "Little or no volleyball experience. Happy to learn the basics and have fun." },
+  { value: 2, label: "Learning", blurb: "Can serve most of the time, do a basic set, and bump the ball to a teammate. Knows the basic rules." },
+  { value: 3, label: "Comfortable", blurb: "Passes with decent technique some of the time, understands most rules, and moves well in a basic defense. Starting to learn rotations." },
+  { value: 4, label: "Strong", blurb: "Understands offence and defence in most systems. Smooth touch and court movement, and keeps the ball in play." },
+  { value: 5, label: "Advanced", blurb: "Strong all-round fundamentals: blocks, attacks and a reliable pass or set. Plays competitively." },
 ];
 
 /** Used for balancing when a player has no rank at all. */
