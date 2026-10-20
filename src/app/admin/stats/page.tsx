@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { StatsView } from "@/components/stats-view";
+import { STAT_TABS, StatsView, type StatTab } from "@/components/stats-view";
 import { PageSpinner } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
+import { env } from "@/lib/env";
 import { zonedLocalToUtc } from "@/lib/format";
 import { customDates, STAT_RANGES, statWindow, type StatRange, type Stats } from "@/lib/stats";
 import { createClient } from "@/lib/supabase/server";
@@ -30,8 +31,14 @@ async function StatsData({ searchParams }: { searchParams: PageProps<"/admin/sta
   // Custom: sessions starting from the first day through the end of the last (local dates).
   const from = custom ? zonedLocalToUtc(`${custom.from}T00:00`) : preset.from;
   const to = custom ? new Date(zonedLocalToUtc(`${custom.to}T00:00`).getTime() + 86_400_000) : preset.to;
-  const { data, error } = await supabase.rpc("admin_stats", { p_from: from.toISOString(), p_to: to.toISOString() });
+  const { data, error } = await supabase.rpc("admin_stats", {
+    p_from: from.toISOString(),
+    p_to: to.toISOString(),
+    p_tz: env.timezone(),
+  });
   if (error) throw error;
 
-  return <StatsView stats={data as Stats} range={range} custom={custom} now={preset.now} />;
+  const tab = (STAT_TABS.find((t) => t.key === params.tab)?.key ?? "overview") as StatTab;
+
+  return <StatsView stats={data as Stats} range={range} tab={tab} custom={custom} now={preset.now} />;
 }
