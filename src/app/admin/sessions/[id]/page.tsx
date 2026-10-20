@@ -12,8 +12,10 @@ import {
   nudgeUnpaid,
   removeFriendDiscount,
   removeRegistration,
+  setPlayerRating,
   updateSession,
 } from "@/app/admin/actions";
+import { SkillRating } from "@/components/skill-rating";
 import { LiveRefresh } from "@/components/live-refresh";
 import { SubmitButton } from "@/components/submit-button";
 import {
@@ -105,6 +107,13 @@ async function AdminSession({
           rows.map((r) => r.id),
         )
     : { data: [] };
+  const { data: ratingRows } = rows.length
+    ? await supabase
+        .from("player_ratings")
+        .select("profile_id, rating")
+        .in("profile_id", [...new Set(rows.map((r) => r.profile_id))])
+    : { data: [] };
+  const ratings: Record<string, number> = Object.fromEntries((ratingRows ?? []).map((r) => [r.profile_id, r.rating]));
   const teamRequests = (requestRows ?? []).map((r) => ({ from: r.registration_id as string, to: r.requested_id as string }));
   const nameById = new Map(rows.map((r) => [r.id, name(r)]));
   // Bring a Friend: "Friend of Sam" on the friend, "Brought Jess" on the regular.
@@ -180,7 +189,10 @@ async function AdminSession({
             )}
           </div>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
+          <Link href={`/admin/sessions/${id}/court`} className={buttonClass("primary", "sm")}>
+            Court mode
+          </Link>
           <Link href={`/s/${id}`} className={buttonClass("secondary", "sm")}>
             Player view
           </Link>
@@ -249,6 +261,7 @@ async function AdminSession({
               sessionId={id} friendNote={friendNoteOf(r)}
               teamName={r.team_id ? teamNames.get(r.team_id) : null}
               teammates={wantsWith(r.id)}
+              rating={ratings[r.profile_id] ?? null}
             >
               {r.status === "pending_payment" && (
                 <form action={markPaid.bind(null, r.id, id)}>
@@ -298,6 +311,7 @@ async function AdminSession({
           teams={teams}
           requests={teamRequests}
           matches={(matchRows ?? []) as Match[]}
+          ratings={ratings}
         />}
 
       <Sheet label={`Waitlist · ${waiting.length}`} className="reveal" style={reveal(3)}>
@@ -473,6 +487,7 @@ function PlayerRow({
   sessionId,
   teamName,
   teammates,
+  rating,
   friendNote,
   prefix,
   children,
@@ -484,6 +499,8 @@ function PlayerRow({
   teamName?: string | null;
   /** Names this player asked to be teamed with. */
   teammates?: string[];
+  /** Host's 1–5 skill rating, if set. */
+  rating?: number | null;
   prefix?: string;
   children?: React.ReactNode;
 }) {
@@ -499,7 +516,16 @@ function PlayerRow({
       <Avatar name={name(reg)} src={reg.profile.avatar_url} />
       <div className="min-w-0 flex-1">
         <p className="truncate">
-          <PlayerDetails data={{ profile: reg.profile, registration: reg, paid, teamName: teamName ?? null, teammates }}>
+          <PlayerDetails
+            data={{ profile: reg.profile, registration: reg, paid, teamName: teamName ?? null, teammates }}
+            rating={
+              <SkillRating
+                action={setPlayerRating.bind(null, reg.profile_id, `/admin/sessions/${sessionId}`)}
+                rating={rating ?? null}
+                skill={reg.profile.skill_level}
+              />
+            }
+          >
             {name(reg)}
           </PlayerDetails>
           {fullName(reg) && fullName(reg) !== name(reg) && <span className="text-ink-soft"> · {fullName(reg)}</span>}

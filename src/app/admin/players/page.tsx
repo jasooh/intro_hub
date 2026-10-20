@@ -48,13 +48,15 @@ async function Players({ searchParams }: { searchParams: PageProps<"/admin/playe
   const q = (typeof params.q === "string" ? params.q : "").trim().toLowerCase();
 
   const supabase = await createClient();
-  const [{ data: profileRows }, stats, owing] = await Promise.all([
+  const [{ data: profileRows }, stats, owing, { data: ratingRows }] = await Promise.all([
     // Guests a host added to one session aren't accounts: they stay on that session's roster only.
     supabase.from("profiles").select("*").eq("guest", false).limit(2000),
     getPlayerHistory(),
     getOwedSignups(),
+    supabase.from("player_ratings").select("profile_id, rating"),
   ]);
   const owed = owedTotals(owing);
+  const ratings = new Map((ratingRows ?? []).map((r) => [r.profile_id as string, r.rating as number]));
 
   const players = ((profileRows ?? []) as Profile[]).map((p) => {
     const s = stats.get(p.id) ?? { played: 0, upcoming: 0, last: null };
@@ -114,7 +116,14 @@ async function Players({ searchParams }: { searchParams: PageProps<"/admin/playe
           ) : (
             <ul className="divide-y divide-ink/20">
               {shown.map((x) => (
-                <PlayerRow key={x.p.id} p={x.p} stats={x.stats} complete={x.complete} isMe={x.p.id === me.id} />
+                <PlayerRow
+                  key={x.p.id}
+                  p={x.p}
+                  stats={x.stats}
+                  complete={x.complete}
+                  isMe={x.p.id === me.id}
+                  rating={ratings.get(x.p.id) ?? null}
+                />
               ))}
             </ul>
           )}

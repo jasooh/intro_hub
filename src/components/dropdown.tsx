@@ -5,7 +5,8 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { inputClass } from "@/components/ui";
 
-export type DropdownOption = { value: string; label: string; disabled?: boolean };
+/** `short`: what the closed button shows instead of the label (e.g. just a number in tight rows). */
+export type DropdownOption = { value: string; label: string; short?: string; disabled?: boolean };
 
 /** Underlined field like the other inputs, or the compact caps style used in rows (team picks). */
 const LOOKS = {
@@ -150,7 +151,7 @@ export function Dropdown({
         }}
         className={`w-full ${LOOKS[look]}`}
       >
-        <span className={`min-w-0 truncate ${current ? "" : "text-ink-soft"}`}>{current?.label ?? placeholder}</span>
+        <span className={`min-w-0 truncate ${current ? "" : "text-ink-soft"}`}>{current?.short ?? current?.label ?? placeholder}</span>
         <ChevronDown aria-hidden className={`size-4 shrink-0 text-ink-soft transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
 

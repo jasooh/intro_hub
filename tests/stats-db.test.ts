@@ -115,3 +115,15 @@ describe("admin_stats sections", () => {
     await expect(asUser(db, a, `select public.admin_stats(now() - interval '1 day', now())`)).rejects.toThrow(/forbidden/);
   });
 });
+
+describe("player ratings", () => {
+  it("are hosts only", async () => {
+    const host = await createUser(db, "Host", { admin: true });
+    const a = await createUser(db, "A");
+    await asUser(db, host, `insert into public.player_ratings (profile_id, rating) values ($1, 4)`, [a]);
+    expect((await asUser(db, host, `select rating from public.player_ratings`)).rows).toEqual([{ rating: 4 }]);
+    expect((await asUser(db, a, `select * from public.player_ratings`)).rows).toHaveLength(0);
+    await expect(asUser(db, a, `insert into public.player_ratings (profile_id, rating) values ($1, 5)`, [a])).rejects.toThrow();
+    await expect(asUser(db, host, `update public.player_ratings set rating = 9`)).rejects.toThrow();
+  });
+});

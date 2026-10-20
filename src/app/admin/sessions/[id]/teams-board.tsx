@@ -1,28 +1,21 @@
-import { makeTeams, moveToTeam, removeTeams, renameTeam, setTeamsPublished } from "@/app/admin/actions";
+import { makeTeams, moveToTeam, removeTeams, renameTeam, setPlayerRating, setTeamsPublished } from "@/app/admin/actions";
+import { SkillRating } from "@/components/skill-rating";
 import { InfoTip } from "@/components/info-tip";
 import { GroupTag, TeamBlocks } from "@/components/team-blocks";
 import { SubmitButton } from "@/components/submit-button";
 import { TeamSelect } from "@/components/team-select";
 import { Avatar, inputClass, Mark, reveal, Sheet } from "@/components/ui";
-import { SKILL_LABELS } from "@/lib/profile";
-import { defaultTeamCount, requestGroups, type TeamRequest } from "@/lib/teams";
+import { defaultTeamCount, requestGroups, skillLevel, type TeamRequest } from "@/lib/teams";
 import type { Match, Profile, Registration, Session, Team } from "@/lib/types";
 import { ScheduleBoard } from "./schedule-board";
 
-export type TeamRow = Pick<Registration, "id" | "team_id"> & {
+export type TeamRow = Pick<Registration, "id" | "team_id" | "profile_id"> & {
   profile: Pick<Profile, "display_name" | "full_name" | "email" | "avatar_url" | "skill_level">;
 };
 
 function nameOf(r: TeamRow) {
   return r.profile.display_name ?? r.profile.full_name ?? r.profile.email;
 }
-
-const SKILL_SHORT: Record<string, string> = {
-  experienced: "Exp.",
-  some: "Some",
-  prefer_not: "—",
-  never: "New",
-};
 
 /** Build, adjust and publish teams for the drop-in players. */
 export function TeamsBoard({
@@ -31,6 +24,7 @@ export function TeamsBoard({
   teams,
   requests = [],
   matches = [],
+  ratings = {},
 }: {
   session: Session;
   players: TeamRow[];
@@ -39,7 +33,18 @@ export function TeamsBoard({
   requests?: TeamRequest[];
   /** The game schedule, if one was made. */
   matches?: Match[];
+  /** Host 1–5 skill ratings by profile id. */
+  ratings?: Record<string, number>;
 }) {
+  const path = `/admin/sessions/${session.id}`;
+  const ratingPick = (p: TeamRow) => (
+    <SkillRating
+      compact
+      action={setPlayerRating.bind(null, p.profile_id, path)}
+      rating={ratings[p.profile_id] ?? null}
+      skill={p.profile.skill_level}
+    />
+  );
   // Request groups, lettered A, B, C… in team order so the letters read top to bottom.
   const teamOrder = (p: TeamRow) => {
     const i = teams.findIndex((t) => t.id === p.team_id);
@@ -125,7 +130,8 @@ export function TeamsBoard({
                 id: p.id,
                 name: nameOf(p),
                 avatarUrl: p.profile.avatar_url,
-                skill: p.profile.skill_level,
+                level: skillLevel(p.profile.skill_level, ratings[p.profile_id]),
+                skillControl: ratingPick(p),
                 tag: letterOf.get(p.id),
                 control: (
                   <TeamSelect
@@ -146,7 +152,7 @@ export function TeamsBoard({
             </p>
             <ul className="divide-y divide-ink/20">
               {unassigned.map((m) => (
-                <TeamMember key={m.id} reg={m} sessionId={session.id} teams={teams} tag={letterOf.get(m.id)} />
+                <TeamMember key={m.id} reg={m} sessionId={session.id} teams={teams} tag={letterOf.get(m.id)} skill={ratingPick(m)} />
               ))}
             </ul>
           </section>
@@ -190,18 +196,25 @@ export function TeamsBoard({
   );
 }
 
-function TeamMember({ reg, sessionId, teams, tag }: { reg: TeamRow; sessionId: string; teams: Team[]; tag?: string }) {
-  const skill = reg.profile.skill_level;
+function TeamMember({
+  reg,
+  sessionId,
+  teams,
+  tag,
+  skill,
+}: {
+  reg: TeamRow;
+  sessionId: string;
+  teams: Team[];
+  tag?: string;
+  skill: React.ReactNode;
+}) {
   return (
     <li className="flex items-center gap-3 py-2">
       <Avatar name={nameOf(reg)} src={reg.profile.avatar_url} size={24} />
       <span className="min-w-0 flex-1 truncate">{nameOf(reg)}</span>
       {tag && <GroupTag letter={tag} />}
-      {skill && (
-        <span title={SKILL_LABELS[skill]} className="font-display text-sm font-bold tracking-wide text-ink-soft uppercase">
-          {SKILL_SHORT[skill]}
-        </span>
-      )}
+      {skill}
       <TeamSelect action={moveToTeam.bind(null, reg.id, sessionId)} teams={teams} current={reg.team_id} />
     </li>
   );
@@ -311,8 +324,8 @@ function BalanceHelp({ label = false }: { label?: boolean }) {
         are never split.
       </span>
       <span className="mt-1.5 block">
-        <b>Then everyone else:</b> players who didn&apos;t ask for teammates are ranked by the skill level they picked (experienced → some → prefer not to
-        say → never played), shuffled within each level, and added to the team with the fewest players, then the
+        <b>Then everyone else:</b> players who didn&apos;t ask for teammates are ranked by skill, 1–5: your rating if you gave one, otherwise
+        the level they picked (experienced = 5, some = 3, prefer not to say = 2, never played = 1), shuffled within each level, and added to the team with the fewest players, then the
         lowest skill. Instructional-only players aren&apos;t included. Re-balancing reshuffles, so you get a new mix each
         time.
       </span>

@@ -606,7 +606,7 @@ export async function makeTeams(sessionId: string, formData: FormData) {
   const supabase = await createClient();
   const { data: regs, error: regsError } = await supabase
     .from("registrations")
-    .select("id, profile:profiles(skill_level)")
+    .select("id, profile_id, profile:profiles(skill_level)")
     .eq("session_id", sessionId)
     .in("option", ["full", "dropin"])
     .in("status", ["pending_payment", "confirmed"]);
@@ -644,9 +644,21 @@ export async function makeTeams(sessionId: string, formData: FormData) {
     teams = created;
   }
 
-  const players = ((regs ?? []) as unknown as { id: string; profile: { skill_level: SkillLevel | null } }[]).map((r) => ({
+  const regList = (regs ?? []) as unknown as { id: string; profile_id: string; profile: { skill_level: SkillLevel | null } }[];
+  const { data: ratingRows } = regList.length
+    ? await supabase
+        .from("player_ratings")
+        .select("profile_id, rating")
+        .in(
+          "profile_id",
+          regList.map((r) => r.profile_id),
+        )
+    : { data: [] };
+  const ratings = new Map((ratingRows ?? []).map((r) => [r.profile_id as string, r.rating as number]));
+  const players = regList.map((r) => ({
     id: r.id,
     skill: r.profile.skill_level,
+    rating: ratings.get(r.profile_id) ?? null,
   }));
   const { data: requestRows } = await supabase
     .from("team_requests")
@@ -670,6 +682,27 @@ export async function makeTeams(sessionId: string, formData: FormData) {
   }
   revalidateTeams(sessionId);
   await flash("success", `${teams.length} teams made, balanced by skill`);
+}
+
+/** A host's 1–5 rating for a player (blank clears it, back to what they picked). Players never see it. */
+export async function setPlayerRating(profileId: string, path: string, formData: FormData) {
+  const me = await requireAdmin();
+  const raw = String(formData.get("rating") ?? "");
+  const supabase = await createClient();
+  if (raw === "") {
+    const { error } = await supabase.from("player_ratings").delete().eq("profile_id", profileId);
+    if (error) fail(path, error.message);
+    await flash("success", "Rating cleared");
+  } else {
+    const rating = z.coerce.number().int().min(1).max(5).safeParse(raw);
+    if (!rating.success) fail(path, "Pick a rating from 1 to 5");
+    const { error } = await supabase
+      .from("player_ratings")
+      .upsert({ profile_id: profileId, rating: rating.data, updated_by: me.id, updated_at: new Date().toISOString() });
+    if (error) fail(path, error.message);
+    await flash("success", "Rating saved");
+  }
+  revalidatePath("/admin", "layout");
 }
 
 export async function renameTeam(teamId: string, sessionId: string, formData: FormData) {

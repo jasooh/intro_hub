@@ -1,7 +1,5 @@
 import type { ReactNode } from "react";
 import { Avatar } from "@/components/ui";
-import { SKILL_LABELS } from "@/lib/profile";
-import type { SkillLevel } from "@/lib/types";
 import { pad2 } from "@/lib/format";
 
 export type TeamMember = {
@@ -9,8 +7,10 @@ export type TeamMember = {
   name: string;
   avatarUrl: string | null;
   isMe?: boolean;
-  /** Host view only: shown as dots and tallied per team. */
-  skill?: SkillLevel | null;
+  /** Host view only: 1–5 level (host rating, else the player's pick), averaged per team. */
+  level?: number;
+  /** Host view: the rating picker shown in place of the level. */
+  skillControl?: ReactNode;
   /** Host view: e.g. a "move to team" control. */
   control?: ReactNode;
   /** Host view: request group letter (same letter = asked to play together). */
@@ -26,19 +26,6 @@ export type TeamBlock = {
   mine?: boolean;
 };
 
-
-const SKILL_DOTS: Record<SkillLevel, string> = { experienced: "●●", some: "●", never: "○", prefer_not: "–" };
-const LEGEND: [string, string][] = [
-  ["●●", "Experienced"],
-  ["●", "Some experience"],
-  ["○", "Never played"],
-  ["–", "Prefer not to say"],
-];
-const SKILL_TALLY: [SkillLevel, string][] = [
-  ["experienced", "exp"],
-  ["some", "some"],
-  ["never", "new"],
-];
 
 /** A request group's letter (A, B, C…): players with the same letter asked to play together. */
 export function GroupTag({ letter }: { letter: string }) {
@@ -119,14 +106,7 @@ export function TeamBlocks({
                     </span>
                     {(host || m.control) && (
                       <span className="ml-auto flex shrink-0 items-center gap-2">
-                        {host && m.skill && (
-                          <span
-                            title={SKILL_LABELS[m.skill]}
-                            className="shrink-0 font-score text-xs font-black tracking-tighter text-ink-soft"
-                          >
-                            {SKILL_DOTS[m.skill]}
-                          </span>
-                        )}
+                        {host && m.skillControl}
                         {host && m.tag && <GroupTag letter={m.tag} />}
                         {m.control}
                       </span>
@@ -138,9 +118,7 @@ export function TeamBlocks({
 
             {host && (
               <footer className="px-3 py-1.5 font-display text-xs font-bold tracking-[0.12em] text-ink-soft uppercase">
-                {SKILL_TALLY.map(
-                  ([level, label]) => `${t.members.filter((m) => m.skill === level).length} ${label}`,
-                ).join(" · ")}
+                {averageLevel(t.members)}
               </footer>
             )}
           </section>
@@ -148,12 +126,11 @@ export function TeamBlocks({
       </div>
       {host && (
         <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink-soft" aria-label="Skill level key">
-          <span className="font-display text-xs font-bold tracking-[0.15em] uppercase">Skill</span>
-          {LEGEND.map(([dots, label]) => (
-            <span key={label} className="whitespace-nowrap">
-              <span className="font-score text-xs font-black tracking-tighter">{dots}</span> {label}
-            </span>
-          ))}
+          <span className="font-display text-xs font-bold tracking-[0.15em] uppercase">Skill 1–5</span>
+          <span>
+            <span className="font-bold">Grey</span> = the player&apos;s own pick, <span className="font-bold text-line">orange</span> = your
+            rating. Tap a number to rate; players never see it.
+          </span>
           <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
             <GroupTag letter="A" /> Same letter = asked to play together
           </span>
@@ -162,4 +139,11 @@ export function TeamBlocks({
       )}
     </div>
   );
+}
+
+/** "Avg skill 3.2" for a team's footer. */
+function averageLevel(members: TeamMember[]) {
+  const levels = members.map((m) => m.level).filter((l): l is number => l != null);
+  if (levels.length === 0) return "Avg skill —";
+  return `Avg skill ${(levels.reduce((a, b) => a + b, 0) / levels.length).toFixed(1)}`;
 }

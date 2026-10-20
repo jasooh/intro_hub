@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { deleteAccount, setRole, updateEtransferNames } from "@/app/admin/actions";
+import { deleteAccount, setPlayerRating, setRole, updateEtransferNames } from "@/app/admin/actions";
+import { SkillRating } from "@/components/skill-rating";
 import { PlayerDetails } from "@/components/player-details";
 import { SubmitButton } from "@/components/submit-button";
 import { Avatar, inputClass, Mark } from "@/components/ui";
@@ -21,11 +22,14 @@ export function PlayerRow({
   stats,
   complete,
   isMe,
+  rating,
 }: {
   p: Profile;
   stats: PlayerStats;
   complete: boolean;
   isMe: boolean;
+  /** Host's 1–5 skill rating, if set. */
+  rating: number | null;
 }) {
   const name = p.display_name ?? p.full_name ?? p.email;
   const fullName = [p.first_name, p.last_name].filter(Boolean).join(" ");
@@ -90,7 +94,11 @@ export function PlayerRow({
       <Avatar name={name} src={p.avatar_url} size={36} />
       <div className="min-w-0 flex-1 space-y-0.5">
         <p className="truncate">
-          <PlayerDetails data={{ profile: p, history: stats }} actions={actions}>
+          <PlayerDetails
+            data={{ profile: p, history: stats }}
+            actions={actions}
+            rating={<SkillRating action={setPlayerRating.bind(null, p.id, "/admin/players")} rating={rating} skill={p.skill_level} />}
+          >
             {name}
           </PlayerDetails>
           {fullName && fullName !== name && <span className="text-ink-soft"> · {fullName}</span>}

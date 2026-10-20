@@ -41,10 +41,13 @@ export type PlayerDetailsData = {
 export function PlayerDetails({
   data,
   actions,
+  rating,
   children,
 }: {
   data: PlayerDetailsData;
   actions?: ReactNode;
+  /** Host's 1–5 skill rating picker (hosts only; players never see it). */
+  rating?: ReactNode;
   children: ReactNode;
 }) {
   const p = data.profile;
@@ -156,6 +159,12 @@ export function PlayerDetails({
         <Section title="About them">
           <Rows>
             <Row label="Skill">{p.skill_level ? SKILL_LABELS[p.skill_level] : null}</Row>
+            {rating && (
+              <Row label="Host rating">
+                {rating}
+                <span className="mt-1 block text-sm text-ink-soft">Used for team balancing. Players never see it.</span>
+              </Row>
+            )}
             <Row label="Attended before">{p.attended_before == null ? null : p.attended_before ? "Yes" : "No, first time"}</Row>
             <Row label="Wants to learn">{p.learning_goals}</Row>
             <Row label="Hype song">{p.hype_song}</Row>
