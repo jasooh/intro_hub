@@ -6,12 +6,15 @@ import { requireAdmin } from "@/lib/auth";
 import { METHOD_LABELS, type PaymentMethod, paymentMatches, paymentMethod, paymentStatus, type PaymentStatus } from "@/lib/payments";
 import { paymentWindowStart } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
+import type { PaymentCancellation } from "@/lib/types";
 
+import { CancellationRow, type PaymentChoice } from "./cancellation-row";
 import { type Option, PaymentRow, type Row } from "./payment-row";
 
 const STATUS_TABS: { key: PaymentStatus | "all"; label: string }[] = [
   { key: "attention", label: "Needs attention" },
   { key: "matched", label: "Matched" },
+  { key: "cancelled", label: "Cancelled" },
   { key: "dismissed", label: "Dismissed" },
   { key: "all", label: "All" },
 ];
@@ -44,7 +47,7 @@ async function Payments({ searchParams }: { searchParams: PageProps<"/admin/paym
 
   const supabase = await createClient();
   const since = await paymentWindowStart();
-  const [{ data: payments }, { data: options }] = await Promise.all([
+  const [{ data: payments }, { data: options }, { data: cancellations }] = await Promise.all([
     supabase
       .from("payments")
       .select(
@@ -58,7 +61,17 @@ async function Payments({ searchParams }: { searchParams: PageProps<"/admin/paym
       .in("status", ["pending_payment", "waitlisted", "expired"])
       .gte("session.starts_at", since)
       .order("created_at", { ascending: false }),
+    // Cancelled e-Transfers the site couldn't tie to one payment.
+    supabase
+      .from("payment_cancellations")
+      .select("*")
+      .is("payment_id", null)
+      .is("dismissed_at", null)
+      .order("received_at", { ascending: false }),
   ]);
+  const openCancels = (cancellations ?? []) as PaymentCancellation[];
+  // What a cancellation can take back: real e-Transfers that still count.
+  const reversible = ((payments ?? []) as Row[]).filter((p) => p.gmail_message_id && !p.reversed_at) as PaymentChoice[];
 
   // An expired sign-up is only worth offering if the player hasn't signed up again for that
   // session (the database would put the money on their current sign-up anyway).
@@ -92,11 +105,25 @@ async function Payments({ searchParams }: { searchParams: PageProps<"/admin/paym
 
   return (
     <div className="space-y-12">
+      {openCancels.length > 0 && (
+        <Sheet label="Cancelled e-Transfers" className="reveal" style={reveal(1)}>
+          <p className="mb-2 text-ink-soft">
+            The sender cancelled these before they were deposited (or they expired), and the site couldn&apos;t tell
+            which payment they were. Pick the payment so it stops counting as paid.
+          </p>
+          <ul className="divide-y divide-ink/25">
+            {openCancels.map((c) => (
+              <CancellationRow key={c.id} c={c} payments={reversible} />
+            ))}
+          </ul>
+        </Sheet>
+      )}
+
       <PageTitle sub="Every e-Transfer that reaches your Gmail shows up here within minutes. It's linked to a sign-up by the code in its message (or, with no code, the sender's name and the exact amount owed), and that player is marked paid. Anything that couldn't be linked is left for you to sort out.">
         Payments
       </PageTitle>
 
-      <Sheet label="Payments" className="reveal" style={reveal(1)}>
+      <Sheet label="Payments" className="reveal" style={reveal(2)}>
         <ListFilters
           path="/admin/payments"
           tabs={{ param: "view", value: view, options: STATUS_TABS.map((t) => ({ ...t, count: statusCount(t.key) })) }}

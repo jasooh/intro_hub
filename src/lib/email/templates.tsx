@@ -379,6 +379,45 @@ export function buildEmail(kind: RegistrationEvent["event"], ctx: EmailContext):
           </Layout>
         ),
       };
+    case "payment_reversed":
+      return {
+        subject: `Your e-Transfer was cancelled: ${ctx.sessionTitle} (${ctx.when})`,
+        element: (
+          <Layout preview={`We didn't get the money. Send ${ctx.remaining} with code ${ctx.refCode} to keep your spot`} ctx={ctx}>
+            <Title>Your e-Transfer was cancelled</Title>
+            {hi}
+            <Text style={s.text}>
+              The e-Transfer you sent for this session was cancelled (or expired) before it was deposited, so the money
+              didn&apos;t reach us. Your spot is held again
+              {ctx.holdUntil ? (
+                <>
+                  {" "}until <b>{ctx.holdUntil}</b>
+                </>
+              ) : null}
+              . Please send it again before then, or the spot goes to the next person.
+            </Text>
+            <PaymentBox ctx={ctx} />
+            {viewButton}
+          </Layout>
+        ),
+      };
+    case "spot_released":
+      return {
+        subject: `Spot released: ${ctx.sessionTitle} (${ctx.when})`,
+        element: (
+          <Layout preview="Your e-Transfer was cancelled and your time to pay is over" ctx={ctx}>
+            <Title>Your e-Transfer was cancelled</Title>
+            {hi}
+            <Text style={s.text}>
+              The e-Transfer you sent for this session was cancelled (or expired) before it was deposited, so the money
+              didn&apos;t reach us. Your time to pay had already run out, so your spot went to the next person. You
+              can sign up again (you&apos;ll join the waitlist if it&apos;s full). Think this is a mistake? Message us
+              on Instagram or email intro2volleyball@gmail.com.
+            </Text>
+            {viewButton}
+          </Layout>
+        ),
+      };
     case "session_cancelled":
       return {
         subject: `Cancelled: ${ctx.sessionTitle} (${ctx.when})`,

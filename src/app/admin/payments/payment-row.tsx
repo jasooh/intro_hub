@@ -24,6 +24,7 @@ const METHOD_MARK: Record<PaymentMethod, { tone: Tone; glyph: string }> = {
   manual: { tone: "line", glyph: "✎" },
   unmatched: { tone: "warn", glyph: "!" },
   dismissed: { tone: "muted", glyph: "✕" },
+  reversed: { tone: "bad", glyph: "↩" },
 };
 
 export function PaymentRow({ p, method, options }: { p: Row; method: PaymentMethod; options: Option[] }) {
@@ -35,7 +36,7 @@ export function PaymentRow({ p, method, options }: { p: Row; method: PaymentMeth
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
         <div className="min-w-0 space-y-1">
           <p className="text-lg">
-            <span className="font-score font-black">{formatMoney(p.amount_cents)}</span>{" "}
+            <span className={`font-score font-black${method === "reversed" ? " line-through" : ""}`}>{formatMoney(p.amount_cents)}</span>{" "}
             {method === "manual" ? (
               <span className="text-ink-soft">recorded by the host</span>
             ) : (
@@ -57,6 +58,11 @@ export function PaymentRow({ p, method, options }: { p: Row; method: PaymentMeth
             </p>
           )}
           {method === "unmatched" && p.note && <p className="text-sm font-semibold text-warn">{p.note}</p>}
+          {method === "reversed" && p.reversed_at && (
+            <p className="text-sm font-semibold text-bad">
+              Cancelled before it was deposited ({formatDateTime(p.reversed_at)}). It no longer counts as paid.
+            </p>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <Mark tone={mark.tone} glyph={mark.glyph}>

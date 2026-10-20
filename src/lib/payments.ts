@@ -1,7 +1,7 @@
 import type { Payment } from "@/lib/types";
 
 /** How a payment came to be recorded. */
-export type PaymentMethod = "ref" | "name_amount" | "assigned" | "manual" | "unmatched" | "dismissed";
+export type PaymentMethod = "ref" | "name_amount" | "assigned" | "manual" | "unmatched" | "dismissed" | "reversed";
 
 export const METHOD_LABELS: Record<PaymentMethod, string> = {
   ref: "Ref code",
@@ -10,9 +10,13 @@ export const METHOD_LABELS: Record<PaymentMethod, string> = {
   manual: "Marked paid",
   unmatched: "Unmatched",
   dismissed: "Dismissed",
+  reversed: "Cancelled by sender",
 };
 
-export function paymentMethod(p: Pick<Payment, "registration_id" | "matched_by" | "gmail_message_id" | "dismissed">): PaymentMethod {
+export function paymentMethod(
+  p: Pick<Payment, "registration_id" | "matched_by" | "gmail_message_id" | "dismissed" | "reversed_at">,
+): PaymentMethod {
+  if (p.reversed_at) return "reversed";
   if (!p.registration_id) return p.dismissed ? "dismissed" : "unmatched";
   if (p.matched_by === "ref") return "ref";
   if (p.matched_by === "name_amount") return "name_amount";
@@ -20,10 +24,12 @@ export function paymentMethod(p: Pick<Payment, "registration_id" | "matched_by" 
   return p.gmail_message_id ? "assigned" : "manual";
 }
 
-export type PaymentStatus = "attention" | "matched" | "dismissed";
+export type PaymentStatus = "attention" | "matched" | "cancelled" | "dismissed";
 
 export function paymentStatus(method: PaymentMethod): PaymentStatus {
-  return method === "unmatched" ? "attention" : method === "dismissed" ? "dismissed" : "matched";
+  if (method === "unmatched") return "attention";
+  if (method === "dismissed") return "dismissed";
+  return method === "reversed" ? "cancelled" : "matched";
 }
 
 /** Case-insensitive match over the payment's text, linked player and amount ("10", "$10.00"). */

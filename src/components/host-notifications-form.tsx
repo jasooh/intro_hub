@@ -61,8 +61,8 @@ export function HostNotificationsForm({ profile }: { profile: Profile }) {
         )}
         {check(
           "host_alert_unmatched",
-          "Right away for unmatched e-Transfers",
-          "When a payment arrives that couldn't be matched to a sign-up.",
+          "Right away for e-Transfer problems",
+          "When a payment arrives that couldn't be matched to a sign-up, or a sender cancels one.",
         )}
       </fieldset>
 

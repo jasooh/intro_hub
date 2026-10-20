@@ -63,8 +63,9 @@ async function sendForEvent(event: RegistrationEvent, reg: Loaded) {
   // Each partial payment and each payment reminder gets its own email; everything
   // else once per sign-up.
   const dedupeKey =
-    event.event === "partial_payment" && event.payment_id
-      ? `partial_payment:${event.payment_id}`
+    (event.event === "partial_payment" || event.event === "payment_reversed" || event.event === "spot_released") &&
+    event.payment_id
+      ? `${event.event}:${event.payment_id}`
       : event.event === "hold_reminder" && event.nudged_at
         ? `hold_reminder:${reg.id}:${event.nudged_at}`
         : `${event.event}:${reg.id}`;

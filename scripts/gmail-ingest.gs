@@ -5,6 +5,9 @@
  * Interac e-Transfer notification emails in Gmail, pulls out the sender name,
  * amount and message, and POSTs them (HMAC-signed) to the Intro Hub app,
  * which matches them to sign-ups and confirms players automatically.
+ * It also forwards "your transfer has been cancelled" / expired emails: the
+ * app takes that payment back, puts the player back to unpaid (or releases the
+ * spot if their "Hours to pay after signing up" are over) and alerts the hosts.
  *
  * Setup (see README "Payment auto-matching"):
  *   1. script.google.com -> New project -> paste this file.
@@ -39,6 +42,15 @@ function gmailQuery(testSender) {
 // Subjects seen: "X sent you money.", "X sent you $1.00. Claim your deposit!",
 // "A money transfer from X has been automatically deposited.", and French.
 var INCOMING_SUBJECT = /sent you (?:money|\$)|transfer from .+ (?:has been|was) (?:automatically )?deposited|vous a envoy/i;
+
+// The sender took the money back before it was deposited, or it went unclaimed.
+// The real email (Oct 2026) says only: "Your transfer of $14.00 has been
+// cancelled. The recent transfer of $14.00 (CAD) sent to you on Oct 19, 2026
+// has been cancelled. As a result, you can no longer deposit these funds."
+// (no sender name or message). Other wordings are covered too.
+var CANCELLED_SUBJECT = /cancell?ed|has expired|expired|annul|a expir/i;
+var CANCELLED_BODY = /can no longer deposit|has been cancell?ed|has expired|ne pouvez plus d[ée]poser/i;
+var MONTHS = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
 
 var PROCESSED_KEY = 'processedMessageIds';
 var MAX_REMEMBERED = 500;
@@ -82,9 +94,12 @@ function ingestInteracPayments() {
       }
       messages.push({
         id: id,
+        kind: parsed.kind,
         senderName: parsed.senderName,
         amountCents: parsed.amountCents,
         memo: parsed.memo,
+        reference: parsed.reference,
+        sentOn: parsed.sentOn,
         text: msg.getPlainBody().slice(0, 4000),
         receivedAt: msg.getDate().toISOString(),
       });
@@ -180,6 +195,23 @@ function sendTestEmail() {
 }
 
 /**
+ * Test mode helper: a fake "your transfer has been cancelled" email, worded
+ * like the real one. Use the same amount as a test payment sent today.
+ */
+function sendTestCancellation() {
+  var amount = '10.00';
+  var me = Session.getActiveUser().getEmail();
+  var today = Utilities.formatDate(new Date(), 'America/Toronto', 'MMM d, yyyy');
+  GmailApp.sendEmail(
+    me,
+    TEST_SUBJECT + ': Your transfer of $' + amount + ' has been cancelled.',
+    'Hi Intro 2 Volleyball,\n\nYour transfer of $' + amount + ' has been cancelled.\n\nThe recent transfer of $' + amount +
+      ' (CAD) sent to you on ' + today + ' has been cancelled. As a result, you can no longer deposit these funds.\n\n(Test email for Intro Hub.)',
+  );
+  console.log('Sent a test cancellation email to ' + me + '. It will be picked up on the next run.');
+}
+
+/**
  * Logs, for recent Interac (and test) emails, whether the sender is verified
  * and what the parser extracts, without sending anything.
  */
@@ -199,31 +231,49 @@ function testParseRecent() {
 }
 
 /**
- * Extracts { senderName, amountCents, memo } from an Interac notification,
- * or returns null if it isn't an incoming payment.
+ * Extracts { kind, senderName, amountCents, memo, reference, sentOn } from an
+ * Interac notification, or returns null if it's neither an incoming payment
+ * nor a cancelled / expired one. kind is "received" or "cancelled". A
+ * cancellation may name nobody and may not say the amount (null); sentOn is
+ * the day the cancelled transfer was sent ("2026-10-19"), when it says.
  */
 function parseInteracEmail(subject, body) {
   subject = subject || '';
   body = (body || '').replace(/\r/g, '');
-  if (!INCOMING_SUBJECT.test(subject)) return null;
+  var incoming = INCOMING_SUBJECT.test(subject);
+  var cancelled = !incoming && !/deposited/i.test(subject) && (CANCELLED_SUBJECT.test(subject) || CANCELLED_BODY.test(body));
+  if (!incoming && !cancelled) return null;
+  // Money the host sent and cancelled themselves isn't a player's payment.
+  if (cancelled && /\btransfer to\b|virement à/i.test(subject)) return null;
   var text = subject + '\n' + body;
 
   var amountMatch = text.match(/\$\s?([\d,]+\.\d{2})/);
-  if (!amountMatch) return null;
-  var amountCents = Math.round(parseFloat(amountMatch[1].replace(/,/g, '')) * 100);
+  if (!amountMatch && !cancelled) return null;
+  var amountCents = amountMatch ? Math.round(parseFloat(amountMatch[1].replace(/,/g, '')) * 100) : null;
 
-  var senderPatterns = [
-    /^\s*Sent From:\s*(.+?)\s*$/im,
-    /transfer from (.+?) (?:has been|was) (?:automatically )?deposited/i,
-    /e-Transfer\s*:\s*(.+?) sent you (?:money|\$)/i,
-    /^\s*(?:Hi [^,\n]*,\s*)?([^\n]+?) has sent you \$/im,
-    /:\s*(.+?) vous a envoy/i,
-  ];
+  var senderPatterns = cancelled
+    ? [
+        /^\s*Sent From:\s*(.+?)\s*$/im,
+        /transfer from (.+?) (?:has been|was) cancell?ed/i,
+        /transfer from (.+?) (?:has|had) expired/i,
+        /e-Transfer\s*:\s*(.+?) (?:has )?cancell?ed/i,
+        /virement de (.+?) a (?:expir|été annul)/i,
+        /:\s*(.+?) a annul/i,
+      ]
+    : [
+        /^\s*Sent From:\s*(.+?)\s*$/im,
+        /transfer from (.+?) (?:has been|was) (?:automatically )?deposited/i,
+        /e-Transfer\s*:\s*(.+?) sent you (?:money|\$)/i,
+        /^\s*(?:Hi [^,\n]*,\s*)?([^\n]+?) has sent you \$/im,
+        /:\s*(.+?) vous a envoy/i,
+      ];
   var senderName = null;
   for (var i = 0; i < senderPatterns.length; i++) {
     var m = text.match(senderPatterns[i]);
     if (m) { senderName = m[1].trim(); break; }
   }
+  // "Your transfer of $14.00 has been cancelled" names nobody.
+  if (senderName && /^(?:your|the|a|an)\b|\$/i.test(senderName)) senderName = null;
 
   // "Message: ...", "Message from sender: ..." or "Message from JANE DOE: ...".
   var memoMatch = body.match(/^\s*Message(?: from [^:\n]*)?\s*:\s*(.*)$/im);
@@ -234,7 +284,26 @@ function parseInteracEmail(subject, body) {
     if (code) memo = code[0].toUpperCase();
   }
 
-  return { senderName: senderName, amountCents: amountCents, memo: memo };
+  // Interac's own id for the transfer; the same on the payment and its cancellation.
+  var refMatch = body.match(/^\s*(?:Reference Number|Reference #|Numéro de référence)\s*:?\s*([A-Za-z0-9]+)\s*$/im);
+  var reference = refMatch ? refMatch[1] : null;
+
+  // When the cancelled transfer was sent: "sent to you on Oct 19, 2026" -> "2026-10-19".
+  var sentOn = null;
+  if (cancelled) {
+    var on = text.match(/sent to you on\s+([A-Za-z]{3})[a-z]*\.?\s+(\d{1,2}),?\s+(\d{4})/i);
+    var month = on ? MONTHS[on[1].toLowerCase()] : null;
+    if (month) sentOn = on[3] + '-' + ('0' + month).slice(-2) + '-' + ('0' + on[2]).slice(-2);
+  }
+
+  return {
+    kind: cancelled ? 'cancelled' : 'received',
+    senderName: senderName,
+    amountCents: amountCents,
+    memo: memo,
+    reference: reference,
+    sentOn: sentOn,
+  };
 }
 
 function hmacHex(value, secret) {

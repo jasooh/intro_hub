@@ -39,16 +39,17 @@ type Host = Pick<
 type PlayerName = Pick<Profile, "display_name" | "full_name" | "email">;
 type Activity = {
   id: number;
-  kind: "joined" | "waitlisted" | "promoted" | "paid" | "cancelled" | "expired" | "unmatched_payment";
+  kind: "joined" | "waitlisted" | "promoted" | "paid" | "cancelled" | "expired" | "unmatched_payment" | "payment_reversed";
   late: boolean;
   created_at: string;
   session: Pick<Session, "id" | "title" | "starts_at" | "capacity" | "instructional_capacity"> | null;
-  registration: (Pick<Registration, "option" | "amount_cents" | "paid_cents"> & { profile: PlayerName | null }) | null;
+  registration: (Pick<Registration, "option" | "status" | "amount_cents" | "paid_cents"> & { profile: PlayerName | null }) | null;
   payment: { sender_name: string | null; amount_cents: number; memo: string | null; registration_id: string | null; dismissed: boolean } | null;
+  cancellation: { amount_cents: number | null; sender_name: string | null; payment_id: string | null; note: string | null } | null;
 };
 
 const ACTIVITY_SELECT =
-  "id, kind, late, created_at, session:sessions(id, title, starts_at, capacity, instructional_capacity), registration:registrations(option, amount_cents, paid_cents, profile:profiles(display_name, full_name, email)), payment:payments(sender_name, amount_cents, memo, registration_id, dismissed)";
+  "id, kind, late, created_at, session:sessions(id, title, starts_at, capacity, instructional_capacity), registration:registrations(option, status, amount_cents, paid_cents, profile:profiles(display_name, full_name, email)), payment:payments(sender_name, amount_cents, memo, registration_id, dismissed), cancellation:payment_cancellations(amount_cents, sender_name, payment_id, note)";
 
 const nameOf = (p: PlayerName | null | undefined) => p?.display_name ?? p?.full_name ?? p?.email ?? "Someone";
 const hostName = (h: Host) => h.display_name ?? h.full_name ?? "host";
@@ -131,7 +132,7 @@ async function sendAlerts(admin: Admin, hosts: Host[], now: Date) {
     .from("host_activity")
     .select(ACTIVITY_SELECT)
     .is("alerted_at", null)
-    .or("late.eq.true,kind.eq.unmatched_payment")
+    .or("late.eq.true,kind.in.(unmatched_payment,payment_reversed)")
     .lte("created_at", settled)
     .order("created_at")
     .limit(20);
@@ -172,6 +173,46 @@ async function sendAlerts(admin: Admin, hosts: Host[], now: Date) {
       continue;
     }
 
+    if (a.kind === "payment_reversed") {
+      const c = a.cancellation;
+      const amount = c?.amount_cents != null ? formatMoney(c.amount_cents) : a.payment ? formatMoney(a.payment.amount_cents) : "An";
+      const from = a.payment?.sender_name ?? c?.sender_name;
+      const lines = [`${amount} e-Transfer${from ? ` from ${from}` : ""} was cancelled before it was deposited, so that money never arrived.`];
+      if (!a.payment) {
+        lines.push(c?.note ?? "The site couldn't tell which payment it was.", "Pick the payment on the Payments page so it stops counting as paid.");
+      } else if (a.registration && a.session) {
+        const who = `${nameOf(a.registration.profile)} (${a.session.title}, ${formatDateTime(a.session.starts_at)})`;
+        lines.push(
+          a.registration.status === "pending_payment"
+            ? `${who} is back to unpaid. Their spot is held for the rest of their time to pay, and they've been asked to send it again.`
+            : a.registration.status === "expired"
+              ? `${who} was past their time to pay, so their spot went to the next person. They've been emailed.`
+              : Date.parse(a.session.starts_at) <= Date.parse(a.created_at)
+                ? `${who}: the session had already started, so nothing was changed. Sort it out with them directly.`
+                : `${who}: their sign-up wasn't affected.`,
+        );
+      } else {
+        lines.push("It wasn't linked to a sign-up, so nothing else changed.");
+      }
+      for (const h of hosts.filter((x) => x.host_alert_unmatched)) {
+        await sendTo(
+          admin,
+          h,
+          `host_alert:${a.id}:${h.id}`,
+          buildHostAlertEmail({
+            title: "e-Transfer cancelled",
+            subject: `e-Transfer cancelled: ${amount}${from ? ` from ${from}` : ""}`,
+            hostName: hostName(h),
+            lines,
+            buttonLabel: a.payment ? "See payments" : "Pick the payment",
+            buttonUrl: a.session && a.payment ? u.session(a.session.id) : u.payments,
+            settingsUrl: u.settings,
+          }),
+        );
+      }
+      continue;
+    }
+
     // Late cancellation.
     if (!a.session) continue;
     const counts = (await countsFor(admin, [a.session.id])).get(a.session.id);
@@ -202,6 +243,7 @@ async function sendAlerts(admin: Admin, hosts: Host[], now: Date) {
 // Digest
 // ---------------------------------------------------------------------------
 const DIGEST_LABEL: Record<Exclude<Activity["kind"], "unmatched_payment">, string> = {
+  payment_reversed: "e-Transfer cancelled",
   joined: "Joined",
   promoted: "Off the waitlist",
   paid: "Paid",
@@ -271,7 +313,7 @@ async function sendDigests(admin: Admin, hosts: Host[], now: Date) {
       unpaid.set(r.session_id, { n: u2.n + 1, cents: u2.cents + owed });
     }
 
-    const order = ["Joined", "Off the waitlist", "Paid", "Waitlisted", "Cancelled late", "Cancelled", "Hold expired"];
+    const order = ["Joined", "Off the waitlist", "Paid", "Waitlisted", "Cancelled late", "Cancelled", "Hold expired", "e-Transfer cancelled"];
     const digestSessions: DigestSession[] = [...sessions.values()]
       .sort((a, b) => a.session.starts_at.localeCompare(b.session.starts_at))
       .map(({ session, byKind }) => {

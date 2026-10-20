@@ -163,6 +163,25 @@ export type Payment = {
   matched_at: string | null;
   note: string | null;
   dismissed: boolean;
+  /** The sender cancelled it (or it expired) before it was deposited; it no longer counts. */
+  reversed_at: string | null;
+};
+
+/** A "your e-Transfer was cancelled / expired" email, and the payment it took back. */
+export type PaymentCancellation = {
+  id: string;
+  gmail_message_id: string;
+  sender_name: string | null;
+  amount_cents: number | null;
+  memo: string | null;
+  reference: string | null;
+  /** The day the cancelled transfer was sent ("2026-10-19"), when the email says. */
+  sent_on: string | null;
+  received_at: string;
+  payment_id: string | null;
+  /** Why it wasn't matched automatically. */
+  note: string | null;
+  dismissed_at: string | null;
 };
 
 /**
@@ -204,9 +223,11 @@ export type RegistrationEvent = {
     | "expired"
     | "reminder"
     | "hold_reminder"
+    | "payment_reversed"
+    | "spot_released"
     | "session_cancelled";
   registration_id: string;
-  /** partial_payment only: the payment that arrived (each one gets its own email). */
+  /** partial_payment: the payment that arrived; payment_reversed / spot_released: the one cancelled (each gets its own email). */
   payment_id?: string;
   /** hold_reminder only: when it was sent (each reminder gets its own email). */
   nudged_at?: string;

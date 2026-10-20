@@ -80,7 +80,7 @@ describe("POST /api/payments/ingest", () => {
 
   it("confirms ref-code matches and notes the rest", async () => {
     const res = await POST(request({ messages }));
-    expect(await res.json()).toEqual({ ok: true, new: 2, matched: 1 });
+    expect(await res.json()).toEqual({ ok: true, new: 2, matched: 1, cancelled: 0 });
     expect(state.rpcCalls).toEqual([
       {
         fn: "ingest_apply_payment",
@@ -93,11 +93,30 @@ describe("POST /api/payments/ingest", () => {
   it("skips messages it has already seen", async () => {
     await POST(request({ messages }));
     const res = await POST(request({ messages }));
-    expect(await res.json()).toEqual({ ok: true, new: 0, matched: 0 });
+    expect(await res.json()).toEqual({ ok: true, new: 0, matched: 0, cancelled: 0 });
   });
 
   it("rejects malformed payloads", async () => {
     const res = await POST(request({ messages: [{ id: "x", amountCents: -5 }] }));
     expect(res.status).toBe(400);
+  });
+
+  it("hands cancelled e-Transfers to ingest_reverse_payment, once each", async () => {
+    const cancelled = {
+      id: "c1",
+      kind: "cancelled",
+      senderName: null,
+      amountCents: 1400,
+      memo: null,
+      sentOn: "2026-10-19",
+      receivedAt: "2026-10-20T15:00:00Z",
+    };
+    const res = await POST(request({ messages: [cancelled] }));
+    expect(await res.json()).toEqual({ ok: true, new: 0, matched: 0, cancelled: 1 });
+    expect(state.rpcCalls).toEqual([
+      { fn: "ingest_reverse_payment", args: { p_cancellation_id: "pay-c1", p_timezone: expect.any(String) } },
+    ]);
+    await POST(request({ messages: [cancelled] }));
+    expect(state.rpcCalls).toHaveLength(1);
   });
 });

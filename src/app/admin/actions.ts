@@ -30,6 +30,8 @@ const RPC_ERRORS: Record<string, string> = {
   session_unavailable: "This session isn't open (it may be cancelled).",
   guest_name_required: "Give the guest a name.",
   player_not_found: "That player doesn't exist anymore.",
+  payment_unavailable: "That payment was already taken back.",
+  cancellation_handled: "This cancellation was already sorted out.",
 };
 
 async function rpc(fn: string, args: Record<string, unknown>, path: string, success?: string) {
@@ -369,6 +371,29 @@ export async function setPaymentDismissed(paymentId: string, dismissed: boolean)
   if (error) fail("/admin/payments", error.message);
   revalidatePath("/admin/payments");
   await flash("success", dismissed ? "Payment dismissed" : "Payment restored");
+}
+
+/** A host picks which payment a cancelled e-Transfer took back. */
+export async function reverseCancelledPayment(cancellationId: string, formData: FormData) {
+  await requireAdmin();
+  const paymentId = formData.get("payment_id");
+  if (typeof paymentId !== "string" || !paymentId) fail("/admin/payments", "Pick the payment first");
+  await rpc(
+    "admin_reverse_payment",
+    { p_cancellation_id: cancellationId, p_payment_id: paymentId },
+    "/admin/payments",
+    "Payment taken back. The player has been emailed.",
+  );
+}
+
+export async function setCancellationDismissed(cancellationId: string, dismissed: boolean) {
+  await requireAdmin();
+  await rpc(
+    "admin_dismiss_cancellation",
+    { p_cancellation_id: cancellationId, p_dismissed: dismissed },
+    "/admin/payments",
+    dismissed ? "Cancellation dismissed" : "Cancellation restored",
+  );
 }
 
 export async function setRefunded(registrationId: string, refunded: boolean) {

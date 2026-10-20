@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { paymentMatches, paymentMethod, paymentStatus } from "@/lib/payments";
 
-const base = { registration_id: "r", matched_by: null, gmail_message_id: "g", dismissed: false } as const;
+const base = { registration_id: "r", matched_by: null, gmail_message_id: "g", dismissed: false, reversed_at: null } as const;
 
 describe("paymentMethod", () => {
   it.each([
@@ -11,6 +11,7 @@ describe("paymentMethod", () => {
     [{ ...base, matched_by: "name_amount" }, "name_amount"],
     [{ ...base, matched_by: "admin" }, "assigned"],
     [{ ...base, matched_by: "admin", gmail_message_id: null }, "manual"],
+    [{ ...base, matched_by: "ref", reversed_at: "2026-10-20T00:00:00Z" }, "reversed"],
   ] as const)("%o -> %s", (p, expected) => {
     expect(paymentMethod(p)).toBe(expected);
   });
@@ -19,6 +20,7 @@ describe("paymentMethod", () => {
     expect(paymentStatus("unmatched")).toBe("attention");
     expect(paymentStatus("dismissed")).toBe("dismissed");
     expect(paymentStatus("manual")).toBe("matched");
+    expect(paymentStatus("reversed")).toBe("cancelled");
   });
 });
 

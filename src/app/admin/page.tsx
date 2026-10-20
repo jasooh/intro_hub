@@ -34,7 +34,7 @@ async function Sessions({ searchParams }: { searchParams: PageProps<"/admin">["s
   const q = typeof params.q === "string" ? params.q : "";
 
   const supabase = await createClient();
-  const [{ sessions, totals }, unmatched, refunds] = await Promise.all([
+  const [{ sessions, totals }, unmatched, refunds, cancelled] = await Promise.all([
     getAdminSessions(view, q),
     supabase
       .from("payments")
@@ -47,6 +47,12 @@ async function Sessions({ searchParams }: { searchParams: PageProps<"/admin">["s
       .eq("refund_owed", true)
       .is("refunded_at", null)
       .is("refund_waived_at", null),
+    // Cancelled e-Transfers waiting for a host to pick the payment.
+    supabase
+      .from("payment_cancellations")
+      .select("id", { count: "exact", head: true })
+      .is("payment_id", null)
+      .is("dismissed_at", null),
   ]);
   const counts = await getCounts(sessions.map((s) => s.id));
 
@@ -61,7 +67,7 @@ async function Sessions({ searchParams }: { searchParams: PageProps<"/admin">["s
 
       <ScoreboardRow className="reveal" style={reveal(1)}>
         <Link href="/admin/payments" className="flex transition-transform hover:-translate-y-0.5">
-          <Scoreboard className="w-full" value={pad2(unmatched.count ?? 0)} label="Unmatched payments" />
+          <Scoreboard className="w-full" value={pad2((unmatched.count ?? 0) + (cancelled.count ?? 0))} label="Payments to sort out" />
         </Link>
         <Link href="/admin/refunds" className="flex transition-transform hover:-translate-y-0.5">
           <Scoreboard className="w-full" value={pad2(refunds.count ?? 0)} label="Refunds owed" />

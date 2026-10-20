@@ -7,7 +7,17 @@ const source = readFileSync(join(__dirname, "..", "scripts", "gmail-ingest.gs"),
 const { parseInteracEmail, gmailQuery, isPaymentSender } = new Function(
   `${source}; return { parseInteracEmail, gmailQuery, isPaymentSender };`,
 )() as {
-  parseInteracEmail: (subject: string, body: string) => { senderName: string | null; amountCents: number; memo: string | null } | null;
+  parseInteracEmail: (
+    subject: string,
+    body: string,
+  ) => {
+    kind: "received" | "cancelled";
+    senderName: string | null;
+    amountCents: number | null;
+    memo: string | null;
+    reference: string | null;
+    sentOn: string | null;
+  } | null;
   gmailQuery: (testSender: string | null) => string;
   isPaymentSender: (
     from: string,
@@ -36,7 +46,7 @@ JANE DOE has sent you $10.00 (CAD).
 Message: VB-7K3Q
 
 To deposit your money, click here: ...`;
-    expect(parseInteracEmail("INTERAC e-Transfer: JANE DOE sent you money.", body)).toEqual({
+    expect(parseInteracEmail("INTERAC e-Transfer: JANE DOE sent you money.", body)).toMatchObject({
       senderName: "JANE DOE",
       amountCents: 1000,
       memo: "VB-7K3Q",
@@ -52,7 +62,7 @@ Message: volleyball sat
 Reference Number: CAabc123`;
     expect(
       parseInteracEmail("INTERAC e-Transfer: A money transfer from José Álvarez has been automatically deposited.", body),
-    ).toEqual({ senderName: "José Álvarez", amountCents: 101250, memo: "volleyball sat" });
+    ).toMatchObject({ kind: "received", senderName: "José Álvarez", amountCents: 101250, memo: "volleyball sat" });
   });
 
   it("parses the 'sent you $X. Claim your deposit!' format", () => {
@@ -63,7 +73,7 @@ JUSTIN ABUYUAN sent you $1.00 (CAD) and the money is waiting for you.
 Message: VB-7K3Q
 
 Claim your deposit: ...`;
-    expect(parseInteracEmail("Interac e-Transfer: JUSTIN ABUYUAN sent you $1.00. Claim your deposit!", body)).toEqual({
+    expect(parseInteracEmail("Interac e-Transfer: JUSTIN ABUYUAN sent you $1.00. Claim your deposit!", body)).toMatchObject({
       senderName: "JUSTIN ABUYUAN",
       amountCents: 100,
       memo: "VB-7K3Q",
@@ -80,9 +90,77 @@ Claim your deposit: ...`;
     ).toBe("VB-9MZP");
   });
 
+  it("reads cancelled e-Transfers, with the reference number", () => {
+    const body = `Hi Intro 2 Volleyball,
+
+JANE DOE has cancelled the Interac e-Transfer they sent you.
+
+Amount: $15.00 (CAD)
+Message: VB-7K3Q
+Reference Number: CAqXk3Zm9Tt2`;
+    expect(parseInteracEmail("INTERAC e-Transfer: JANE DOE cancelled the transfer.", body)).toEqual({
+      kind: "cancelled",
+      senderName: "JANE DOE",
+      amountCents: 1500,
+      memo: "VB-7K3Q",
+      reference: "CAqXk3Zm9Tt2",
+      sentOn: null,
+    });
+  });
+
+  it("reads the real cancellation email: amount and the day it was sent, no sender", () => {
+    const body = `Hi Intro 2 Volleyball,
+Your transfer of $14.00 has been cancelled.
+The recent transfer of $14.00 (CAD) sent to you on Oct 19, 2026 has been cancelled. As a result, you can no longer deposit these funds.`;
+    for (const subject of ["Interac e-Transfer: Your transfer of $14.00 has been cancelled.", "INTERAC e-Transfer notification"]) {
+      expect(parseInteracEmail(subject, body)).toEqual({
+        kind: "cancelled",
+        senderName: null,
+        amountCents: 1400,
+        memo: null,
+        reference: null,
+        sentOn: "2026-10-19",
+      });
+    }
+  });
+
+  it("a received payment is never read as cancelled because of its body", () => {
+    expect(
+      parseInteracEmail("Interac e-Transfer: JANE sent you $5.00. Claim your deposit!", "If you don't deposit it, it has expired after 30 days."),
+    ).toMatchObject({ kind: "received", senderName: "JANE" });
+  });
+
+  it("reads expired and 'has been cancelled' transfers, even without an amount", () => {
+    expect(
+      parseInteracEmail("INTERAC e-Transfer: The money transfer from SAM LEE has expired.", "The transfer of $10.00 (CAD) expired."),
+    ).toMatchObject({ kind: "cancelled", senderName: "SAM LEE", amountCents: 1000 });
+    expect(
+      parseInteracEmail("INTERAC e-Transfer: The money transfer from SAM LEE has been cancelled.", "It can no longer be deposited."),
+    ).toMatchObject({ kind: "cancelled", senderName: "SAM LEE", amountCents: null });
+    expect(parseInteracEmail("Virement INTERAC : SAM LEE a annulé le virement", "Montant : 10,00 $")).toMatchObject({
+      kind: "cancelled",
+      senderName: "SAM LEE",
+    });
+  });
+
+  it("keeps the reference number on received payments too", () => {
+    expect(
+      parseInteracEmail(
+        "INTERAC e-Transfer: A money transfer from JANE DOE has been automatically deposited.",
+        "Sent From: JANE DOE\nAmount: $15.00 (CAD)\nReference Number: CAqXk3Zm9Tt2",
+      ),
+    ).toMatchObject({ kind: "received", reference: "CAqXk3Zm9Tt2" });
+  });
+
   it("returns a null memo when there is no message", () => {
     const result = parseInteracEmail("INTERAC e-Transfer: SAM LEE sent you money.", "SAM LEE has sent you $10.00 (CAD).");
-    expect(result).toEqual({ senderName: "SAM LEE", amountCents: 1000, memo: null });
+    expect(result).toMatchObject({ kind: "received", senderName: "SAM LEE", amountCents: 1000, memo: null });
+  });
+
+  it("ignores cancelling a transfer the host sent", () => {
+    expect(
+      parseInteracEmail("INTERAC e-Transfer: Your money transfer to JANE DOE was cancelled.", "Amount: $25.00 (CAD)"),
+    ).toBeNull();
   });
 
   it("ignores outgoing transfer confirmations", () => {
@@ -157,7 +235,7 @@ JANE DOE has sent you $10.00 (CAD).
 Message: VB-7K3Q
 
 (Test email for Intro Hub.)`;
-    expect(parseInteracEmail("TEST INTERAC e-Transfer: JANE DOE sent you money.", body)).toEqual({
+    expect(parseInteracEmail("TEST INTERAC e-Transfer: JANE DOE sent you money.", body)).toMatchObject({
       senderName: "JANE DOE",
       amountCents: 1000,
       memo: "VB-7K3Q",
