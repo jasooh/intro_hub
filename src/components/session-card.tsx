@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { OpensIn } from "@/components/countdown";
 import { Mark, SpotDots } from "@/components/ui";
 import { dateParts, formatMoney, formatTime } from "@/lib/format";
 import { spotsLeft } from "@/lib/queries";
@@ -26,6 +27,11 @@ export function isLive(session: Pick<Session, "starts_at" | "ends_at" | "status"
   );
 }
 
+/** True while sign-ups haven't opened yet. */
+function opensLater(session: Pick<Session, "opens_at">, now = Date.now()) {
+  return new Date(session.opens_at).getTime() > now;
+}
+
 /** Small LED tag with a pulsing dot for a session that's on right now. */
 export function LiveBadge({ label = "Live · on court now" }: { label?: string }) {
   return (
@@ -48,6 +54,7 @@ export function SessionCard({ session, counts, href }: { session: Session; count
   const waitlisted = counts?.waitlisted ?? 0;
   const instructional = counts?.instructional ?? 0;
   const cancelled = session.status === "cancelled";
+  const notOpenYet = !cancelled && !live && opensLater(session);
 
   return (
     <Link
@@ -91,6 +98,8 @@ export function SessionCard({ session, counts, href }: { session: Session; count
                 <Mark tone="line" glyph="●">
                   {confirmed} on court · until {formatTime(session.ends_at)}
                 </Mark>
+              ) : notOpenYet ? (
+                <OpensIn to={session.opens_at} />
               ) : left > 0 ? (
                 <Mark tone="ok" glyph="●">
                   {left} open

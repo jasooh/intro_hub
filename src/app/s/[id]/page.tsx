@@ -31,6 +31,8 @@ import {
 import { getProfile } from "@/lib/auth";
 import { formatDateTime, formatMoney, pad2, sessionTimes } from "@/lib/format";
 import { offeredOptions, optionFull, optionPrice, usesSpot } from "@/lib/options";
+import { Countdown } from "@/components/countdown";
+import { getMaintenance } from "@/lib/maintenance";
 import { OPTION_LABELS } from "@/lib/profile";
 import { getAttendees, getCounts, getMySpot, getTeamRequests, isFirstTimer, spotsLeft } from "@/lib/queries";
 import { MAX_TEAMMATES } from "@/lib/teams";
@@ -271,16 +273,31 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
     if (notOpenYet) {
       return (
         <Sheet label="Your spot">
-          <p className="text-lg">
-            Sign-ups open <b>{formatDateTime(session.opens_at)}</b>. Come back then!
-          </p>
+          <div className="space-y-4">
+            <p className="text-lg">
+              Sign-ups open <b>{formatDateTime(session.opens_at)}</b>.
+            </p>
+            <Countdown to={session.opens_at} />
+          </div>
         </Sheet>
       );
     }
     const full = spotsLeft(session, counts) === 0 || (counts?.waitlisted ?? 0) > 0;
+    const maintenance = await getMaintenance();
+    // Maintenance mode: the form is blacked out and can't be used (hosts can still sign up).
+    const locked = maintenance.on && profile.role !== "admin";
     return (
       <Sheet label="Your spot">
+        <div className="relative">
+        {locked && (
+          <div role="status" className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-board/95 p-6 text-center text-maple">
+            <span className="font-display text-2xl font-black tracking-[0.15em] text-led uppercase">Sign-ups paused</span>
+            <span className="max-w-sm">{maintenance.message}</span>
+          </div>
+        )}
         <form
+          inert={locked}
+          aria-hidden={locked || undefined}
           action={registerForSession.bind(null, session.id)}
           className="space-y-6 [&:has(input[name=option][value=instructional]:checked)_.teammates]:hidden"
         >
@@ -333,6 +350,7 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
             <HowItWorks session={session} price={priceOf(offered[0])} waitlist={offered.every(fullFor)} />
           </div>
         </form>
+        </div>
       </Sheet>
     );
   }
