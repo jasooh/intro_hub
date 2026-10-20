@@ -86,6 +86,20 @@ export function CourtMode({
     return () => clearInterval(id);
   }, []);
 
+  // Full-screen takes over the page (no header or footer, no scrolling behind it) only while this is on screen.
+  useEffect(() => {
+    document.body.classList.add("court-mode");
+    // Colour the phone's browser bar dark too, then put it back.
+    const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    const before = meta?.content;
+    if (meta) meta.content = "#141210";
+    return () => {
+      document.body.classList.remove("court-mode");
+      if (meta && before != null) meta.content = before;
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    };
+  }, []);
+
   // Keep the screen awake while court mode is open.
   useEffect(() => {
     let lock: { release: () => Promise<void> } | null = null;
@@ -149,7 +163,7 @@ export function CourtMode({
   };
 
   return (
-    <div data-court-mode className="fixed inset-0 z-[60] overflow-y-auto overscroll-contain bg-board text-maple" role="region" aria-label="Court mode">
+    <div data-court-mode className="fixed inset-x-0 top-0 z-[60] h-dvh overflow-y-auto overscroll-contain bg-board text-maple [scrollbar-color:var(--line)_var(--board)]" role="region" aria-label="Court mode">
       <header className="sticky top-0 z-10 border-b-[3px] border-line bg-board">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5">
           <Link href={backHref} className="font-display text-base font-bold tracking-[0.12em] uppercase hover:text-line">
