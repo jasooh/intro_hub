@@ -43,6 +43,37 @@ async function rpc(fn: string, args: Record<string, unknown>, path: string, succ
 }
 
 // ---------------------------------------------------------------------------
+// Host notification settings (account page)
+// ---------------------------------------------------------------------------
+
+const HostNotificationsForm = z.object({
+  host_digest: z.enum(["off", "3h", "daily"]),
+  host_session_day: z.literal("on").optional(),
+  host_alert_late_cancel: z.literal("on").optional(),
+  host_alert_unmatched: z.literal("on").optional(),
+});
+
+export async function saveHostNotifications(formData: FormData) {
+  const me = await requireAdmin();
+  const parsed = HostNotificationsForm.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) fail("/me", "Pick how often to get the summary");
+  const f = parsed.data;
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      host_digest: f.host_digest,
+      host_session_day: f.host_session_day === "on",
+      host_alert_late_cancel: f.host_alert_late_cancel === "on",
+      host_alert_unmatched: f.host_alert_unmatched === "on",
+    })
+    .eq("id", me.id);
+  if (error) fail("/me", error.message);
+  revalidatePath("/me");
+  await flash("success", "Host emails saved");
+}
+
+// ---------------------------------------------------------------------------
 // Sessions
 // ---------------------------------------------------------------------------
 

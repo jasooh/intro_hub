@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { env } from "@/lib/env";
+import { sendHostNotifications } from "@/lib/host-notifications";
 import { dispatchEvents, parseEvents } from "@/lib/registrations";
 import { createAdminClient } from "@/lib/supabase/server";
 
@@ -11,7 +12,8 @@ function authorized(request: Request) {
 }
 
 // Called every minute by pg_cron (see supabase/setup/cron.sql):
-// creates weekly sessions, expires unpaid holds, promotes waitlists, sends reminders.
+// creates weekly sessions, expires unpaid holds, promotes waitlists, sends reminders,
+// then the hosts' notification emails.
 async function handle(request: Request) {
   if (!authorized(request)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
@@ -22,6 +24,12 @@ async function handle(request: Request) {
   }
   const events = parseEvents(data);
   await dispatchEvents(events);
+  // Host emails: instant alerts, digests and the session-day email (each sent at most once).
+  try {
+    await sendHostNotifications();
+  } catch (err) {
+    console.error("Host notifications failed", err);
+  }
   return NextResponse.json({ ok: true, events: events.length });
 }
 

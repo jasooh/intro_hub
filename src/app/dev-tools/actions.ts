@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { sendHostNotifications } from "@/lib/host-notifications";
 import { requireDevTools } from "@/lib/auth";
 import { flash } from "@/lib/flash";
 import { BACKUP_COOKIE, buildPatch, databaseName, isEditableTable, type ColumnInfo } from "@/lib/dev-tools";
@@ -90,13 +91,14 @@ export async function forceStatus(registrationId: string, formData: FormData) {
 // Repairs
 // ---------------------------------------------------------------------------
 
-/** Runs the every-minute job now (expire holds, promote, reminders, weekly sessions). */
+/** Runs the every-minute job now (expire holds, promote, reminders, weekly sessions, host emails). */
 export async function runTickNow() {
   await requireDevTools();
   const { data, error } = await createAdminClient().rpc("run_tick");
   if (error) fail("/dev-tools", error.message);
   const events = parseEvents(data);
   await dispatchEvents(events);
+  await sendHostNotifications().catch((err) => console.error("Host notifications failed", err));
   revalidatePath("/", "layout");
   await flash("success", `Tick ran: ${events.length} event(s)`);
 }

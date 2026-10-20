@@ -38,6 +38,12 @@ export type Profile = {
   waiver_version: string | null;
   /** Added by a host without an account: no sign-in, no emails. */
   guest: boolean;
+  /** Host notification settings (only used for hosts). */
+  host_digest: "off" | "3h" | "daily";
+  host_session_day: boolean;
+  host_alert_late_cancel: boolean;
+  host_alert_unmatched: boolean;
+  host_digest_sent_at: string | null;
 };
 
 export type SessionTemplate = {
@@ -97,6 +103,8 @@ export type Session = {
   announce: boolean;
   /** When the "sign-ups are open" email went out (sessions from before it existed are marked too). */
   announced_at: string | null;
+  /** When the hosts' session-day email went out. */
+  host_day_sent_at: string | null;
 };
 
 export type Team = { id: string; session_id: string; name: string; position: number };

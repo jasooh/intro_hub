@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { HostNotificationsForm } from "@/components/host-notifications-form";
 import { ProfileForm } from "@/components/profile-form";
 import { Avatar, PageSpinner, reveal, Sheet } from "@/components/ui";
 import { requireProfile } from "@/lib/auth";
@@ -61,6 +62,12 @@ async function Account() {
       <Sheet label="Profile" className="reveal max-w-xl" style={reveal(2)}>
         <ProfileForm profile={profile} next="/me" submitLabel="Save changes" requireChange />
       </Sheet>
+
+      {profile.role === "admin" && (
+        <Sheet id="host-notifications" label="Host emails" className="reveal max-w-xl scroll-mt-24" style={reveal(3)}>
+          <HostNotificationsForm profile={profile} />
+        </Sheet>
+      )}
     </div>
   );
 }

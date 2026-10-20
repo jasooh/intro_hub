@@ -590,3 +590,205 @@ export function buildSessionOpenEmail({
     ),
   };
 }
+
+// ---------------------------------------------------------------------------
+// Host notifications (digest, session day, instant alerts)
+// ---------------------------------------------------------------------------
+
+/** Footer on every host email: why they got it, and where to change it. */
+function HostFooter({ settingsUrl }: { settingsUrl: string }) {
+  return (
+    <>
+      You&apos;re getting this as a host.{" "}
+      <Link href={settingsUrl} style={s.footerLink}>
+        Change host emails
+      </Link>{" "}
+      in your account.
+    </>
+  );
+}
+
+const hostLink = { color: c.ink, textDecoration: "underline", textDecorationColor: c.line };
+const label = { fontFamily: display, fontSize: 13, fontWeight: 800, letterSpacing: "2px", textTransform: "uppercase", color: c.inkSoft } as const;
+
+export type DigestSession = {
+  title: string;
+  when: string;
+  url: string;
+  /** "16/18 drop-in · 2 instructional · 3 waiting" */
+  status: string;
+  /** e.g. { label: "Joined", names: ["Maya T.", "Leo F."] } */
+  lines: { label: string; names: string[] }[];
+  /** "2 unpaid · $25.00", or null */
+  unpaid: string | null;
+};
+
+export function buildHostDigestEmail({
+  hostName,
+  since,
+  sessions,
+  unmatched,
+  paymentsUrl,
+  settingsUrl,
+}: {
+  hostName: string;
+  /** "since 3:00 p.m." */
+  since: string;
+  sessions: DigestSession[];
+  /** e-Transfers still waiting to be assigned. */
+  unmatched: number;
+  paymentsUrl: string;
+  settingsUrl: string;
+}): Built {
+  const changes = sessions.reduce((n, x) => n + x.lines.reduce((m, l) => m + l.names.length, 0), 0);
+  return {
+    subject: `Host update: ${changes} change${changes === 1 ? "" : "s"} ${since}`,
+    element: (
+      <Layout preview={sessions.map((x) => `${x.title} ${x.status}`).join(" · ")} eyebrow={`Host update · ${since}`} footerNote={<HostFooter settingsUrl={settingsUrl} />}>
+        <Title>What changed</Title>
+        <Text style={s.text}>Hi {hostName},</Text>
+        {sessions.map((x) => (
+          <Section key={x.url} style={{ ...s.note, margin: "0 0 18px" }}>
+            <Text style={{ ...s.text, margin: "0 0 2px" }}>
+              <Link href={x.url} style={hostLink}>
+                <b>{x.title}</b> · {x.when}
+              </Link>
+            </Text>
+            <Text style={{ ...s.text, fontSize: 14, color: c.inkSoft, margin: "0 0 6px" }}>{x.status}</Text>
+            {x.lines.map((l) => (
+              <Text key={l.label} style={{ ...s.text, fontSize: 15, margin: "0 0 2px" }}>
+                <span style={label}>{l.label}</span>&nbsp; {l.names.join(", ")}
+              </Text>
+            ))}
+            {x.unpaid && (
+              <Text style={{ ...s.text, fontSize: 15, margin: "4px 0 0", color: "#a8590f" }}>Still unpaid: {x.unpaid}</Text>
+            )}
+          </Section>
+        ))}
+        {unmatched > 0 && (
+          <Text style={s.text}>
+            <b>
+              {unmatched} e-Transfer{unmatched === 1 ? "" : "s"}
+            </b>{" "}
+            couldn&apos;t be matched to a sign-up.{" "}
+            <Link href={paymentsUrl} style={hostLink}>
+              Assign them
+            </Link>
+            .
+          </Text>
+        )}
+      </Layout>
+    ),
+  };
+}
+
+export type SessionDayPlayer = { name: string; detail: string | null };
+
+export function buildSessionDayEmail({
+  hostName,
+  sessionTitle,
+  when,
+  location,
+  status,
+  roster,
+  instructional,
+  waitlist,
+  owed,
+  notes,
+  adminUrl,
+  settingsUrl,
+}: {
+  hostName: string;
+  sessionTitle: string;
+  when: string;
+  location: string;
+  status: string;
+  /** Drop-in players, with what to know (unpaid, first time, note…). */
+  roster: SessionDayPlayer[];
+  instructional: SessionDayPlayer[];
+  waitlist: string[];
+  /** "3 unpaid · $40.00", or null */
+  owed: string | null;
+  notes: string | null;
+  adminUrl: string;
+  settingsUrl: string;
+}): Built {
+  const list = (players: SessionDayPlayer[]) =>
+    players.map((p, i) => (
+      <Text key={`${p.name}-${i}`} style={{ ...s.text, fontSize: 15, margin: "0 0 2px" }}>
+        <span style={{ fontFamily: score, fontWeight: 900, color: c.line }}>{String(i + 1).padStart(2, "0")}</span>&nbsp; {p.name}
+        {p.detail && <span style={{ color: c.inkSoft }}> · {p.detail}</span>}
+      </Text>
+    ));
+  return {
+    subject: `Today: ${sessionTitle} (${when}) · ${status}`,
+    element: (
+      <Layout preview={`${status}${owed ? ` · ${owed}` : ""}`} eyebrow={`Today · ${when}`} footerNote={<HostFooter settingsUrl={settingsUrl} />}>
+        <Title>Game day</Title>
+        <Text style={s.text}>
+          Hi {hostName}, here&apos;s tonight at <b>{location}</b>: <b>{status}</b>.
+        </Text>
+        {owed && <Text style={{ ...s.text, color: "#a8590f" }}>Still unpaid: {owed}</Text>}
+        {notes && (
+          <Section style={s.note}>
+            <Text style={{ ...s.text, margin: 0, whiteSpace: "pre-line" }}>
+              <b>Session notes:</b> {notes}
+            </Text>
+          </Section>
+        )}
+        <Text style={{ ...label, margin: "12px 0 6px" }}>Drop-in · {roster.length}</Text>
+        {roster.length ? list(roster) : <Text style={{ ...s.text, color: c.inkSoft }}>Nobody yet.</Text>}
+        {instructional.length > 0 && (
+          <>
+            <Text style={{ ...label, margin: "14px 0 6px" }}>Instructional only · {instructional.length}</Text>
+            {list(instructional)}
+          </>
+        )}
+        {waitlist.length > 0 && (
+          <Text style={{ ...s.text, fontSize: 15, marginTop: 14 }}>
+            <span style={label}>Waitlist</span>&nbsp; {waitlist.join(", ")}
+          </Text>
+        )}
+        <Button href={adminUrl} style={s.button}>
+          Open the session
+        </Button>
+      </Layout>
+    ),
+  };
+}
+
+export function buildHostAlertEmail({
+  title,
+  subject,
+  hostName,
+  lines,
+  buttonLabel,
+  buttonUrl,
+  settingsUrl,
+}: {
+  title: string;
+  subject: string;
+  hostName: string;
+  lines: string[];
+  buttonLabel: string;
+  buttonUrl: string;
+  settingsUrl: string;
+}): Built {
+  return {
+    subject,
+    element: (
+      <Layout preview={lines[0] ?? title} eyebrow="Host alert" footerNote={<HostFooter settingsUrl={settingsUrl} />}>
+        <Title>{title}</Title>
+        <Text style={s.text}>Hi {hostName},</Text>
+        {lines.map((l) => (
+          <Text key={l} style={s.text}>
+            {l}
+          </Text>
+        ))}
+        <Button href={buttonUrl} style={s.button}>
+          {buttonLabel}
+        </Button>
+      </Layout>
+    ),
+  };
+}
