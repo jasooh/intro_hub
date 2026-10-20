@@ -3,6 +3,8 @@ import { Suspense } from "react";
 import { savePost } from "@/app/admin/actions";
 import { BackLink, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
 import { countAnnouncementRecipients } from "@/lib/announcements";
+import { getEmailHealth } from "@/lib/email/health";
+import { env } from "@/lib/env";
 import { requireAdmin } from "@/lib/auth";
 import { PostForm } from "../post-form";
 
@@ -20,7 +22,8 @@ export default function NewPostPage() {
 
 async function NewPost() {
   await requireAdmin();
-  const recipients = await countAnnouncementRecipients();
+  const [recipients, health] = await Promise.all([countAnnouncementRecipients(), getEmailHealth()]);
+  const emailsLeft = Math.max(env.emailDailyLimit() - health.sentToday, 0);
   return (
     <div className="space-y-10">
       <BackLink href="/admin/updates">All posts</BackLink>
@@ -28,7 +31,7 @@ async function NewPost() {
         New post
       </PageTitle>
       <Sheet label="Post" className="reveal max-w-3xl" style={reveal(1)}>
-        <PostForm action={savePost.bind(null, null)} recipients={recipients} />
+        <PostForm action={savePost.bind(null, null)} recipients={recipients} emailsLeft={health.paused ? 0 : emailsLeft} />
       </Sheet>
     </div>
   );

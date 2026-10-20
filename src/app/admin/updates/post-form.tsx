@@ -9,11 +9,14 @@ export function PostForm({
   action,
   post,
   recipients,
+  emailsLeft,
 }: {
   action: (formData: FormData) => Promise<void>;
   post?: Post;
   /** How many players would get the email. */
   recipients: number;
+  /** About how many more emails Gmail will take today (0 while sending is paused). */
+  emailsLeft: number;
 }) {
   const published = Boolean(post?.published_at);
   return (
@@ -68,6 +71,13 @@ export function PostForm({
               <span className="block text-sm text-ink-soft">
                 Sent once, when the post is published. Players who turned off announcements are skipped.
               </span>
+              {recipients > emailsLeft && (
+                <span className="mt-1 block text-sm font-semibold text-warn">
+                  {emailsLeft === 0
+                    ? "Emails are paused right now (see the notice above): they'll wait and go out once Gmail allows."
+                    : `Only about ${emailsLeft} more emails fit in Gmail's daily limit. The rest wait and go out later, and other emails (sign-ups, payments) queue behind them.`}
+                </span>
+              )}
             </span>
           </label>
         )}

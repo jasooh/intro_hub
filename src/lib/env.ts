@@ -23,6 +23,8 @@ export const env = {
   etransferEmail: () => process.env.ETRANSFER_EMAIL ?? "(ask the host)",
   cronSecret: () => required("CRON_SECRET"),
   ingestSecret: () => required("INGEST_SECRET"),
+  /** Roughly how many emails Gmail lets the host's account send in 24 hours (500 for a personal Gmail, 2000 for Workspace). */
+  emailDailyLimit: () => Number(process.env.EMAIL_DAILY_LIMIT) || 500,
   /** Optional: the host's Spotify playlist link, shown on the home page. */
   spotifyPlaylistUrl: () => process.env.SPOTIFY_PLAYLIST_URL?.trim() || null,
 };
