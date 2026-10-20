@@ -36,7 +36,9 @@ function gmailQuery(testSender) {
 }
 
 // Only incoming money. Outgoing "your transfer to X was deposited" emails are ignored.
-var INCOMING_SUBJECT = /sent you money|transfer from .+ (?:has been|was) (?:automatically )?deposited|vous a envoy/i;
+// Subjects seen: "X sent you money.", "X sent you $1.00. Claim your deposit!",
+// "A money transfer from X has been automatically deposited.", and French.
+var INCOMING_SUBJECT = /sent you (?:money|\$)|transfer from .+ (?:has been|was) (?:automatically )?deposited|vous a envoy/i;
 
 var PROCESSED_KEY = 'processedMessageIds';
 var MAX_REMEMBERED = 500;
@@ -213,7 +215,7 @@ function parseInteracEmail(subject, body) {
   var senderPatterns = [
     /^\s*Sent From:\s*(.+?)\s*$/im,
     /transfer from (.+?) (?:has been|was) (?:automatically )?deposited/i,
-    /e-Transfer\s*:\s*(.+?) sent you money/i,
+    /e-Transfer\s*:\s*(.+?) sent you (?:money|\$)/i,
     /^\s*(?:Hi [^,\n]*,\s*)?([^\n]+?) has sent you \$/im,
     /:\s*(.+?) vous a envoy/i,
   ];
@@ -223,8 +225,14 @@ function parseInteracEmail(subject, body) {
     if (m) { senderName = m[1].trim(); break; }
   }
 
-  var memoMatch = body.match(/^\s*Message(?: from sender)?\s*:\s*(.*)$/im);
+  // "Message: ...", "Message from sender: ..." or "Message from JANE DOE: ...".
+  var memoMatch = body.match(/^\s*Message(?: from [^:\n]*)?\s*:\s*(.*)$/im);
   var memo = memoMatch ? memoMatch[1].trim() || null : null;
+  // No message line found, but the email mentions a ref code somewhere: use that.
+  if (!memo) {
+    var code = text.match(/\bVB-?[A-HJ-NP-Z2-9]{4}\b/i);
+    if (code) memo = code[0].toUpperCase();
+  }
 
   return { senderName: senderName, amountCents: amountCents, memo: memo };
 }

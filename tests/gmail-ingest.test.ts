@@ -55,6 +55,31 @@ Reference Number: CAabc123`;
     ).toEqual({ senderName: "José Álvarez", amountCents: 101250, memo: "volleyball sat" });
   });
 
+  it("parses the 'sent you $X. Claim your deposit!' format", () => {
+    const body = `Hi Intro 2 Volleyball,
+
+JUSTIN ABUYUAN sent you $1.00 (CAD) and the money is waiting for you.
+
+Message: VB-7K3Q
+
+Claim your deposit: ...`;
+    expect(parseInteracEmail("Interac e-Transfer: JUSTIN ABUYUAN sent you $1.00. Claim your deposit!", body)).toEqual({
+      senderName: "JUSTIN ABUYUAN",
+      amountCents: 100,
+      memo: "VB-7K3Q",
+    });
+  });
+
+  it("reads 'Message from NAME:' lines, or a ref code anywhere in the email", () => {
+    expect(
+      parseInteracEmail("Interac e-Transfer: SAM LEE sent you $15.00. Claim your deposit!", "Message from SAM LEE: VB-9MZP thanks!")
+        ?.memo,
+    ).toBe("VB-9MZP thanks!");
+    expect(
+      parseInteracEmail("Interac e-Transfer: SAM LEE sent you $15.00. Claim your deposit!", "Your note: vb-9mzp for saturday")?.memo,
+    ).toBe("VB-9MZP");
+  });
+
   it("returns a null memo when there is no message", () => {
     const result = parseInteracEmail("INTERAC e-Transfer: SAM LEE sent you money.", "SAM LEE has sent you $10.00 (CAD).");
     expect(result).toEqual({ senderName: "SAM LEE", amountCents: 1000, memo: null });
