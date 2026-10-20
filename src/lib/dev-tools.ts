@@ -67,7 +67,7 @@ export function toInputValue(col: ColumnInfo, value: unknown): string {
 }
 
 /** Turns a submitted input back into the JSON value for devtools_update_row. Throws on bad input. */
-export function fromInputValue(col: ColumnInfo, raw: string): unknown {
+function fromInputValue(col: ColumnInfo, raw: string): unknown {
   const kind = inputKind(col);
   if (raw.trim() === "" && kind !== "long" && kind !== "text") {
     if (!col.nullable) throw new Error(`${col.name} can't be empty`);

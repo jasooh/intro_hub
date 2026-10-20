@@ -26,7 +26,7 @@ Next.js 16 App Router (Cache Components + partial prefetching), React 19, Tailwi
 
 ## Workflow (important)
 - **Work on the `dev` branch only.** Merge to `main` only when asked; `main` deploys production.
-- Two Supabase projects: **dev** (`goomasgmwhafvkbmheex`: localhost + Vercel previews) and **prod** (`tbxicooonmntknjrrnzh`: live site). New migrations go in a new file, apply to dev immediately, and to prod **right before** merging to main.
+- Two Supabase projects: **dev** (`goomasgmwhafvkbmheex`: localhost + Vercel previews) and **prod** (`tbxicooonmntknjrrnzh`: live site). New migrations go in a new file (never edit an applied one), apply to dev immediately, and to prod **right before** merging to main. Use `supabase db push --db-url "$DEV_DB_URL"` / `"$PROD_DB_URL"` (URLs in `.env.local`), not the Supabase MCP `apply_migration`, which stamps its own version numbers and put the dev, prod and repo histories out of step. Run `npm run db:status -- --drift` before merging to confirm nothing is pending or drifted, and `npm run db:functions` after adding a migration. Full steps and a map of where each function lives: `supabase/README.md`.
 - Checks before committing: `npx tsc --noEmit`, `npx eslint src`, `npx vitest run`. `npx next build` catches Cache Components errors (e.g. request data outside `<Suspense>`).
 - Previewing signed-in/admin UI: put a throwaway `src/app/zz-*/page.tsx` with fake data, view it, delete it (then `npx next typegen` if tsc complains about stale route types).
 

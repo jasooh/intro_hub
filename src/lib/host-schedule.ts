@@ -15,7 +15,7 @@ const QUIET_FROM = 22;
 const QUIET_UNTIL = 7;
 const DAILY_AT = 8;
 /** The session-day email goes out from 9am on the day. */
-export const SESSION_DAY_AT = 9;
+const SESSION_DAY_AT = 9;
 
 /** Local calendar day ("2026-10-24") and hour (0-23) of an instant. */
 export function localParts(at: Date, timeZone: string) {

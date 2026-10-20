@@ -9,7 +9,7 @@ import type { Session, SessionCounts } from "@/lib/types";
 const SESSION_PATH = /^\/s\/([0-9a-f-]{36})$/i;
 
 /** The session the pass shows: the one the player was heading to (`next=/s/<id>`), else the next one up. */
-export const getPassSession = cache(async (next: string) => {
+const getPassSession = cache(async (next: string) => {
   const id = SESSION_PATH.exec(next)?.[1];
   let session: Session | null = null;
   if (id) {

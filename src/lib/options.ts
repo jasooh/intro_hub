@@ -33,7 +33,7 @@ export function optionPrice(
 }
 
 /** Instructional-only places left, or null when there's no limit. */
-export function instructionalLeft(session: Pick<Session, "instructional_capacity">, counts?: SessionCounts) {
+function instructionalLeft(session: Pick<Session, "instructional_capacity">, counts?: SessionCounts) {
   if (session.instructional_capacity == null) return null;
   return Math.max(session.instructional_capacity - (counts?.instructional ?? 0), 0);
 }
