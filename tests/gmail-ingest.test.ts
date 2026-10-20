@@ -124,6 +124,19 @@ The recent transfer of $14.00 (CAD) sent to you on Oct 19, 2026 has been cancell
     }
   });
 
+  it("keeps the message (and its ref code) on the real cancellation email", () => {
+    const body = `Hi Intro 2 Volleyball,
+Your transfer of $14.00 has been cancelled.
+The recent transfer of $14.00 (CAD) sent to you on Oct 19, 2026 has been cancelled. As a result, you can no longer deposit these funds.
+Message: VB-7K3Q`;
+    expect(parseInteracEmail("Interac e-Transfer: Your transfer of $14.00 has been cancelled.", body)).toMatchObject({
+      kind: "cancelled",
+      amountCents: 1400,
+      memo: "VB-7K3Q",
+      sentOn: "2026-10-19",
+    });
+  });
+
   it("a received payment is never read as cancelled because of its body", () => {
     expect(
       parseInteracEmail("Interac e-Transfer: JANE sent you $5.00. Claim your deposit!", "If you don't deposit it, it has expired after 30 days."),

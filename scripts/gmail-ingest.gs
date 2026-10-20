@@ -196,17 +196,19 @@ function sendTestEmail() {
 
 /**
  * Test mode helper: a fake "your transfer has been cancelled" email, worded
- * like the real one. Use the same amount as a test payment sent today.
+ * like the real one (it keeps the transfer's message). Use the amount and
+ * code of a test payment sent today.
  */
 function sendTestCancellation() {
   var amount = '10.00';
+  var code = 'VB-XXXX'; // the ref code you paid with
   var me = Session.getActiveUser().getEmail();
   var today = Utilities.formatDate(new Date(), 'America/Toronto', 'MMM d, yyyy');
   GmailApp.sendEmail(
     me,
     TEST_SUBJECT + ': Your transfer of $' + amount + ' has been cancelled.',
     'Hi Intro 2 Volleyball,\n\nYour transfer of $' + amount + ' has been cancelled.\n\nThe recent transfer of $' + amount +
-      ' (CAD) sent to you on ' + today + ' has been cancelled. As a result, you can no longer deposit these funds.\n\n(Test email for Intro Hub.)',
+      ' (CAD) sent to you on ' + today + ' has been cancelled. As a result, you can no longer deposit these funds.\n\nMessage: ' + code + '\n\n(Test email for Intro Hub.)',
   );
   console.log('Sent a test cancellation email to ' + me + '. It will be picked up on the next run.');
 }

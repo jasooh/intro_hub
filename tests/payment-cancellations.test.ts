@@ -27,11 +27,11 @@ describe("cancelled e-Transfers", () => {
   }
 
   /** The real email: amount and the day it was sent (today), no sender. */
-  async function cancel(cents = 1000) {
+  async function cancel(cents = 1000, memo: string | null = null) {
     const c = await db.query<{ id: string }>(
-      `insert into public.payment_cancellations (gmail_message_id, amount_cents, sent_on, received_at)
-       values (gen_random_uuid()::text, $1, (now() at time zone 'America/Toronto')::date, now()) returning id`,
-      [cents],
+      `insert into public.payment_cancellations (gmail_message_id, amount_cents, memo, sent_on, received_at)
+       values (gen_random_uuid()::text, $1, $2, (now() at time zone 'America/Toronto')::date, now()) returning id`,
+      [cents, memo],
     );
     const res = await asService<{ events: Event[] }>(
       db,
@@ -107,6 +107,22 @@ describe("cancelled e-Transfers", () => {
     await expect(asUser(db, host, `select public.admin_reverse_payment($1, $2)`, [id, paymentB])).rejects.toThrow(
       /cancellation_handled/,
     );
+  });
+
+  it("the ref code in the message picks the right payment when the amount and day can't", async () => {
+    const sid = await createSession(db);
+    const [a, b] = [await createUser(db, "A"), await createUser(db, "B")];
+    await asUser(db, a, `select public.register_for_session($1)`, [sid]);
+    await asUser(db, b, `select public.register_for_session($1)`, [sid]);
+    await pay((await reg(a)).id);
+    await pay((await reg(b)).id);
+    const code = (await db.query<{ ref_code: string }>(`select ref_code from public.registrations where profile_id = $1`, [b]))
+      .rows[0].ref_code;
+
+    const { events } = await cancel(1000, code.replace("-", " ").toLowerCase()); // "vb 7k3q"
+    expect(events.map((e) => e.event)).toEqual(["payment_reversed"]);
+    expect((await reg(a)).status).toBe("confirmed");
+    expect((await reg(b)).status).toBe("pending_payment");
   });
 
   it("hosts can dismiss one that isn't about volleyball", async () => {
