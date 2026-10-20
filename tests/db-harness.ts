@@ -28,11 +28,11 @@ const SUPABASE_STUB = `
   alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
 `;
 
-export async function createDb() {
+export async function createDb(opts: { before?: string } = {}) {
   const db = new PGlite();
   await db.exec(SUPABASE_STUB);
   const dir = join(__dirname, "..", "supabase", "migrations");
-  for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()) {
+  for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql") && (!opts.before || f < opts.before)).sort()) {
     await db.exec(readFileSync(join(dir, file), "utf8"));
   }
   return db;
@@ -56,7 +56,7 @@ export async function createUser(db: Db, name: string, opts: { admin?: boolean; 
   if (!opts.incomplete) {
     await db.query(
       `update public.profiles
-          set first_name = 'Test', last_name = $2, phone = '555-0100', skill_level = 'some',
+          set first_name = 'Test', last_name = $2, phone = '555-0100', skill_level = 2,
               attended_before = false, media_consent = true, waiver_accepted_at = now(), waiver_version = 'test'
         where id = $1`,
       [id, name],

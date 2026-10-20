@@ -4,7 +4,8 @@ import type { ReactNode } from "react";
 import { OptionMark } from "@/components/option-mark";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Avatar, Mark } from "@/components/ui";
-import { HEARD_LABELS, OPTION_LABELS, SKILL_LABELS } from "@/lib/profile";
+import { SkillBadge } from "@/components/skill-rank";
+import { HEARD_LABELS, OPTION_LABELS } from "@/lib/profile";
 import type { Profile, Registration } from "@/lib/types";
 
 export type PlayerDetailsData = {
@@ -158,7 +159,7 @@ export function PlayerDetails({
 
         <Section title="About them">
           <Rows>
-            <Row label="Skill">{p.skill_level ? SKILL_LABELS[p.skill_level] : null}</Row>
+            <Row label="Their pick">{p.skill_level ? <SkillBadge value={p.skill_level} /> : null}</Row>
             {rating && (
               <Row label="Host rating">
                 {rating}

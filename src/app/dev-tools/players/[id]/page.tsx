@@ -6,7 +6,8 @@ import { SignupRow } from "@/components/signup-row";
 import { Avatar, BackLink, EmptyState, Mark, PageSpinner, reveal, Sheet } from "@/components/ui";
 import { requireDevTools } from "@/lib/auth";
 import { formatDateTime, formatMoney } from "@/lib/format";
-import { HEARD_LABELS, profileComplete, SKILL_LABELS } from "@/lib/profile";
+import { HEARD_LABELS, profileComplete } from "@/lib/profile";
+import { skillName } from "@/lib/skill";
 import { signupView } from "@/lib/signups";
 import { createAdminClient } from "@/lib/supabase/server";
 import type { Payment, Profile, Registration, Session } from "@/lib/types";
@@ -70,7 +71,7 @@ async function PlayerView({ params }: { params: PageProps<"/dev-tools/players/[i
     ["Full name", [p.first_name, p.last_name].filter(Boolean).join(" ") || "—"],
     ["Email", p.email],
     ["Phone", p.phone ?? "—"],
-    ["Skill", p.skill_level ? SKILL_LABELS[p.skill_level] : "—"],
+    ["Skill", skillName(p.skill_level) ?? "—"],
     ["e-Transfer names", p.etransfer_names.join(", ") || "—"],
     ["Heard about us", p.heard_about ? (p.heard_about === "other" ? `Other: ${p.heard_about_other ?? ""}` : HEARD_LABELS[p.heard_about]) : "—"],
     ["Waiver", p.waiver_accepted_at ? `Signed ${formatDateTime(p.waiver_accepted_at)} (${p.waiver_version})` : "Not signed"],

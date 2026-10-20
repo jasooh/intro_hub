@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { getProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { HEARD_LABELS, OPTION_LABELS, SKILL_LABELS } from "@/lib/profile";
+import { HEARD_LABELS, OPTION_LABELS } from "@/lib/profile";
+import { skillName } from "@/lib/skill";
 import type { Payment, Profile, Registration, Session } from "@/lib/types";
 
 function csvCell(value: unknown) {
@@ -51,7 +52,7 @@ export async function GET(_request: Request, ctx: RouteContext<"/admin/sessions/
       (r.amount_cents / 100).toFixed(2),
       r.status,
       r.ref_code,
-      r.profile.skill_level ? SKILL_LABELS[r.profile.skill_level] : "",
+      skillName(r.profile.skill_level) ?? "",
       r.profile.attended_before == null ? "" : r.profile.attended_before ? "yes" : "no",
       r.profile.media_consent == null ? "" : r.profile.media_consent ? "agree" : "DISAGREE",
       r.note,

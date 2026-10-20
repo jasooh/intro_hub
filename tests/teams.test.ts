@@ -6,7 +6,7 @@ const player = (id: string, skill: SkillLevel | null) => ({ id, skill });
 
 describe("balanceTeams", () => {
   it("makes near-equal team sizes and uses everyone once", () => {
-    const players = Array.from({ length: 17 }, (_, i) => player(`p${i}`, "some"));
+    const players = Array.from({ length: 17 }, (_, i) => player(`p${i}`, 3));
     const teams = balanceTeams(players, 3);
     expect(teams.map((t) => t.length).sort()).toEqual([5, 6, 6]);
     expect(new Set(teams.flat().map((p) => p.id)).size).toBe(17);
@@ -14,18 +14,18 @@ describe("balanceTeams", () => {
 
   it("spreads experienced players across teams instead of stacking one", () => {
     const players = [
-      ...["e1", "e2", "e3"].map((id) => player(id, "experienced")),
-      ...["n1", "n2", "n3", "n4", "n5", "n6"].map((id) => player(id, "never")),
+      ...["e1", "e2", "e3"].map((id) => player(id, 5)),
+      ...["n1", "n2", "n3", "n4", "n5", "n6"].map((id) => player(id, 1)),
     ];
     const teams = balanceTeams(players, 3, () => 0.5);
     for (const team of teams) {
-      expect(team.filter((p) => p.skill === "experienced")).toHaveLength(1);
-      expect(team.filter((p) => p.skill === "never")).toHaveLength(2);
+      expect(team.filter((p) => p.skill === 5)).toHaveLength(1);
+      expect(team.filter((p) => p.skill === 1)).toHaveLength(2);
     }
   });
 
   it("deals in snake order so the first pick doesn't also get the next best", () => {
-    const skills: SkillLevel[] = ["experienced", "experienced", "some", "some", "never", "never"];
+    const skills: SkillLevel[] = [5, 5, 3, 3, 1, 1];
     const players = skills.map((s, i) => player(`p${i}`, s));
     const teams = balanceTeams(players, 2, () => 0.5);
     // Round 1: p0 -> A, p1 -> B; round 2 reversed: p2 -> B, p3 -> A.
@@ -46,7 +46,7 @@ describe("defaultTeamCount", () => {
 });
 
 describe("balanceTeams with team requests", () => {
-  const skills: SkillLevel[] = ["experienced", "some", "never", "some", "experienced", "never"];
+  const skills: SkillLevel[] = [5, 3, 1, 3, 5, 1];
   const roster = (count: number) => Array.from({ length: count }, (_, i) => player(`p${i}`, skills[i % skills.length]));
   const teamOf = (teams: { id: string }[][], id: string) => teams.findIndex((t) => t.some((p) => p.id === id));
 

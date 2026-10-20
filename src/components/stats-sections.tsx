@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { Scoreboard, ScoreboardRow, Sheet } from "@/components/ui";
 import { formatMoney } from "@/lib/format";
-import { HEARD_LABELS, OPTION_LABELS, SKILL_LABELS } from "@/lib/profile";
+import { HEARD_LABELS, OPTION_LABELS } from "@/lib/profile";
+import { SKILL_RANKS } from "@/lib/skill";
 import {
   averageFillMinutes,
   busiestWindow,
@@ -237,7 +238,10 @@ export function GrowthSection({ stats }: { stats: Stats }) {
           <BarList rows={byCount(g.heard_about, HEARD_LABELS)} empty="No new players in this range." />
         </Sheet>
         <Sheet label="Skill levels">
-          <BarList rows={byCount(g.skill, SKILL_LABELS)} empty="No one played in this range." />
+          <BarList
+            rows={[...SKILL_RANKS.map((r) => ({ label: `${r.value} · ${r.label}`, value: g.skill[String(r.value)] ?? 0 })), ...(g.skill.unknown ? [{ label: "Didn't say", value: g.skill.unknown }] : [])]}
+            empty="No one played in this range."
+          />
         </Sheet>
       </div>
       <Sheet label="Bring a Friend">

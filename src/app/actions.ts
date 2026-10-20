@@ -191,7 +191,7 @@ const ProfileForm = z
     last_name: personName("Last name"),
     display_name: required("Display name", 60).transform((v) => v.replace(/\n/g, " ")),
     phone,
-    skill_level: z.enum(["never", "some", "experienced", "prefer_not"], { message: "Please pick your skill level" }),
+    skill_level: z.enum(["1", "2", "3", "4", "5"], { message: "Please pick your skill level" }).transform(Number),
     // Asked once (it decides Bring a Friend); not sent again after it's answered.
     attended_before: z.enum(["yes", "no"]).optional(),
     learning_goals: text(500),

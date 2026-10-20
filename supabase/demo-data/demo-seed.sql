@@ -182,42 +182,42 @@ end $$;
 -- Players
 -------------------------------------------------------------------------------
 create temp table demo_players (
-  n int, key text, first_name text, last_name text, skill text, attended boolean,
+  n int, key text, first_name text, last_name text, skill int, attended boolean,
   heard text, song text, goals text, joined_days int
 ) on commit drop;
 
 insert into demo_players values
-  ( 1, 'maya.tran',      'Maya',    'Tran',      'experienced', true,  'instagram',     'Eye of the Tiger – Survivor',                 'Cleaner overhand serve', 95),
-  ( 2, 'daniel.okafor',  'Daniel',  'Okafor',    'experienced', true,  'word_of_mouth', 'Can''t Hold Us – Macklemore & Ryan Lewis',    'Hitting from the left side', 92),
-  ( 3, 'priya.raman',    'Priya',   'Raman',     'some',        true,  'instagram',     'Dancing Queen – ABBA',                        'Getting comfortable setting', 90),
-  ( 4, 'kevin.liu',      'Kevin',   'Liu',       'experienced', true,  'word_of_mouth', null,                                          null, 88),
-  ( 5, 'sofia.martinez', 'Sofia',   'Martinez',  'some',        true,  'instagram',     'Titanium – David Guetta ft. Sia',             'Passing consistency', 50),
-  ( 6, 'arjun.patel',    'Arjun',   'Patel',     'some',        true,  'word_of_mouth', null,                                          'Footwork', 49),
-  ( 7, 'hannah.kim',     'Hannah',  'Kim',       'never',       true,  'javelin',       null,                                          'Learning the rules', 45),
-  ( 8, 'marcus.brown',   'Marcus',  'Brown',     'experienced', true,  'word_of_mouth', 'Lose Yourself – Eminem',                      null, 80),
-  ( 9, 'emily.chen',     'Emily',   'Chen',      'some',        true,  'instagram',     null,                                          'Serving overhand', 75),
-  (10, 'jordan.lee',     'Jordan',  'Lee',       'some',        true,  'other',         null,                                          null, 38),
-  (11, 'mei.chen',       'Mei',     'Chen',      'never',       true,  'instagram',     null,                                          'Just want to have fun and meet people', 35),
-  (12, 'tyler.nguyen',   'Tyler',   'Nguyen',    'experienced', true,  'word_of_mouth', 'Thunderstruck – AC/DC',                       null, 33),
-  (13, 'aisha.mohammed', 'Aisha',   'Mohammed',  'some',        true,  'instagram',     'Run the World (Girls) – Beyoncé',             'Blocking', 30),
-  (14, 'ryan.oconnor',   'Ryan',    'O''Connor', 'some',        true,  'javelin',       null,                                          null, 28),
-  (15, 'grace.wong',     'Grace',   'Wong',      'never',       false, 'word_of_mouth', null,                                          'Never played before, want to learn the basics', 2),
-  (16, 'leo.ferreira',   'Leo',     'Ferreira',  'never',       false, 'instagram',     'September – Earth, Wind & Fire',              'Learn to bump and serve', 1),
-  (17, 'nadia.haddad',   'Nadia',   'Haddad',    'never',       false, 'javelin',       null,                                          'Get some exercise and learn', 1),
-  (18, 'chris.park',     'Chris',   'Park',      'prefer_not',  true,  'word_of_mouth', null,                                          null, 26),
-  (19, 'olivia.smith',   'Olivia',  'Smith',     'some',        true,  'instagram',     'Shake It Off – Taylor Swift',                 null, 25),
-  (20, 'ethan.wilson',   'Ethan',   'Wilson',    'experienced', true,  'word_of_mouth', null,                                          'Running a 5-1', 24),
-  (21, 'zara.ali',       'Zara',    'Ali',       'prefer_not',  true,  'instagram',     null,                                          'Technique, not games yet', 22),
-  (22, 'ben.thompson',   'Ben',     'Thompson',  'never',       true,  'other',         null,                                          null, 20),
-  (23, 'isabel.rossi',   'Isabel',  'Rossi',     'some',        true,  'instagram',     'Mr. Brightside – The Killers',                null, 18),
-  (24, 'sam.rivera',     'Sam',     'Rivera',    'prefer_not',  true,  'word_of_mouth', null,                                          null, 15),
-  (25, 'lucas.martin',   'Lucas',   'Martin',    'never',       true,  'javelin',       null,                                          'Serving', 12),
-  (26, 'julia.novak',    'Julia',   'Novak',     'some',        true,  'instagram',     null,                                          null, 10),
+  ( 1, 'maya.tran',      'Maya',    'Tran',      4, true,  'instagram',     'Eye of the Tiger – Survivor',                 'Cleaner overhand serve', 95),
+  ( 2, 'daniel.okafor',  'Daniel',  'Okafor',    4, true,  'word_of_mouth', 'Can''t Hold Us – Macklemore & Ryan Lewis',    'Hitting from the left side', 92),
+  ( 3, 'priya.raman',    'Priya',   'Raman',     3,        true,  'instagram',     'Dancing Queen – ABBA',                        'Getting comfortable setting', 90),
+  ( 4, 'kevin.liu',      'Kevin',   'Liu',       4, true,  'word_of_mouth', null,                                          null, 88),
+  ( 5, 'sofia.martinez', 'Sofia',   'Martinez',  3,        true,  'instagram',     'Titanium – David Guetta ft. Sia',             'Passing consistency', 50),
+  ( 6, 'arjun.patel',    'Arjun',   'Patel',     3,        true,  'word_of_mouth', null,                                          'Footwork', 49),
+  ( 7, 'hannah.kim',     'Hannah',  'Kim',       1,       true,  'javelin',       null,                                          'Learning the rules', 45),
+  ( 8, 'marcus.brown',   'Marcus',  'Brown',     4, true,  'word_of_mouth', 'Lose Yourself – Eminem',                      null, 80),
+  ( 9, 'emily.chen',     'Emily',   'Chen',      3,        true,  'instagram',     null,                                          'Serving overhand', 75),
+  (10, 'jordan.lee',     'Jordan',  'Lee',       3,        true,  'other',         null,                                          null, 38),
+  (11, 'mei.chen',       'Mei',     'Chen',      1,       true,  'instagram',     null,                                          'Just want to have fun and meet people', 35),
+  (12, 'tyler.nguyen',   'Tyler',   'Nguyen',    4, true,  'word_of_mouth', 'Thunderstruck – AC/DC',                       null, 33),
+  (13, 'aisha.mohammed', 'Aisha',   'Mohammed',  3,        true,  'instagram',     'Run the World (Girls) – Beyoncé',             'Blocking', 30),
+  (14, 'ryan.oconnor',   'Ryan',    'O''Connor', 3,        true,  'javelin',       null,                                          null, 28),
+  (15, 'grace.wong',     'Grace',   'Wong',      1,       false, 'word_of_mouth', null,                                          'Never played before, want to learn the basics', 2),
+  (16, 'leo.ferreira',   'Leo',     'Ferreira',  1,       false, 'instagram',     'September – Earth, Wind & Fire',              'Learn to bump and serve', 1),
+  (17, 'nadia.haddad',   'Nadia',   'Haddad',    1,       false, 'javelin',       null,                                          'Get some exercise and learn', 1),
+  (18, 'chris.park',     'Chris',   'Park',      2,  true,  'word_of_mouth', null,                                          null, 26),
+  (19, 'olivia.smith',   'Olivia',  'Smith',     3,        true,  'instagram',     'Shake It Off – Taylor Swift',                 null, 25),
+  (20, 'ethan.wilson',   'Ethan',   'Wilson',    4, true,  'word_of_mouth', null,                                          'Running a 5-1', 24),
+  (21, 'zara.ali',       'Zara',    'Ali',       2,  true,  'instagram',     null,                                          'Technique, not games yet', 22),
+  (22, 'ben.thompson',   'Ben',     'Thompson',  1,       true,  'other',         null,                                          null, 20),
+  (23, 'isabel.rossi',   'Isabel',  'Rossi',     3,        true,  'instagram',     'Mr. Brightside – The Killers',                null, 18),
+  (24, 'sam.rivera',     'Sam',     'Rivera',    2,  true,  'word_of_mouth', null,                                          null, 15),
+  (25, 'lucas.martin',   'Lucas',   'Martin',    1,       true,  'javelin',       null,                                          'Serving', 12),
+  (26, 'julia.novak',    'Julia',   'Novak',     3,        true,  'instagram',     null,                                          null, 10),
   -- Came for a while this summer, then stopped (Stats -> "Haven't been back").
-  (27, 'nina.kowalski',  'Nina',    'Kowalski',  'some',        true,  'instagram',     'Levitating – Dua Lipa',                       'Better passing', 85),
-  (28, 'omar.siddiqui',  'Omar',    'Siddiqui',  'experienced', true,  'word_of_mouth', null,                                          null, 84),
-  (29, 'rachel.adams',   'Rachel',  'Adams',     'never',       true,  'javelin',       null,                                          'Learn to serve', 80),
-  (30, 'victor.huang',   'Victor',  'Huang',     'some',        true,  'other',         null,                                          null, 78);
+  (27, 'nina.kowalski',  'Nina',    'Kowalski',  3,        true,  'instagram',     'Levitating – Dua Lipa',                       'Better passing', 85),
+  (28, 'omar.siddiqui',  'Omar',    'Siddiqui',  4, true,  'word_of_mouth', null,                                          null, 84),
+  (29, 'rachel.adams',   'Rachel',  'Adams',     1,       true,  'javelin',       null,                                          'Learn to serve', 80),
+  (30, 'victor.huang',   'Victor',  'Huang',     3,        true,  'other',         null,                                          null, 78);
 
 -- auth.users rows (no password, no identity: nobody can sign in as them). The
 -- on_auth_user_created trigger makes each profile.
@@ -511,7 +511,7 @@ begin
   select array_agg(id order by position) into v_teams from public.session_teams where session_id = v_c;
   for rec in
     select g.id, row_number() over (
-             order by case p.skill_level when 'experienced' then 3 when 'some' then 2 when 'never' then 1 else 1.5 end desc,
+             order by coalesce(p.skill_level, 2) desc,
                       p.first_name)::int - 1 as i
       from public.registrations g join public.profiles p on p.id = g.profile_id
      where g.session_id = v_c and g.status = 'confirmed' and g.option = 'full'

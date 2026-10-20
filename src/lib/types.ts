@@ -8,7 +8,8 @@ export type RegistrationStatus = "pending_payment" | "confirmed" | "waitlisted" 
  * instructional = instructional only: no drop-in spot (its own, optionally capped, queue).
  */
 export type SignupOption = "full" | "instructional" | "dropin";
-export type SkillLevel = "never" | "some" | "experienced" | "prefer_not";
+/** 1 (Beginner) to 5 (Advanced). See src/lib/skill.ts. */
+export type SkillLevel = 1 | 2 | 3 | 4 | 5;
 export type HeardAbout = "word_of_mouth" | "instagram" | "javelin" | "other";
 
 export type Profile = {

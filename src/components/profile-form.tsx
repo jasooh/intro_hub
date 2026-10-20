@@ -14,7 +14,8 @@ import {
   WAIVER_PARAGRAPHS,
   WAIVER_VERSION,
 } from "@/lib/agreements";
-import { defaultDisplayName, HEARD_LABELS, SKILL_LABELS, splitFullName } from "@/lib/profile";
+import { SkillLadder } from "@/components/skill-rank";
+import { defaultDisplayName, HEARD_LABELS, splitFullName } from "@/lib/profile";
 import type { Profile } from "@/lib/types";
 
 /** Everything the old Google Form asked, answered once. Used by onboarding and the Account page. */
@@ -77,12 +78,13 @@ export function ProfileForm({
 
       <Group title="About you">
         <div className="space-y-6">
-          <Choice label="What is your current skill level?" required>
-            {Object.entries(SKILL_LABELS).map(([value, label]) => (
-              <Radio key={value} name="skill_level" value={value} defaultChecked={picked("skill_level", value, profile.skill_level === value)} required>
-                {label}
-              </Radio>
-            ))}
+          <Choice label="Where are you at right now?" required>
+            <p className="pb-1 text-sm text-ink-soft">Pick the closest. It helps us make even teams, and you can change it any time.</p>
+            <SkillLadder
+              name="skill_level"
+              defaultValue={v ? Number(v.skill_level) || null : profile.skill_level}
+              required
+            />
           </Choice>
           {profile.attended_before == null ? (
             <Choice label="Have you attended this class before?" required>

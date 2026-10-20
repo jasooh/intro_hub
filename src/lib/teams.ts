@@ -1,32 +1,12 @@
 import type { SkillLevel } from "@/lib/types";
-
-// Higher = more experienced. "Prefer not to say" sits in the middle.
-const SKILL_RANK: Record<SkillLevel | "unknown", number> = {
-  experienced: 3,
-  some: 2,
-  prefer_not: 1.5,
-  unknown: 1.5,
-  never: 1,
-};
+import { DEFAULT_SKILL } from "@/lib/skill";
 
 /** `rating`: a host's 1–5 rating, used in place of the self-reported `skill` when set. */
 type Player = { id: string; skill: SkillLevel | null; rating?: number | null };
 
-/** Host ratings, weakest first. Players never see these. */
-export const HOST_RATINGS = [
-  { value: 1, label: "Beginner" },
-  { value: 2, label: "Learning" },
-  { value: 3, label: "Comfortable" },
-  { value: 4, label: "Strong" },
-  { value: 5, label: "Advanced" },
-] as const;
-
-/** Where each self-reported level sits on the hosts' 1–5 scale. "Prefer not to say" counts as 2. */
-const SELF_LEVEL: Record<SkillLevel | "unknown", number> = { never: 1, prefer_not: 2, unknown: 2, some: 3, experienced: 5 };
-
 /** A player's level on the 1–5 scale: the host's rating if there is one, else what they picked. */
-export function skillLevel(skill: SkillLevel | null, rating?: number | null) {
-  return rating ?? SELF_LEVEL[skill ?? "unknown"];
+export function skillLevel(skill: SkillLevel | null, rating?: number | null): number {
+  return rating ?? skill ?? DEFAULT_SKILL;
 }
 
 /** Most teammates one player can ask for: enough to bring a whole team. Also enforced in set_team_requests(). */
@@ -40,8 +20,7 @@ export function defaultTeamCount(capacity: number) {
   return Math.max(2, Math.round(capacity / 6));
 }
 
-// The 1–5 scale maps onto the self-reported ranks: 1 → 1, 3 → 2 ("some"), 5 → 3 ("experienced").
-const rank = (p: Player) => (p.rating ? (p.rating + 1) / 2 : SKILL_RANK[p.skill ?? "unknown"]);
+const rank = (p: Player) => skillLevel(p.skill, p.rating);
 
 /**
  * Who ends up together: anyone linked by a request (either direction, chains

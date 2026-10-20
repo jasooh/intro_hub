@@ -34,19 +34,19 @@ describe("court mode", () => {
 
 describe("host ratings", () => {
   it("replace the player's own pick", () => {
-    expect(skillLevel("experienced", null)).toBe(5);
-    expect(skillLevel("experienced", 2)).toBe(2);
+    expect(skillLevel(5, null)).toBe(5);
+    expect(skillLevel(5, 2)).toBe(2);
     expect(skillLevel(null, null)).toBe(2);
   });
 
   it("change how teams balance", () => {
-    // Two said "experienced"; the host rated one of them a beginner, so the two
+    // Two said 5; the host rated one of them a beginner, so the two
     // strongest by rating (a, c) end up apart.
     const players = [
-      { id: "a", skill: "experienced" as const, rating: 5 },
-      { id: "b", skill: "experienced" as const, rating: 1 },
-      { id: "c", skill: "never" as const, rating: 5 },
-      { id: "d", skill: "never" as const, rating: 1 },
+      { id: "a", skill: 5 as const, rating: 5 },
+      { id: "b", skill: 5 as const, rating: 1 },
+      { id: "c", skill: 1 as const, rating: 5 },
+      { id: "d", skill: 1 as const, rating: 1 },
     ];
     const teams = balanceTeams(players, 2, () => 0.5);
     const teamOf = (id: string) => teams.findIndex((t) => t.some((p) => p.id === id));
