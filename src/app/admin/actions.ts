@@ -602,7 +602,10 @@ export async function renameTeam(teamId: string, sessionId: string, formData: Fo
 
 export async function moveToTeam(registrationId: string, sessionId: string, formData: FormData) {
   await requireAdmin();
-  const teamId = String(formData.get("team_id") ?? "") || null;
+  const picked = String(formData.get("team_id") ?? "");
+  // "" = no team; anything else must be a team id (never the picker's "Move" placeholder).
+  if (picked && !z.string().uuid().safeParse(picked).success) return;
+  const teamId = picked || null;
   const supabase = await createClient();
   const { error } = await supabase.from("registrations").update({ team_id: teamId }).eq("id", registrationId);
   if (error) fail(`/admin/sessions/${sessionId}`, error.message);

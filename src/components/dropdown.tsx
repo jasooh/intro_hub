@@ -75,13 +75,13 @@ export function Dropdown({
     };
   }, [open]);
 
-  // Tell the form a field changed (SubmitButton requireChange), or submit it.
-  const first = useRef(true);
+  // Tell the form a field changed (SubmitButton requireChange), or submit it. Compared
+  // with the last value reported, not "first run", so React's double-run of effects
+  // in development can't submit the starting value.
+  const reported = useRef(defaultValue);
   useEffect(() => {
-    if (first.current) {
-      first.current = false;
-      return;
-    }
+    if (value === reported.current) return;
+    reported.current = value;
     root.current?.dispatchEvent(new Event("change", { bubbles: true }));
     if (submitOnChange) root.current?.closest("form")?.requestSubmit();
   }, [value, submitOnChange]);
@@ -144,9 +144,9 @@ export function Dropdown({
         onClick={() => (open ? close() : openList())}
         onKeyDown={keys}
         onBlur={(e) => {
-          // Close when focus leaves for something outside the list.
+          // Close when focus leaves for something outside the open panel (its search box counts as inside).
           const to = e.relatedTarget as Node | null;
-          if (!to || !document.getElementById(listId)?.contains(to)) setTimeout(() => setOpen(false), 120);
+          if (!to || !document.getElementById(`${listId}-panel`)?.contains(to)) setTimeout(() => setOpen(false), 120);
         }}
         className={`w-full ${LOOKS[look]}`}
       >
@@ -158,6 +158,7 @@ export function Dropdown({
         rect &&
         createPortal(
           <div
+            id={`${listId}-panel`}
             style={{ left: rect.left, top: rect.top, width: rect.width }}
             className="fixed z-40 border-2 border-ink bg-[#fbf3e3] font-sans text-base font-normal tracking-normal normal-case shadow-[4px_4px_0_var(--ink)]"
           >
@@ -173,7 +174,12 @@ export function Dropdown({
                   setCursor(0);
                 }}
                 onKeyDown={keys}
-                onBlur={() => setTimeout(() => setOpen(false), 150)}
+                onBlur={(e) => {
+                  const to = e.relatedTarget as Node | null;
+                  if (to !== button.current && !document.getElementById(`${listId}-panel`)?.contains(to)) {
+                    setTimeout(() => setOpen(false), 150);
+                  }
+                }}
                 className="w-full border-0 border-b-2 border-ink/20 bg-transparent px-3 py-2 focus:border-line focus:ring-0"
               />
             )}
