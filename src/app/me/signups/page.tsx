@@ -14,6 +14,7 @@ const VIEWS: SignupView[] = ["upcoming", "past", "cancelled"];
 const OPTION_CHIPS: { key: OptionFilter; label: string }[] = [
   { key: "any", label: "Any" },
   { key: "full", label: OPTION_LABELS.full },
+  { key: "dropin", label: OPTION_LABELS.dropin },
   { key: "instructional", label: OPTION_LABELS.instructional },
 ];
 

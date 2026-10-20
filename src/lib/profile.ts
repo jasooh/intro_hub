@@ -18,6 +18,7 @@ export const HEARD_LABELS: Record<HeardAbout, string> = {
 export const OPTION_LABELS: Record<SignupOption, string> = {
   full: "Instructional + Drop-in",
   instructional: "Instructional only",
+  dropin: "Drop-in only",
 };
 
 /** Everything sign-up needs. Mirrors public._profile_complete() plus the current waiver version. */

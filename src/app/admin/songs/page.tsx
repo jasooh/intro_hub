@@ -1,32 +1,68 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { Avatar, EmptyState, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
+import { ListFilters } from "@/components/list-filters";
+import { PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { env } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import type { Profile } from "@/lib/types";
+import { SongList, type SongRow } from "./song-list";
+
+const TABS = [
+  { key: "to_add", label: "To add" },
+  { key: "added", label: "Added" },
+  { key: "all", label: "All" },
+] as const;
+type View = (typeof TABS)[number]["key"];
 
 export const metadata: Metadata = {
   title: "Songs",
 };
 
-export default function SongsPage() {
+export default function SongsPage(props: PageProps<"/admin/songs">) {
   return (
     <Suspense fallback={<PageSpinner />}>
-      <Songs />
+      <Songs searchParams={props.searchParams} />
     </Suspense>
   );
 }
 
-async function Songs() {
+async function Songs({ searchParams }: { searchParams: PageProps<"/admin/songs">["searchParams"] }) {
   await requireAdmin();
+  const params = await searchParams;
+  const view: View = TABS.find((t) => t.key === params.view)?.key ?? "to_add";
+  const q = typeof params.q === "string" ? params.q.trim().toLowerCase() : "";
+
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("profiles")
-    .select("id, display_name, full_name, avatar_url, hype_song")
-    .not("hype_song", "is", null)
-    .order("display_name");
-  const rows = (data ?? []) as Pick<Profile, "id" | "display_name" | "full_name" | "avatar_url" | "hype_song">[];
+  const [{ data }, { data: checked }] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("id, display_name, full_name, avatar_url, hype_song")
+      .not("hype_song", "is", null)
+      .order("display_name"),
+    supabase.from("song_checklist").select("profile_id, song, checked_at"),
+  ]);
+  const ticked = new Map(
+    ((checked ?? []) as { profile_id: string; song: string; checked_at: string }[]).map((c) => [c.profile_id, c]),
+  );
+  // A song counts as added only while it's the one that was ticked off.
+  const rows: SongRow[] = (
+    (data ?? []) as Pick<Profile, "id" | "display_name" | "full_name" | "avatar_url" | "hype_song">[]
+  ).map((p) => {
+    const song = p.hype_song ?? "";
+    const tick = ticked.get(p.id);
+    return {
+      id: p.id,
+      name: p.display_name ?? p.full_name ?? "Player",
+      avatar_url: p.avatar_url,
+      song,
+      added_at: tick && tick.song === song ? tick.checked_at : null,
+    };
+  });
+  const matching = rows.filter((r) => !q || `${r.song} ${r.name}`.toLowerCase().includes(q));
+  const count = (v: View) => matching.filter((r) => v === "all" || (v === "added") === (r.added_at !== null)).length;
+  const shown = matching.filter((r) => view === "all" || (view === "added") === (r.added_at !== null));
+  const toAdd = rows.filter((r) => r.added_at === null).length;
   const playlist = env.spotifyPlaylistUrl();
 
   return (
@@ -48,25 +84,26 @@ async function Songs() {
       >
         Songs
       </PageTitle>
-      <Sheet label={`Requests · ${rows.length}`} className="reveal" style={reveal(1)}>
-        {rows.length === 0 ? (
-          <EmptyState>No song requests yet</EmptyState>
-        ) : (
-          <ul className="divide-y divide-ink/20">
-            {rows.map((r) => {
-              const name = r.display_name ?? r.full_name ?? "Player";
-              return (
-                <li key={r.id} className="flex items-center gap-3 py-3">
-                  <Avatar name={name} src={r.avatar_url} size={28} />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-display text-xl font-extrabold uppercase">{r.hype_song}</span>
-                    <span className="block truncate text-sm text-ink-soft">{name}</span>
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
+      <Sheet label={`To add · ${toAdd}`} className="reveal" style={reveal(1)}>
+        <ListFilters
+          path="/admin/songs"
+          tabs={{ param: "view", value: view, options: TABS.map((t) => ({ ...t, count: count(t.key) })) }}
+          q={typeof params.q === "string" ? params.q : ""}
+          placeholder="Search song or player"
+        >
+          <SongList
+            rows={shown}
+            empty={
+              rows.length === 0
+                ? "No song requests yet"
+                : q
+                  ? "No songs match"
+                  : view === "to_add"
+                    ? "All caught up"
+                    : "Nothing here"
+            }
+          />
+        </ListFilters>
       </Sheet>
     </div>
   );

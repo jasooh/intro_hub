@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import { OptionMark } from "@/components/option-mark";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import {
+  addPlayer,
   cancelSession,
   emailRoster,
   markPaid,
@@ -33,9 +35,11 @@ import { formatDateTime, formatMoney, formatTime, pad2 } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import { DateBlock } from "@/components/session-card";
 import { PlayerDetails } from "@/components/player-details";
-import type { Match, Payment, Profile, Registration, Session, Team } from "@/lib/types";
+import type { Match, Payment, Profile, Registration, Session, SignupOption, Team } from "@/lib/types";
+import { offeredOptions, optionPrice, usesSpot } from "@/lib/options";
 import { AUDIENCE_LABELS, AUDIENCES, audienceOf, type Audience } from "@/lib/audiences";
 import { SessionForm } from "../session-form";
+import { AddPlayerForm, type AddablePlayer } from "./add-player-form";
 import { RosterEmailForm } from "./roster-email-form";
 import { TeamsBoard, type TeamRow } from "./teams-board";
 
@@ -64,7 +68,14 @@ async function AdminSession({
   const { id } = await params;
   const supabase = await createClient();
 
-  const [{ data: session }, { data: regs }, { data: teamRows }, { data: matchRows }, { data: messageRows }] = await Promise.all([
+  const [
+    { data: session },
+    { data: regs },
+    { data: teamRows },
+    { data: matchRows },
+    { data: messageRows },
+    { data: playerRows },
+  ] = await Promise.all([
     supabase.from("sessions").select("*").eq("id", id).maybeSingle<Session>(),
     supabase
       .from("registrations")
@@ -78,6 +89,7 @@ async function AdminSession({
       .select("id, subject, audiences, recipient_count, created_at")
       .eq("session_id", id)
       .order("created_at", { ascending: false }),
+    supabase.from("profiles").select("id, display_name, full_name, email").order("display_name").limit(2000),
   ]);
   if (!session) notFound();
   const teams = (teamRows ?? []) as Team[];
@@ -117,7 +129,9 @@ async function AdminSession({
     .flatMap((r) => r.payments)
     .filter((p) => p.matched_by !== "admin")
     .reduce((sum, p) => sum + p.amount_cents, 0);
-  const dropIn = going.filter((r) => r.option === "full");
+  const dropIn = going.filter((r) => usesSpot(r.option));
+  const waitingSpots = waiting.filter((r) => usesSpot(r.option));
+  const waitingInstructional = waiting.filter((r) => !usesSpot(r.option));
   const confirmedCount = dropIn.filter((r) => r.status === "confirmed").length;
   const holdingCount = dropIn.length - confirmedCount;
   const instructionalCount = going.length - dropIn.length;
@@ -129,6 +143,20 @@ async function AdminSession({
     if (a) audienceCounts[a] += 1;
   }
   const messages = (messageRows ?? []) as SentMessage[];
+  const activeIds = new Set(rows.filter((r) => r.status !== "expired" && r.status !== "cancelled").map((r) => r.profile_id));
+  const addable: AddablePlayer[] = (playerRows ?? [])
+    .filter((p) => !activeIds.has(p.id))
+    .map((p) => ({ id: p.id, name: p.display_name ?? p.full_name ?? p.email, email: p.email.endsWith(".invalid") ? "guest" : p.email }));
+  const offered = offeredOptions(session);
+  const addFull = {
+    full: dropIn.length >= session.capacity,
+    dropin: dropIn.length >= session.capacity,
+    instructional: session.instructional_capacity != null && instructionalCount >= session.instructional_capacity,
+  };
+  const addPrices = Object.fromEntries(offered.map((o) => [o, formatMoney(optionPrice(session, o))])) as Record<
+    SignupOption,
+    string
+  >;
 
   return (
     <div className="space-y-12">
@@ -168,8 +196,17 @@ async function AdminSession({
           <Scoreboard size="sm" className="w-full" value={`${pad2(confirmedCount)}/${pad2(session.capacity)}`} label="Confirmed" />
           <Scoreboard size="sm" className="w-full" value={pad2(holdingCount)} label="Awaiting pay" />
           <Scoreboard size="sm" className="w-full" value={pad2(waiting.length)} label="Waitlist" />
-          {instructionalCount > 0 && (
-            <Scoreboard size="sm" className="w-full" value={pad2(instructionalCount)} label="Instr. only" />
+          {(instructionalCount > 0 || session.instructional_price_cents != null) && (
+            <Scoreboard
+              size="sm"
+              className="w-full"
+              value={
+                session.instructional_capacity != null
+                  ? `${pad2(instructionalCount)}/${pad2(session.instructional_capacity)}`
+                  : pad2(instructionalCount)
+              }
+              label="Instr. only"
+            />
           )}
           <Scoreboard size="sm" className="w-full" value={formatMoney(collected)} label="e-Transfers in" />
         </ScoreboardRow>
@@ -227,6 +264,25 @@ async function AdminSession({
         </ul>
       </Sheet>
 
+      {!cancelled && (
+        <details className="group space-y-6">
+          <summary className="flex cursor-pointer list-none flex-wrap items-end gap-x-3 gap-y-1 border-b-2 border-ink">
+            <span className="inline-flex items-center gap-2.5 bg-ink px-3 pt-1.5 pb-1 font-display text-sm font-bold tracking-[0.2em] whitespace-nowrap text-maple uppercase">
+              <span aria-hidden className="text-line transition-transform group-open:rotate-90">▸</span>
+              Add player
+            </span>
+            <span className="pb-1 text-sm text-ink-soft">Walk-ins, people who messaged you, guests without an account</span>
+          </summary>
+          <AddPlayerForm
+            action={addPlayer.bind(null, id)}
+            players={addable}
+            options={offered}
+            prices={addPrices}
+            full={addFull}
+          />
+        </details>
+      )}
+
       {!cancelled && <TeamsBoard
           session={session}
           players={dropIn as TeamRow[]}
@@ -237,39 +293,52 @@ async function AdminSession({
 
       <Sheet label={`Waitlist · ${waiting.length}`} className="reveal" style={reveal(3)}>
         {waiting.length === 0 && <p className="text-ink-soft">Nobody waiting.</p>}
-        <ol className="divide-y divide-ink/20">
-          {waiting.map((r, i) => (
-            <PlayerRow key={r.id} reg={r} sessionId={id} friendNote={friendNoteOf(r)} prefix={pad2(i + 1)}>
-              <form action={moveWaitlist.bind(null, r.id, -1, id)}>
-                <SubmitButton size="sm" variant="ghost">↑</SubmitButton>
-              </form>
-              <form action={moveWaitlist.bind(null, r.id, 1, id)}>
-                <SubmitButton size="sm" variant="ghost">↓</SubmitButton>
-              </form>
-              <form action={markPaid.bind(null, r.id, id)}>
-                <SubmitButton
-                  size="sm"
-                  variant="secondary"
-                  confirm={{
-                    title: `Add ${name(r)} as paid?`,
-                    description: "They'll be confirmed straight from the waitlist, even if the session is already full.",
-                  }}
-                >
-                  Add as paid
-                </SubmitButton>
-              </form>
-              <form action={removeRegistration.bind(null, r.id, id)}>
-                <SubmitButton
-                  size="sm"
-                  variant="danger"
-                  confirm={{ title: `Remove ${name(r)} from the waitlist?`, description: "They'll lose their place in line." }}
-                >
-                  Remove
-                </SubmitButton>
-              </form>
-            </PlayerRow>
+        {[
+          { label: null, list: waitingSpots },
+          { label: "Instructional only", list: waitingInstructional },
+        ]
+          .filter((q) => q.list.length > 0)
+          .map((q) => (
+            <div key={q.label ?? "spots"} className="space-y-1">
+              {q.label && waitingSpots.length > 0 && (
+                <p className="pt-4 font-display text-sm font-bold tracking-[0.2em] text-ink-soft uppercase">{q.label} queue</p>
+              )}
+              <ol className="divide-y divide-ink/20">
+                {q.list.map((r, i) => (
+                <PlayerRow key={r.id} reg={r} sessionId={id} friendNote={friendNoteOf(r)} prefix={pad2(i + 1)}>
+                  <form action={moveWaitlist.bind(null, r.id, -1, id)}>
+                    <SubmitButton size="sm" variant="ghost">↑</SubmitButton>
+                  </form>
+                  <form action={moveWaitlist.bind(null, r.id, 1, id)}>
+                    <SubmitButton size="sm" variant="ghost">↓</SubmitButton>
+                  </form>
+                  <form action={markPaid.bind(null, r.id, id)}>
+                    <SubmitButton
+                      size="sm"
+                      variant="secondary"
+                      confirm={{
+                        title: `Add ${name(r)} as paid?`,
+                        description:
+                      "They'll be confirmed straight from the waitlist. If the session is full, it gets one more spot for them.",
+                      }}
+                    >
+                      Add as paid
+                    </SubmitButton>
+                  </form>
+                  <form action={removeRegistration.bind(null, r.id, id)}>
+                    <SubmitButton
+                      size="sm"
+                      variant="danger"
+                      confirm={{ title: `Remove ${name(r)} from the waitlist?`, description: "They'll lose their place in line." }}
+                    >
+                      Remove
+                    </SubmitButton>
+                  </form>
+                </PlayerRow>
+                ))}
+              </ol>
+            </div>
           ))}
-        </ol>
       </Sheet>
 
       {inactive.length > 0 && (
@@ -437,9 +506,10 @@ function PlayerRow({
             ))}
         </p>
         <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
-          {reg.option === "instructional" && (
-            <Mark tone="mat" glyph="◇">
-              Instructional only
+          <OptionMark option={reg.option} />
+          {reg.profile.guest && (
+            <Mark tone="muted" glyph="○">
+              Guest · added by host
             </Mark>
           )}
           {reg.profile.attended_before === false && (

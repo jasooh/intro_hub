@@ -9,6 +9,7 @@ const session = {
   ends_at: "2026-11-01T00:00:00.000Z",
   location: "Aaniin Community Centre, 5665 14th Ave, Markham",
   instructional_ends_at: "2026-10-31T23:00:00.000Z",
+  dropin_starts_at: "2026-10-31T23:15:00.000Z",
 };
 
 describe("sessionIcs", () => {
@@ -27,9 +28,16 @@ describe("sessionIcs", () => {
   });
 
   it("ends at the lesson for instructional-only players", () => {
-    const instr = sessionIcs(session, "https://example.com/s/abc", { instructionalOnly: true });
+    const instr = sessionIcs(session, "https://example.com/s/abc", { option: "instructional" });
     expect(instr).toContain("DTEND:20261031T230000Z");
     expect(instr).toContain("SUMMARY:Intro 2 Volleyball (Instructional only)\r\n");
+  });
+
+  it("starts at drop-in for drop-in-only players", () => {
+    const dropin = sessionIcs(session, "https://example.com/s/abc", { option: "dropin" });
+    expect(dropin).toContain("DTSTART:20261031T231500Z");
+    expect(dropin).toContain("DTEND:20261101T000000Z");
+    expect(dropin).toContain("(Drop-in only)");
   });
 
   it("adds the club name only when the title doesn't have it", () => {

@@ -1,7 +1,7 @@
 import { LocationInput } from "@/components/location-input";
 import { SubmitButton } from "@/components/submit-button";
 import { Field, FormGroup as Group, inputClass } from "@/components/ui";
-import { utcToZonedLocal } from "@/lib/format";
+import { formatDateTime, utcToZonedLocal } from "@/lib/format";
 import type { Session } from "@/lib/types";
 
 export function SessionForm({
@@ -109,6 +109,31 @@ export function SessionForm({
               className={inputClass}
             />
           </Field>
+          <Field label="Instructional spots" hint="Blank = no limit. Past it, a separate waitlist.">
+            <input
+              type="number"
+              name="instructional_capacity"
+              min={1}
+              max={200}
+              defaultValue={session?.instructional_capacity ?? ""}
+              className={inputClass}
+            />
+          </Field>
+        </div>
+      </Group>
+
+      <Group title="Drop-in only option" hint="Games only, no lesson. Uses a drop-in spot. Leave blank if you don't offer it.">
+        <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-3">
+          <Field label="Price ($)">
+            <input
+              type="number"
+              name="dropin_price"
+              step="0.01"
+              min={0}
+              defaultValue={session?.dropin_price_cents != null ? session.dropin_price_cents / 100 : ""}
+              className={inputClass}
+            />
+          </Field>
         </div>
       </Group>
 
@@ -130,6 +155,23 @@ export function SessionForm({
             <input type="number" name="cancel_cutoff_hours" defaultValue={cutoffHours} min={0} required className={inputClass} />
           </Field>
         </div>
+        <label className="mt-5 flex items-start gap-3">
+          <input
+            type="checkbox"
+            name="announce"
+            defaultChecked={session?.announce ?? true}
+            disabled={Boolean(session?.announced_at)}
+            className="mt-1 size-5 shrink-0 accent-[var(--line)]"
+          />
+          <span>
+            <b>Email players when sign-ups open</b>
+            <span className="block text-sm text-ink-soft">
+              {session?.announced_at
+                ? `Sent ${formatDateTime(session.announced_at)}.`
+                : "One email, with the notes below, to everyone who gets announcements."}
+            </span>
+          </span>
+        </label>
       </Group>
 
       <Group title="Notes">

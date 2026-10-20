@@ -506,3 +506,87 @@ export function buildSessionMessageEmail({
     ),
   };
 }
+
+// ---------------------------------------------------------------------------
+// Sign-ups are open (sent to everyone who gets announcements)
+// ---------------------------------------------------------------------------
+
+export function buildSessionOpenEmail({
+  playerName,
+  sessionTitle,
+  when,
+  location,
+  options,
+  deposit,
+  spotsLeft,
+  notes,
+  sessionUrl,
+  profileUrl,
+}: {
+  playerName: string;
+  sessionTitle: string;
+  when: string;
+  location: string;
+  /** Each sign-up option: label, price, and its times. */
+  options: { label: string; price: string; time: string | null }[];
+  /** Free session with a refundable deposit (formatted), or null. */
+  deposit: string | null;
+  spotsLeft: number;
+  /** The host's notes on the session. */
+  notes: string | null;
+  sessionUrl: string;
+  profileUrl: string;
+}): Built {
+  return {
+    subject: `Sign-ups open: ${sessionTitle} (${when})`,
+    element: (
+      <Layout
+        preview={`${spotsLeft} spots · ${when} at ${location}`}
+        eyebrow="Sign-ups are open"
+        footerNote={
+          <>
+            Don&apos;t want these? Turn off announcement emails in{" "}
+            <Link href={profileUrl} style={s.footerLink}>
+              your profile
+            </Link>
+            . You&apos;ll still get emails about your own sign-ups.
+          </>
+        }
+      >
+        <Title>{sessionTitle}</Title>
+        <Text style={s.text}>Hi {playerName},</Text>
+        <Text style={s.text}>
+          Sign-ups are open for <b>{when}</b> at{" "}
+          <Link href={mapUrl(location)} style={{ color: c.ink, textDecoration: "underline", textDecorationColor: c.line }}>
+            {location}
+          </Link>
+          . <b>{spotsLeft}</b> drop-in spot{spotsLeft === 1 ? "" : "s"} left. Spots go first come, first served.
+        </Text>
+        <Section style={s.board}>
+          {deposit ? (
+            <Text style={s.boardText}>
+              Free session · <b>{deposit}</b> refundable deposit to hold your spot
+            </Text>
+          ) : (
+            options.map((o) => (
+              <Text key={o.label} style={{ ...s.boardText, margin: "0 0 6px" }}>
+                <span style={s.step}>{o.price}</span>&nbsp; {o.label}
+                {o.time ? ` · ${o.time}` : ""}
+              </Text>
+            ))
+          )}
+        </Section>
+        {notes && (
+          <Section style={s.note}>
+            <Text style={{ ...s.text, margin: 0, whiteSpace: "pre-line" }}>
+              <b>From the host:</b> {notes}
+            </Text>
+          </Section>
+        )}
+        <Button href={sessionUrl} style={s.button}>
+          Sign up
+        </Button>
+      </Layout>
+    ),
+  };
+}

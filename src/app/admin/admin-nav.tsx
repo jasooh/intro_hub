@@ -11,6 +11,7 @@ const links = [
   { href: "/admin/updates", label: "Updates" },
   { href: "/admin/templates", label: "Weekly schedule" },
   { href: "/admin/songs", label: "Songs" },
+  { href: "/admin/feedback", label: "Feedback" },
 ] as const;
 
 export function AdminNav() {

@@ -16,7 +16,7 @@ import type { Profile, Registration, Session } from "@/lib/types";
 const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 type Recipient = Pick<Registration, "id" | "status" | "option"> & {
-  profile: Pick<Profile, "id" | "email" | "display_name" | "full_name">;
+  profile: Pick<Profile, "id" | "email" | "display_name" | "full_name" | "guest">;
 };
 
 /** Sends a saved session message to everyone in its audiences, one at a time (Gmail throttles bursts). */
@@ -32,13 +32,14 @@ export async function sendSessionMessage(messageId: string): Promise<void> {
 
   const { data: regs, error: regError } = await admin
     .from("registrations")
-    .select("id, status, option, profile:profiles(id, email, display_name, full_name)")
+    .select("id, status, option, profile:profiles(id, email, display_name, full_name, guest)")
     .eq("session_id", message.session.id);
   if (regError) throw regError;
 
   const appUrl = env.appUrl();
   const bodyHtml = sanitizePostHtml(message.body_html);
   const recipients = ((regs ?? []) as unknown as Recipient[]).filter((r) => {
+    if (r.profile.guest || r.profile.email.endsWith(".invalid")) return false; // added by a host, no inbox
     const audience = audienceOf(r);
     return audience != null && message.audiences.includes(audience);
   });

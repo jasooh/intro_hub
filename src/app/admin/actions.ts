@@ -22,10 +22,19 @@ function fail(path: string, message: string): never {
   redirect(`${path}?error=${encodeURIComponent(message)}`);
 }
 
+/** Plain-English versions of the errors the admin_* functions raise. */
+const RPC_ERRORS: Record<string, string> = {
+  already_signed_up: "They're already signed up for this session.",
+  option_unavailable: "That option isn't offered for this session.",
+  session_unavailable: "This session isn't open (it may be cancelled).",
+  guest_name_required: "Give the guest a name.",
+  player_not_found: "That player doesn't exist anymore.",
+};
+
 async function rpc(fn: string, args: Record<string, unknown>, path: string, success?: string) {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc(fn, args);
-  if (error) fail(path, error.message);
+  if (error) fail(path, Object.entries(RPC_ERRORS).find(([k]) => error.message.includes(k))?.[1] ?? error.message);
   const events = parseEvents(data);
   after(() => dispatchEvents(events));
   revalidatePath(path);
@@ -39,6 +48,11 @@ async function rpc(fn: string, args: Record<string, unknown>, path: string, succ
 const dollars = z.coerce.number().min(0).max(1000).transform((d) => Math.round(d * 100));
 /** Blank = not offered. */
 const optionalDollars = z.preprocess((v) => (v === "" || v == null ? null : v), dollars.nullable());
+/** Blank = no limit. */
+const optionalCount = z.preprocess(
+  (v) => (v === "" || v == null ? null : v),
+  z.coerce.number().int().min(1).max(200).nullable(),
+);
 const optionalClock = z
   .string()
   .regex(/^(\d{2}:\d{2})?$/, "Times must be HH:MM")
@@ -66,6 +80,9 @@ const SessionForm = z.object({
   instructional_ends: optionalClock,
   dropin_starts: optionalClock,
   deposit: optionalDollars,
+  dropin_price: optionalDollars,
+  instructional_capacity: optionalCount,
+  announce: z.literal("on").optional(),
 });
 
 function sessionRow(formData: FormData, path: string) {
@@ -88,6 +105,9 @@ function sessionRow(formData: FormData, path: string) {
     instructional_ends_at: atClock(startsAt, f.starts_at, f.instructional_ends),
     dropin_starts_at: atClock(startsAt, f.starts_at, f.dropin_starts),
     deposit_cents: f.deposit,
+    dropin_price_cents: f.dropin_price,
+    instructional_capacity: f.instructional_price == null ? null : f.instructional_capacity,
+    announce: f.announce === "on",
   };
 }
 
@@ -195,6 +215,39 @@ export async function emailRoster(sessionId: string, formData: FormData) {
 // ---------------------------------------------------------------------------
 // Roster
 // ---------------------------------------------------------------------------
+
+const AddPlayerForm = z.object({
+  mode: z.enum(["account", "guest"]),
+  profile_id: z.string().uuid().optional().or(z.literal("").transform(() => undefined)),
+  guest_name: z.string().trim().max(100).optional(),
+  guest_email: z.union([z.literal(""), z.string().trim().email("That email doesn't look right")]).optional(),
+  option: z.enum(["full", "instructional", "dropin"]),
+  paid: z.literal("on").optional(),
+});
+
+/** Add someone by hand: an existing player, or a guest without an account. A full session gets another spot. */
+export async function addPlayer(sessionId: string, formData: FormData) {
+  await requireAdmin();
+  const path = `/admin/sessions/${sessionId}`;
+  const parsed = AddPlayerForm.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) fail(path, parsed.error.issues[0].message);
+  const f = parsed.data;
+  if (f.mode === "account" && !f.profile_id) fail(path, "Pick a player to add");
+  if (f.mode === "guest" && !f.guest_name) fail(path, "Give the guest a name");
+  await rpc(
+    "admin_add_player",
+    {
+      p_session_id: sessionId,
+      p_profile_id: f.mode === "account" ? f.profile_id : null,
+      p_guest_name: f.mode === "guest" ? f.guest_name : null,
+      p_guest_email: f.mode === "guest" ? f.guest_email || null : null,
+      p_option: f.option,
+      p_paid: f.paid === "on",
+    },
+    path,
+    f.paid === "on" ? "Player added and marked paid" : "Player added",
+  );
+}
 
 /** Email everyone in the session who still owes money (skips anyone reminded in the last few minutes). */
 export async function nudgeUnpaid(sessionId: string) {
@@ -356,6 +409,8 @@ const TemplateForm = z.object({
   instructional_price: optionalDollars,
   instructional_ends: optionalClock,
   dropin_starts: optionalClock,
+  dropin_price: optionalDollars,
+  instructional_capacity: optionalCount,
 });
 
 const TEMPLATE_FIELD_LABELS: Record<string, string> = {
@@ -372,6 +427,8 @@ const TEMPLATE_FIELD_LABELS: Record<string, string> = {
   instructional_price: "Instructional-only price",
   instructional_ends: "Instructional ends",
   dropin_starts: "Drop-in starts",
+  dropin_price: "Drop-in only price",
+  instructional_capacity: "Instructional spots",
 };
 
 export async function saveTemplate(templateId: string | null, formData: FormData) {
@@ -384,7 +441,8 @@ export async function saveTemplate(templateId: string | null, formData: FormData
       parsed.error.issues.map((i) => `${TEMPLATE_FIELD_LABELS[String(i.path[0])] ?? i.path.join(".")}: ${i.message}`).join("; "),
     );
   }
-  const { price, active, instructional_price, instructional_ends, dropin_starts, ...rest } = parsed.data;
+  const { price, active, instructional_price, instructional_ends, dropin_starts, dropin_price, instructional_capacity, ...rest } =
+    parsed.data;
   const row = {
     ...rest,
     price_cents: price,
@@ -393,6 +451,8 @@ export async function saveTemplate(templateId: string | null, formData: FormData
     instructional_price_cents: instructional_price,
     instructional_minutes: instructional_ends ? minutesAfter(rest.start_time, instructional_ends) || null : null,
     dropin_offset_minutes: dropin_starts ? minutesAfter(rest.start_time, dropin_starts) : null,
+    dropin_price_cents: dropin_price,
+    instructional_capacity: instructional_price == null ? null : instructional_capacity,
   };
 
   const supabase = await createClient();
@@ -456,7 +516,7 @@ export async function makeTeams(sessionId: string, formData: FormData) {
     .from("registrations")
     .select("id, profile:profiles(skill_level)")
     .eq("session_id", sessionId)
-    .eq("option", "full")
+    .in("option", ["full", "dropin"])
     .in("status", ["pending_payment", "confirmed"]);
   if (regsError) fail(path, regsError.message);
 

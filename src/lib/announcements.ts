@@ -15,10 +15,11 @@ function recipientsQuery<T extends string>(columns: T, head = false) {
     .from("profiles")
     .select(columns, head ? { count: "exact", head: true } : undefined)
     .eq("announcement_emails", true)
+    .eq("guest", false)
     .not("onboarded_at", "is", null);
 }
 
-async function announcementRecipients(): Promise<Recipient[]> {
+export async function announcementRecipients(): Promise<Recipient[]> {
   const { data, error } = await recipientsQuery("id, email, display_name, full_name");
   if (error) throw error;
   return (data ?? []) as unknown as Recipient[];
@@ -31,7 +32,7 @@ export async function countAnnouncementRecipients(): Promise<number> {
   return count ?? 0;
 }
 
-const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
+export const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /**
  * Emails a published post to every opted-in player, one at a time with a short

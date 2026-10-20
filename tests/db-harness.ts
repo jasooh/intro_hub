@@ -13,7 +13,10 @@ const SUPABASE_STUB = `
     id uuid primary key,
     email text,
     email_confirmed_at timestamptz default now(),
-    raw_user_meta_data jsonb default '{}'
+    raw_user_meta_data jsonb default '{}',
+    instance_id uuid, aud text, role text, encrypted_password text, raw_app_meta_data jsonb,
+    created_at timestamptz, updated_at timestamptz, confirmation_token text, recovery_token text,
+    email_change_token_new text, email_change text
   );
   create function auth.uid() returns uuid language sql stable as $$
     select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid

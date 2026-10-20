@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Mark, SpotDots } from "@/components/ui";
 import { dateParts, formatMoney, formatTime } from "@/lib/format";
 import { spotsLeft } from "@/lib/queries";
+import { offeredOptions, optionPrice } from "@/lib/options";
 import type { Session, SessionCounts } from "@/lib/types";
 
 /** Big condensed SAT / 18 / OCT block. */
@@ -70,7 +71,7 @@ export function SessionCard({ session, counts, href }: { session: Session; count
 
       {/* Desktop: price and arrow on the right (no price once it's on: sign-ups are closed). */}
       <div className="hidden flex-col items-end gap-1 sm:row-span-2 sm:flex">
-        {!live && <span className="font-score text-2xl font-black">{formatMoney(session.price_cents)}</span>}
+        {!live && <CardPrice session={session} />}
         <span aria-hidden className="font-display text-3xl font-black text-line transition-transform group-hover:translate-x-1.5">
           →
         </span>
@@ -115,5 +116,19 @@ export function SessionCard({ session, counts, href }: { session: Session; count
         </div>
       </div>
     </Link>
+  );
+}
+
+/** Price on a session row: FREE for deposit sessions, "from" when a cheaper option exists. */
+function CardPrice({ session }: { session: Session }) {
+  if (session.deposit_cents != null) {
+    return <span className="font-display text-2xl font-black text-line uppercase">Free</span>;
+  }
+  const lowest = Math.min(...offeredOptions(session).map((o) => optionPrice(session, o)));
+  return (
+    <span className="flex items-baseline gap-1.5">
+      {lowest < session.price_cents && <span className="text-sm text-ink-soft">from</span>}
+      <span className="font-score text-2xl font-black">{formatMoney(lowest)}</span>
+    </span>
   );
 }

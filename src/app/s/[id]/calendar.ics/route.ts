@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { env } from "@/lib/env";
 import { sessionIcs } from "@/lib/ics";
 import { createClient } from "@/lib/supabase/server";
-import type { Session } from "@/lib/types";
+import type { Session, SignupOption } from "@/lib/types";
 
 /** "Add to calendar" file for a session. Sessions are public, so no sign-in needed. */
 export async function GET(request: Request, ctx: RouteContext<"/s/[id]/calendar.ics">) {
@@ -13,10 +13,11 @@ export async function GET(request: Request, ctx: RouteContext<"/s/[id]/calendar.
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
 
-  const instructionalOnly = new URL(request.url).searchParams.get("option") === "instructional";
+  const asked = new URL(request.url).searchParams.get("option");
+  const option: SignupOption = asked === "instructional" || asked === "dropin" ? asked : "full";
   // The local date (an evening session can already be tomorrow in UTC).
   const day = new Intl.DateTimeFormat("en-CA", { timeZone: env.timezone() }).format(new Date(session.starts_at));
-  const body = sessionIcs(session, `${env.appUrl()}/s/${id}`, { instructionalOnly });
+  const body = sessionIcs(session, `${env.appUrl()}/s/${id}`, { option });
   return new NextResponse(body, {
     headers: {
       "Content-Type": "text/calendar; charset=utf-8",

@@ -1,6 +1,6 @@
 import { render } from "@react-email/components";
 import { describe, expect, it } from "vitest";
-import { buildAnnouncementEmail, buildEmail, buildSessionMessageEmail, type EmailContext } from "@/lib/email/templates";
+import { buildAnnouncementEmail, buildEmail, buildSessionMessageEmail, buildSessionOpenEmail, type EmailContext } from "@/lib/email/templates";
 import type { RegistrationEvent } from "@/lib/types";
 
 const ctx: EmailContext = {
@@ -135,5 +135,30 @@ describe("host tools emails", () => {
     const text = await render(element, { plainText: true });
     expect(text).toContain("Hi Jane");
     expect(text).toContain("Bring a dark shirt.");
+  });
+});
+
+describe("sign-ups open email", () => {
+  it("lists the options, spots and the host's notes", async () => {
+    const { subject, element } = buildSessionOpenEmail({
+      playerName: "Jane",
+      sessionTitle: "Intro 2 Volleyball",
+      when: "Sat, Oct 24, 8:00 p.m.",
+      location: "Aaniin Community Centre",
+      options: [
+        { label: "Instructional + Drop-in", price: "$15.00", time: "8:00 p.m. – 11:45 p.m." },
+        { label: "Drop-in only", price: "$8.00", time: "9:00 p.m. – 11:45 p.m." },
+      ],
+      deposit: null,
+      spotsLeft: 12,
+      notes: "Gym 2 this week.",
+      sessionUrl: "https://example.com/s/1",
+      profileUrl: "https://example.com/me",
+    });
+    expect(subject).toBe("Sign-ups open: Intro 2 Volleyball (Sat, Oct 24, 8:00 p.m.)");
+    const text = await render(element, { plainText: true });
+    for (const bit of ["Hi Jane", "Drop-in only", "$8.00", "12 drop-in spots left", "Gym 2 this week.", "Turn off announcement emails"]) {
+      expect(text).toContain(bit);
+    }
   });
 });

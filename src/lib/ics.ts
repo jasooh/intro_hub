@@ -1,14 +1,21 @@
 import { SITE } from "@/lib/site";
-import type { Session } from "@/lib/types";
+import { OPTION_LABELS } from "@/lib/profile";
+import type { Session, SignupOption } from "@/lib/types";
 
 // "Add to calendar" for a session: an .ics file (Apple Calendar, Outlook) and a
 // Google Calendar link. Times are UTC, so calendars show them in local time.
 
-type CalendarSession = Pick<Session, "id" | "title" | "starts_at" | "ends_at" | "location" | "instructional_ends_at">;
+type CalendarSession = Pick<
+  Session,
+  "id" | "title" | "starts_at" | "ends_at" | "location" | "instructional_ends_at" | "dropin_starts_at"
+>;
 
-/** Instructional-only players leave when the lesson ends. */
-function endOf(session: CalendarSession, instructionalOnly: boolean) {
-  return instructionalOnly && session.instructional_ends_at ? session.instructional_ends_at : session.ends_at;
+/** Instructional-only players leave when the lesson ends; drop-in-only players come for the games. */
+function startOf(session: CalendarSession, option: SignupOption) {
+  return option === "dropin" && session.dropin_starts_at ? session.dropin_starts_at : session.starts_at;
+}
+function endOf(session: CalendarSession, option: SignupOption) {
+  return option === "instructional" && session.instructional_ends_at ? session.instructional_ends_at : session.ends_at;
 }
 
 /** 20261024T230000Z */
@@ -40,15 +47,15 @@ export function foldIcsLine(line: string) {
 }
 
 /** "Intro 2 Volleyball (Instructional only)"; adds the club name when the title doesn't already say it. */
-function eventTitle(session: CalendarSession, instructionalOnly: boolean) {
-  const title = `${session.title}${instructionalOnly ? " (Instructional only)" : ""}`;
+function eventTitle(session: CalendarSession, option: SignupOption) {
+  const title = `${session.title}${option === "full" ? "" : ` (${OPTION_LABELS[option]})`}`;
   return session.title.toLowerCase().includes(SITE.club.toLowerCase()) ? title : `${title} · ${SITE.club}`;
 }
 
 export function sessionIcs(
   session: CalendarSession,
   sessionUrl: string,
-  { instructionalOnly = false, now = new Date() }: { instructionalOnly?: boolean; now?: Date } = {},
+  { option = "full", now = new Date() }: { option?: SignupOption; now?: Date } = {},
 ) {
   const lines = [
     "BEGIN:VCALENDAR",
@@ -59,9 +66,9 @@ export function sessionIcs(
     "BEGIN:VEVENT",
     `UID:session-${session.id}@intro-hub`,
     `DTSTAMP:${utcStamp(now.toISOString())}`,
-    `DTSTART:${utcStamp(session.starts_at)}`,
-    `DTEND:${utcStamp(endOf(session, instructionalOnly))}`,
-    `SUMMARY:${escapeIcsText(eventTitle(session, instructionalOnly))}`,
+    `DTSTART:${utcStamp(startOf(session, option))}`,
+    `DTEND:${utcStamp(endOf(session, option))}`,
+    `SUMMARY:${escapeIcsText(eventTitle(session, option))}`,
     `LOCATION:${escapeIcsText(session.location)}`,
     `DESCRIPTION:${escapeIcsText(`Your sign-up: ${sessionUrl}`)}`,
     `URL:${sessionUrl}`,
@@ -74,12 +81,12 @@ export function sessionIcs(
 export function googleCalendarUrl(
   session: CalendarSession,
   sessionUrl: string,
-  { instructionalOnly = false }: { instructionalOnly?: boolean } = {},
+  { option = "full" }: { option?: SignupOption } = {},
 ) {
   const params = new URLSearchParams({
     action: "TEMPLATE",
-    text: eventTitle(session, instructionalOnly),
-    dates: `${utcStamp(session.starts_at)}/${utcStamp(endOf(session, instructionalOnly))}`,
+    text: eventTitle(session, option),
+    dates: `${utcStamp(startOf(session, option))}/${utcStamp(endOf(session, option))}`,
     location: session.location,
     details: `Your sign-up: ${sessionUrl}`,
   });
@@ -87,6 +94,6 @@ export function googleCalendarUrl(
 }
 
 /** Path of the .ics route for a session (relative; prefix with the app URL in emails). */
-export function icsPath(sessionId: string, instructionalOnly = false) {
-  return `/s/${sessionId}/calendar.ics${instructionalOnly ? "?option=instructional" : ""}`;
+export function icsPath(sessionId: string, option: SignupOption = "full") {
+  return `/s/${sessionId}/calendar.ics${option === "full" ? "" : `?option=${option}`}`;
 }

@@ -20,7 +20,9 @@
 --     3 instructional-only (one switched from drop-in), two team-request groups
 --     (3 and 2), a Bring a Friend pair at half price, paid / unpaid / one hold
 --     running out in about an hour / one partial payment.
---   * Session B = the week after: about half full, mostly unpaid.
+--   * Session B = the week after: about half full, mostly unpaid. Offers Drop-in
+--     only ($10, Julia) and caps Instructional only at 2 (Lucas is on its
+--     waitlist); Jamie is a walk-in guest the host added by hand.
 --   * Session C = a past Saturday: everyone paid, teams balanced and published,
 --     game schedule, one cancelled spot already refunded.
 --   * Session D = a past Sunday clinic with a refundable deposit: deposits owed
@@ -410,13 +412,15 @@ begin
   v_b_start := a.starts_at + interval '7 days';
   insert into public.sessions (
     id, template_id, title, starts_at, ends_at, location, capacity, price_cents, opens_at, hold_hours,
-    cancel_cutoff, instructional_price_cents, instructional_ends_at, dropin_starts_at
+    cancel_cutoff, instructional_price_cents, instructional_ends_at, dropin_starts_at,
+    dropin_price_cents, instructional_capacity, announced_at
   ) values (
     v_b, t.id, t.title, v_b_start, v_b_start + make_interval(mins => t.duration_minutes), t.location,
     t.capacity, t.price_cents, v_now - interval '1 day', t.hold_hours,
-    v_b_start - make_interval(hours => t.cancel_cutoff_hours), t.instructional_price_cents,
+    v_b_start - make_interval(hours => t.cancel_cutoff_hours), coalesce(t.instructional_price_cents, 1000),
     v_b_start + make_interval(mins => coalesce(t.instructional_minutes, 45)),
-    v_b_start + make_interval(mins => coalesce(t.dropin_offset_minutes, 60))
+    v_b_start + make_interval(mins => coalesce(t.dropin_offset_minutes, 60)),
+    1000, 2, v_now - interval '1 day'
   );
   v_regs := '{}';
   foreach v_key in array array[
@@ -430,6 +434,16 @@ begin
   end loop;
   v_regs := v_regs || jsonb_build_object('nadia.haddad',
     pg_temp.signup('nadia.haddad', v_b, 'instructional', v_now - interval '5 hours'));
+  -- Drop-in only (games, no lesson), and the 2 instructional places fill up:
+  -- Lucas waits on the instructional waitlist.
+  v_regs := v_regs
+    || jsonb_build_object('julia.novak', pg_temp.signup('julia.novak', v_b, 'dropin', v_now - interval '4 hours 30 minutes'))
+    || jsonb_build_object('zara.ali', pg_temp.signup('zara.ali', v_b, 'instructional', v_now - interval '3 hours 30 minutes'))
+    || jsonb_build_object('lucas.martin', pg_temp.signup('lucas.martin', v_b, 'instructional', v_now - interval '50 minutes'));
+  -- A walk-in the host added by hand (a guest, no account), paid in cash.
+  perform pg_temp.act_as(pg_temp.admin_id());
+  perform public.admin_add_player(v_b, null, 'Jamie Walk-in', 'jamie.walkin@demo.intro2volleyball.test', 'full', true);
+  perform pg_temp.act_as(null);
   perform pg_temp.pay_ref((v_regs ->> 'maya.tran')::uuid, v_now - interval '19 hours');
   perform pg_temp.pay_ref((v_regs ->> 'ethan.wilson')::uuid, v_now - interval '16 hours');
 

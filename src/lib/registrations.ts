@@ -5,8 +5,10 @@ import { sendEmail } from "@/lib/email/send";
 import { env } from "@/lib/env";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { googleCalendarUrl, icsPath } from "@/lib/ics";
+import { OPTION_LABELS } from "@/lib/profile";
 import { createAdminClient } from "@/lib/supabase/server";
-import type { Profile, Registration, RegistrationEvent, Session } from "@/lib/types";
+import { sendSessionOpen } from "@/lib/session-announcements";
+import type { Profile, Registration, RegistrationEvent, Session, SessionEvent } from "@/lib/types";
 
 // Registration status changes happen in Postgres (supabase/migrations), which
 // returns a list of events. This module turns those events into emails.
@@ -17,7 +19,19 @@ export function parseEvents(data: unknown): RegistrationEvent[] {
   return Array.isArray(data) ? (data as RegistrationEvent[]) : [];
 }
 
-export async function dispatchEvents(events: RegistrationEvent[]): Promise<void> {
+export async function dispatchEvents(all: RegistrationEvent[]): Promise<void> {
+  // The tick also emits session-level events ("sign-ups are open"), sent to everyone.
+  const raw = all as unknown as (RegistrationEvent | SessionEvent)[];
+  for (const e of raw) {
+    if (e.event === "session_open") {
+      try {
+        await sendSessionOpen(e.session_id);
+      } catch (err) {
+        console.error(`Failed to send sign-ups-open emails for ${e.session_id}`, err);
+      }
+    }
+  }
+  const events = raw.filter((e): e is RegistrationEvent => e.event !== "session_open");
   if (events.length === 0) return;
   const admin = createAdminClient();
 
@@ -41,6 +55,8 @@ export async function dispatchEvents(events: RegistrationEvent[]): Promise<void>
 }
 
 async function sendForEvent(event: RegistrationEvent, reg: Loaded) {
+  // Guests a host added by hand have no inbox here (or a placeholder address).
+  if (reg.profile.guest || reg.profile.email.endsWith(".invalid")) return;
   const admin = createAdminClient();
 
   // Claim the email first so retries / overlapping cron ticks never double-send.
@@ -67,16 +83,17 @@ async function sendForEvent(event: RegistrationEvent, reg: Loaded) {
       .select("id", { count: "exact", head: true })
       .eq("session_id", reg.session_id)
       .eq("status", "waitlisted")
+      .in("option", reg.option === "instructional" ? ["instructional"] : ["full", "dropin"])
       .lte("queued_at", reg.queued_at);
     waitlistPosition = count ?? null;
   }
 
   const appUrl = env.appUrl();
   const sessionUrl = `${appUrl}/s/${reg.session_id}`;
-  const instructionalOnly = reg.option === "instructional";
+
   const { subject, element } = buildEmail(event.event, {
     playerName: reg.profile.display_name ?? reg.profile.full_name ?? "there",
-    sessionTitle: reg.option === "instructional" ? `${reg.session.title} (Instructional only)` : reg.session.title,
+    sessionTitle: reg.option === "full" ? reg.session.title : `${reg.session.title} (${OPTION_LABELS[reg.option]})`,
     when: formatDateTime(reg.session.starts_at),
     location: reg.session.location,
     price: formatMoney(reg.amount_cents),
@@ -90,8 +107,8 @@ async function sendForEvent(event: RegistrationEvent, reg: Loaded) {
     sessionUrl,
     myUrl: `${appUrl}/me/signups`,
     cancelReason: reg.session.cancel_reason,
-    calendarUrl: `${appUrl}${icsPath(reg.session_id, instructionalOnly)}`,
-    googleCalendarUrl: googleCalendarUrl(reg.session, sessionUrl, { instructionalOnly }),
+    calendarUrl: `${appUrl}${icsPath(reg.session_id, reg.option)}`,
+    googleCalendarUrl: googleCalendarUrl(reg.session, sessionUrl, { option: reg.option }),
   });
 
   try {

@@ -106,6 +106,31 @@ export function TemplateForm({
               className={inputClass}
             />
           </Field>
+          <Field label="Instructional spots" hint="Blank = no limit. Past it, a separate waitlist.">
+            <input
+              type="number"
+              name="instructional_capacity"
+              min={1}
+              max={200}
+              defaultValue={t?.instructional_capacity ?? ""}
+              className={inputClass}
+            />
+          </Field>
+        </div>
+      </Group>
+
+      <Group title="Drop-in only option" hint="Games only, no lesson. Uses a drop-in spot. Leave blank if you don't offer it.">
+        <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-3">
+          <Field label="Price ($)">
+            <input
+              type="number"
+              name="dropin_price"
+              step="0.01"
+              min={0}
+              defaultValue={t?.dropin_price_cents != null ? t.dropin_price_cents / 100 : ""}
+              className={inputClass}
+            />
+          </Field>
         </div>
       </Group>
 

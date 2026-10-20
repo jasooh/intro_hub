@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { asService, asUser, createDb, createSession, createUser, type Db, type Event } from "./db-harness";
+import { asService, asUser, createDb, createSession, createUser, createUser as createPlayer, type Db, type Event } from "./db-harness";
 
 let db: Db;
 
@@ -151,7 +151,7 @@ describe("run_tick", () => {
       [a],
     );
     const res = await asService<{ events: Event[] }>(db, `select public.run_tick() as events`);
-    expect(res.rows[0].events.map((e) => e.event)).toEqual(["expired", "promoted"]);
+    expect(res.rows[0].events.map((e) => e.event).filter((e) => e !== "session_open")).toEqual(["expired", "promoted"]);
     expect((await regOf(a, sid)).status).toBe("expired");
     expect((await regOf(b, sid)).status).toBe("pending_payment");
   });
@@ -165,7 +165,9 @@ describe("run_tick", () => {
     await db.query(`update public.registrations set status = 'confirmed' where profile_id = $1`, [a]);
 
     const first = await asService<{ events: Event[] }>(db, `select public.run_tick() as events`);
-    expect(first.rows[0].events).toEqual([{ event: "reminder", registration_id: (await regOf(a, sid)).id }]);
+    expect(first.rows[0].events.filter((e) => e.event !== "session_open")).toEqual([
+      { event: "reminder", registration_id: (await regOf(a, sid)).id },
+    ]);
     const second = await asService<{ events: Event[] }>(db, `select public.run_tick() as events`);
     expect(second.rows[0].events).toEqual([]);
   });
@@ -1146,6 +1148,12 @@ describe("assigning a payment by hand", () => {
 });
 
 describe("bring a friend", () => {
+  // "Regular…" players have played before (only a regular can bring a friend).
+  const createUser = async (d: Db, name: string, opts?: Parameters<typeof createPlayer>[2]) => {
+    const id = await createPlayer(d, name, opts);
+    if (name.startsWith("Regular")) await d.query(`update public.profiles set attended_before = true where id = $1`, [id]);
+    return id;
+  };
   async function signUp(userId: string, sessionId: string, option = "full") {
     await asUser(db, userId, `select public.register_for_session($1, $2)`, [sessionId, option]);
     return (await regOf(userId, sessionId)).id;

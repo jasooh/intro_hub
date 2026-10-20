@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import { buttonClass, PageTitle, reveal, Sheet } from "@/components/ui";
+import { SESSION_PARTS } from "@/lib/club";
 import { pad2 } from "@/lib/format";
 
 export const metadata: Metadata = {
@@ -18,21 +19,6 @@ const PHOTOS: Record<string, { src: string | null; alt: string }> = {
   game: { src: null, alt: "A game in full swing" },
   huddle: { src: null, alt: "Team huddle" },
 };
-
-const SESSION_PARTS = [
-  {
-    title: "Learn",
-    body: "We start with the basics: passing, setting, serving. No experience needed, and nobody expects you to know the rules.",
-  },
-  {
-    title: "Play",
-    body: "Then we split into teams balanced by experience and play real games, with the hype song playlist going.",
-  },
-  {
-    title: "Hang out",
-    body: "Plenty of people come solo. Stick around, meet people, come back next week.",
-  },
-];
 
 export default function AboutPage() {
   return (

@@ -35,9 +35,9 @@ export function SiteFooter() {
             <a href="https://www.instagram.com/intro2volleyball/" target="_blank" rel="noreferrer" className={linkClass}>
               Instagram
             </a>
-            <a href="mailto:intro2volleyball@gmail.com" className={`${linkClass} [overflow-wrap:anywhere]`}>
-              Email us
-            </a>
+            <Link href="/contact" className={linkClass}>
+              Contact &amp; feedback
+            </Link>
           </Stack>
 
           <Stack title="Legal">

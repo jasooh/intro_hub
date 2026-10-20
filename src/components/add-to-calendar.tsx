@@ -1,12 +1,12 @@
 import { CalendarPlus } from "lucide-react";
 import { env } from "@/lib/env";
 import { googleCalendarUrl, icsPath } from "@/lib/ics";
-import type { Session } from "@/lib/types";
+import type { Session, SignupOption } from "@/lib/types";
 
 const linkClass = "underline decoration-line decoration-2 underline-offset-4 hover:text-ink";
 
 /** "Add to calendar: Apple / Outlook · Google" under the player's spot. */
-export function AddToCalendar({ session, instructionalOnly }: { session: Session; instructionalOnly: boolean }) {
+export function AddToCalendar({ session, option }: { session: Session; option: SignupOption }) {
   const sessionUrl = `${env.appUrl()}/s/${session.id}`;
   return (
     <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-ink-soft">
@@ -14,12 +14,12 @@ export function AddToCalendar({ session, instructionalOnly }: { session: Session
         <CalendarPlus className="size-4 shrink-0 translate-y-0.5 text-line" aria-hidden />
         Add to calendar
       </span>
-      <a href={icsPath(session.id, instructionalOnly)} className={linkClass}>
+      <a href={icsPath(session.id, option)} className={linkClass}>
         Apple / Outlook
       </a>
       <span aria-hidden>·</span>
       <a
-        href={googleCalendarUrl(session, sessionUrl, { instructionalOnly })}
+        href={googleCalendarUrl(session, sessionUrl, { option })}
         target="_blank"
         rel="noreferrer"
         className={linkClass}

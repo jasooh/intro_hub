@@ -86,6 +86,12 @@ function TemplateRow({ t }: { t: SessionTemplate }) {
           {t.instructional_price_cents != null && (
             <Mark tone="mat" glyph="◇">
               {formatMoney(t.instructional_price_cents)} instructional only
+              {t.instructional_capacity != null && ` · ${t.instructional_capacity} spots`}
+            </Mark>
+          )}
+          {t.dropin_price_cents != null && (
+            <Mark tone="line" glyph="▸">
+              {formatMoney(t.dropin_price_cents)} drop-in only
             </Mark>
           )}
           {t.active ? (

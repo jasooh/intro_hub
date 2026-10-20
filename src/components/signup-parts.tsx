@@ -1,7 +1,7 @@
 import { Avatar, Mark } from "@/components/ui";
-import type { Attendee } from "@/lib/types";
+import type { Attendee, SignupOption } from "@/lib/types";
 
-/** One sign-up option (Instructional + Drop-in / Instructional only) as a radio row. */
+/** One sign-up option (Instructional + Drop-in / Drop-in only / Instructional only) as a radio row. */
 export function OptionRadio({
   value,
   title,
@@ -9,7 +9,7 @@ export function OptionRadio({
   detail,
   defaultChecked,
 }: {
-  value: "full" | "instructional";
+  value: SignupOption;
   title: string;
   price: string;
   detail: (string | null)[];
@@ -30,7 +30,8 @@ export function OptionRadio({
           <span className="font-display text-xl font-extrabold uppercase">{title}</span>
           <span className="font-score text-xl font-black">{price}</span>
         </span>
-        <span className="block text-sm text-ink-soft">{detail.filter(Boolean).join(" · ")}</span>
+        {detail[0] && <span className="block text-sm font-semibold">{detail[0]}</span>}
+        <span className="block text-sm text-ink-soft">{detail.slice(1).filter(Boolean).join(" · ")}</span>
       </span>
     </label>
   );
@@ -49,6 +50,11 @@ export function AttendeeRow({ a, number, numberClass = "text-ink-soft" }: { a: A
       {a.option === "instructional" && (
         <Mark tone="mat" glyph="◇">
           Instr. only
+        </Mark>
+      )}
+      {a.option === "dropin" && (
+        <Mark tone="line" glyph="▸">
+          Drop-in only
         </Mark>
       )}
       {a.status === "pending_payment" && (

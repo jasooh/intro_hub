@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { OptionMark } from "@/components/option-mark";
 import { cancelRegistration } from "@/app/actions";
 import { PaymentInstructions } from "@/components/payment-instructions";
 import { DateBlock } from "@/components/session-card";
@@ -40,11 +41,7 @@ export function SignupRow({
               {reg.session.title}
             </Link>
             <span className="flex flex-wrap items-center gap-x-4">
-              {reg.option === "instructional" && (
-                <Mark tone="mat" glyph="◇">
-                  Instructional only
-                </Mark>
-              )}
+              <OptionMark option={reg.option} />
               {sessionCancelled ? (
                 <Mark tone="bad" glyph="✕">
                   Session cancelled

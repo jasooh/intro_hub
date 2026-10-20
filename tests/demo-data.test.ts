@@ -7,13 +7,9 @@ import { createDb, createUser } from "./db-harness";
 // Stats page's "Haven't been back" list, and the clean-up removes it all again.
 it("demo seed and clean-up run end to end", async () => {
   const db = await createDb();
-  // The bits of the hosted dev project the scripts expect: Supabase's extra
-  // auth.users columns, JWT claims as JSON, and the dev cron job (their guard).
+  // The bits of the hosted dev project the scripts expect: JWT claims as JSON
+  // and the dev cron job (their guard).
   await db.exec(`
-    alter table auth.users add column instance_id uuid, add column aud text, add column role text,
-      add column encrypted_password text, add column raw_app_meta_data jsonb, add column created_at timestamptz,
-      add column updated_at timestamptz, add column confirmation_token text, add column recovery_token text,
-      add column email_change_token_new text, add column email_change text;
     create or replace function auth.uid() returns uuid language sql stable as $$
       select coalesce(nullif(current_setting('request.jwt.claim.sub', true), ''),
                       nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub')::uuid

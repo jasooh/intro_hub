@@ -3,8 +3,11 @@
 
 export type Role = "player" | "admin";
 export type RegistrationStatus = "pending_payment" | "confirmed" | "waitlisted" | "expired" | "cancelled";
-/** full = instructional + drop-in (uses a spot); instructional = instructional only (no spot). */
-export type SignupOption = "full" | "instructional";
+/**
+ * full = instructional + drop-in; dropin = drop-in only (games, no lesson); both use a drop-in spot.
+ * instructional = instructional only: no drop-in spot (its own, optionally capped, queue).
+ */
+export type SignupOption = "full" | "instructional" | "dropin";
 export type SkillLevel = "never" | "some" | "experienced" | "prefer_not";
 export type HeardAbout = "word_of_mouth" | "instagram" | "javelin" | "other";
 
@@ -33,6 +36,8 @@ export type Profile = {
   media_consent_at: string | null;
   waiver_accepted_at: string | null;
   waiver_version: string | null;
+  /** Added by a host without an account: no sign-in, no emails. */
+  guest: boolean;
 };
 
 export type SessionTemplate = {
@@ -52,6 +57,10 @@ export type SessionTemplate = {
   instructional_price_cents: number | null;
   instructional_minutes: number | null;
   dropin_offset_minutes: number | null;
+  /** Drop-in only price; null = not offered. */
+  dropin_price_cents: number | null;
+  /** Instructional-only spots; null = no limit. */
+  instructional_capacity: number | null;
 };
 
 export type Session = {
@@ -80,6 +89,14 @@ export type Session = {
   deposit_cents: number | null;
   /** Set once the deposits were marked as owed back after the session. */
   deposits_released_at: string | null;
+  /** Drop-in only price; null = not offered. */
+  dropin_price_cents: number | null;
+  /** Instructional-only spots; null = no limit (past it, a separate waitlist). */
+  instructional_capacity: number | null;
+  /** Email players when sign-ups open. */
+  announce: boolean;
+  /** When the "sign-ups are open" email went out (sessions from before it existed are marked too). */
+  announced_at: string | null;
 };
 
 export type Team = { id: string; session_id: string; name: string; position: number };
@@ -140,14 +157,22 @@ export type Payment = {
   dismissed: boolean;
 };
 
-/** confirmed/holding count drop-in sign-ups only; instructional-only sign-ups are counted separately. */
+/**
+ * confirmed / holding / waitlisted: drop-in spots (Instructional + Drop-in and Drop-in only).
+ * instructional / instructional_waitlisted: the instructional-only queue. dropin: Drop-in only among the spots.
+ */
 export type SessionCounts = {
   session_id: string;
   confirmed: number;
   holding: number;
   waitlisted: number;
   instructional: number;
+  instructional_waitlisted: number;
+  dropin: number;
 };
+
+/** Session-level events from run_tick (not tied to one sign-up). */
+export type SessionEvent = { event: "session_open"; session_id: string };
 
 export type Attendee = {
   registration_id: string;

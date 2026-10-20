@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { OptionMark } from "@/components/option-mark";
 import Link from "next/link";
 import { MapLink } from "@/components/map-link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { cancelRegistration, changeOption, registerForSession, setBroughtBy, setTeammates } from "@/app/actions";
 import { AddToCalendar } from "@/components/add-to-calendar";
+import { FirstTimeSheet, HostNotes, HowItWorks } from "@/components/session-info";
 import { BringAFriendField } from "@/components/bring-a-friend-field";
 import { LiveRefresh } from "@/components/live-refresh";
 import { PaymentInstructions } from "@/components/payment-instructions";
@@ -28,11 +30,12 @@ import {
 } from "@/components/ui";
 import { getProfile } from "@/lib/auth";
 import { formatDateTime, formatMoney, pad2, sessionTimes } from "@/lib/format";
+import { offeredOptions, optionFull, optionPrice, usesSpot } from "@/lib/options";
 import { OPTION_LABELS } from "@/lib/profile";
 import { getAttendees, getCounts, getMySpot, getTeamRequests, isFirstTimer, spotsLeft } from "@/lib/queries";
 import { MAX_TEAMMATES } from "@/lib/teams";
 import { createClient } from "@/lib/supabase/server";
-import type { Match, Profile, Session, SessionCounts, Team } from "@/lib/types";
+import type { Attendee, Match, Profile, Session, SessionCounts, SignupOption, Team } from "@/lib/types";
 
 
 export async function generateMetadata({ params }: PageProps<"/s/[id]">): Promise<Metadata> {
@@ -78,6 +81,8 @@ async function SessionView({
   const instructional = sessionCounts?.instructional ?? 0;
   const cancelled = session.status === "cancelled";
   const times = sessionTimes(session);
+  // Newcomers (and anyone signed out) get the "what to expect" section.
+  const showIntro = !cancelled && (!profile || (await isFirstTimer(profile)));
 
   return (
     <div className="space-y-10">
@@ -135,12 +140,15 @@ async function SessionView({
                 ) : (
                   <span className="font-score text-2xl font-black text-line">{formatMoney(session.price_cents)}</span>
                 )}
-                {session.deposit_cents == null && session.instructional_price_cents != null && (
-                  <span className="text-ink-soft">
-                    or <span className="font-score font-black text-ink">{formatMoney(session.instructional_price_cents)}</span>{" "}
-                    instructional only
-                  </span>
-                )}
+                {session.deposit_cents == null &&
+                  offeredOptions(session)
+                    .filter((o) => o !== "full")
+                    .map((o) => (
+                      <span key={o} className="text-ink-soft">
+                        or <span className="font-score font-black text-ink">{formatMoney(optionPrice(session, o))}</span>{" "}
+                        {OPTION_LABELS[o].toLowerCase()}
+                      </span>
+                    ))}
               </p>
             </div>
           </div>
@@ -160,35 +168,21 @@ async function SessionView({
             </span>
             <SpotDots capacity={session.capacity} confirmed={confirmed} holding={holding} />
           </div>
-          <div className="flex flex-wrap gap-x-5 gap-y-1">
-            <Mark tone="ok" glyph="●">
-              {confirmed} confirmed
-            </Mark>
-            <Mark tone="warn" glyph="◐">
-              {holding} holding
-            </Mark>
-            <Mark tone="muted" glyph="○">
-              {spotsLeft(session, sessionCounts)} open
-            </Mark>
-            {waitlisted > 0 && (
-              <Mark tone="mat" glyph="○">
-                {waitlisted} on waitlist
-              </Mark>
-            )}
+          <p className="text-sm text-ink-soft">
+            <b className="text-ink">{spotsLeft(session, sessionCounts)} open</b> · {confirmed} confirmed · {holding} holding
+            {waitlisted > 0 && <span className="text-mat"> · {waitlisted} on the waitlist</span>}
             {instructional > 0 && (
-              <Mark tone="mat" glyph="◇">
-                +{instructional} instructional only
-              </Mark>
+              <span className="text-mat">
+                {" "}
+                · +{instructional} instructional only
+                {session.instructional_capacity != null && ` (of ${session.instructional_capacity})`}
+              </span>
             )}
-          </div>
+          </p>
         </div>
       )}
 
-      {session.notes && (
-        <p className="reveal border-l-4 border-mat py-1 pl-4 whitespace-pre-line text-ink" style={reveal(3)}>
-          {session.notes}
-        </p>
-      )}
+      {session.notes && <HostNotes notes={session.notes} className="reveal" style={reveal(3)} />}
 
       <div className="reveal" style={reveal(4)}>
         {cancelled ? (
@@ -214,13 +208,17 @@ async function SessionView({
                 Sign in with Google
               </Link>
             </div>
-            <RefundCutoff cutoff={session.cancel_cutoff} className="mt-5" />
+            <div className="mt-5">
+              <HowItWorks session={session} price={optionPrice(session, "full")} waitlist={optionFull(session, "full", sessionCounts)} />
+            </div>
           </Sheet>
         )}
       </div>
 
+      {showIntro && <FirstTimeSheet className="reveal" style={reveal(5)} />}
+
       {profile && (
-        <div className="reveal" style={reveal(5)}>
+        <div className="reveal" style={reveal(6)}>
           <AttendeeList session={session} />
         </div>
       )}
@@ -232,23 +230,34 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
   const { reg, started, notOpenYet, beforeCutoff } = await getMySpot(session, profile.id);
   const path = `/s/${session.id}`;
   // Teammate picks: other drop-in players who are signed up (incl. the waitlist).
-  const attendees = (await getAttendees(session.id)).filter(
-    (a) => !a.is_me && ["pending_payment", "confirmed", "waitlisted"].includes(a.status),
-  );
+  const everyone = await getAttendees(session.id);
+  const myPosition = everyone.find((a) => a.is_me)?.waitlist_position ?? null;
+  const attendees = everyone.filter((a) => !a.is_me && ["pending_payment", "confirmed", "waitlisted"].includes(a.status));
   const teammateOptions: TeammateOption[] = attendees
-    .filter((a) => a.option === "full")
+    .filter((a) => usesSpot(a.option))
     .map((a) => ({ id: a.registration_id, name: a.display_name }));
   // Bring a Friend: first-timers pick the player who brought them (any signed-up player).
   const buddyOptions = attendees.map((a) => ({ id: a.registration_id, name: a.display_name }));
   const deposit = session.deposit_cents;
   const friendRate = deposit == null && !started && (await isFirstTimer(profile));
   const times = sessionTimes(session);
-  const hasInstructional = session.instructional_price_cents != null;
+  const offered = offeredOptions(session);
+  const hasChoice = offered.length > 1;
   // What each option costs this player (deposit sessions: the deposit for everyone).
-  const priceOf = (option: "full" | "instructional", discounted = false) => {
-    if (deposit != null) return deposit;
-    const base = option === "full" ? session.price_cents : session.instructional_price_cents!;
-    return discounted ? Math.round(base / 2) : base;
+  const priceOf = (option: SignupOption, discounted = false) => optionPrice(session, option, discounted);
+  const fullFor = (option: SignupOption) => optionFull(session, option, counts);
+  const optionDetail: Record<SignupOption, (string | null)[]> = {
+    full: [
+      times.full,
+      times.instructional && times.dropin ? "lesson first, then games" : "lesson and games",
+      fullFor("full") ? "joins the waitlist" : null,
+    ],
+    dropin: [times.dropin ?? times.full, "games only, no lesson", fullFor("dropin") ? "joins the waitlist" : null],
+    instructional: [
+      times.instructional,
+      "doesn't use a drop-in spot",
+      fullFor("instructional") ? "joins the instructional waitlist" : null,
+    ],
   };
 
   if (!reg) {
@@ -281,22 +290,19 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
               : `${spotsLeft(session, counts)} drop-in spots left. Your spot is held while you send payment.`}
           </p>
 
-          {hasInstructional ? (
+          {hasChoice ? (
             <fieldset className="space-y-3">
               <legend className="mb-2 font-display text-sm font-bold tracking-[0.15em] uppercase">I&apos;m coming for</legend>
-              <OptionRadio
-                value="full"
-                defaultChecked
-                title={OPTION_LABELS.full}
-                price={formatMoney(priceOf("full"))}
-                detail={[times.full, full ? "joins the waitlist" : null]}
-              />
-              <OptionRadio
-                value="instructional"
-                title={OPTION_LABELS.instructional}
-                price={formatMoney(priceOf("instructional"))}
-                detail={[times.instructional, "doesn't use a drop-in spot"]}
-              />
+              {offered.map((o, i) => (
+                <OptionRadio
+                  key={o}
+                  value={o}
+                  defaultChecked={i === 0}
+                  title={OPTION_LABELS[o]}
+                  price={formatMoney(priceOf(o))}
+                  detail={optionDetail[o]}
+                />
+              ))}
             </fieldset>
           ) : (
             <input type="hidden" name="option" value="full" />
@@ -323,17 +329,16 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
           </Field>
 
           <div className="space-y-4">
-            <SubmitButton>{full && !hasInstructional ? "Join waitlist" : "Sign up"}</SubmitButton>
-            <RefundCutoff cutoff={session.cancel_cutoff} />
+            <SubmitButton>{offered.every(fullFor) ? "Join waitlist" : "Sign up"}</SubmitButton>
+            <HowItWorks session={session} price={priceOf(offered[0])} waitlist={offered.every(fullFor)} />
           </div>
         </form>
       </Sheet>
     );
   }
 
-  const switchable = hasInstructional && (reg.status === "pending_payment" || reg.status === "waitlisted");
-  const other = reg.option === "full" ? "instructional" : "full";
-  const otherPrice = priceOf(other, reg.friend_discount);
+  const switchable = hasChoice && (reg.status === "pending_payment" || reg.status === "waitlisted");
+  const others = offered.filter((o) => o !== reg.option);
   const active = ["pending_payment", "confirmed", "waitlisted"].includes(reg.status);
   const broughtByName = reg.brought_by ? buddyOptions.find((o) => o.id === reg.brought_by)?.name : null;
 
@@ -342,11 +347,7 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
       label="Your spot"
       action={
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-          {reg.option === "instructional" && (
-            <Mark tone="mat" glyph="◇">
-              Instructional only
-            </Mark>
-          )}
+          <OptionMark option={reg.option} />
           {reg.friend_discount && (
             <Mark tone="line" glyph="+">
               Bring a Friend · half price
@@ -365,13 +366,24 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
             <span className="text-line">.</span>
           </p>
         )}
-        {(reg.status === "pending_payment" || reg.status === "confirmed") && !started && (
-          <AddToCalendar session={session} instructionalOnly={reg.option === "instructional"} />
+        {reg.status === "confirmed" && !started && (
+          <AddToCalendar session={session} option={reg.option} />
+        )}
+        {reg.status === "waitlisted" && myPosition != null && (
+          <p className="flex items-baseline gap-3 font-display text-3xl font-black uppercase">
+            You&apos;re <span className="font-score text-4xl text-mat">#{pad2(myPosition)}</span> in line
+            <span className="text-line">.</span>
+          </p>
         )}
         {reg.status === "waitlisted" && (
           <p className="text-lg">
             You&apos;re on the waitlist. We&apos;ll email you payment instructions as soon as a spot opens. Please
             don&apos;t send money yet.
+          </p>
+        )}
+        {active && !started && (
+          <p className="border-t-2 border-ink pt-4 font-display text-sm font-bold tracking-[0.2em] text-ink-soft uppercase">
+            Extras
           </p>
         )}
         {reg.note && <p className="border-l-4 border-ink/20 pl-3 text-ink-soft">Your note: &ldquo;{reg.note}&rdquo;</p>}
@@ -397,7 +409,7 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
           </form>
         )}
 
-        {reg.option === "full" && !started && ["pending_payment", "confirmed", "waitlisted"].includes(reg.status) && (
+        {usesSpot(reg.option) && !started && ["pending_payment", "confirmed", "waitlisted"].includes(reg.status) && (
           <form action={setTeammates.bind(null, reg.id, session.id)} className="space-y-2 border-t border-ink/20 pt-4">
             <p className="font-display text-sm font-bold tracking-[0.15em] uppercase">
               Teammates you asked for <span className="font-normal tracking-normal normal-case text-ink-soft">(up to {MAX_TEAMMATES})</span>
@@ -412,24 +424,30 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
         )}
 
         <div className="flex flex-wrap items-center gap-4">
-          {switchable && (
-            <form action={changeOption.bind(null, reg.id, other, path)}>
-              <SubmitButton
-                variant="secondary"
-                size="sm"
-                confirm={{
-                  title: `Switch to ${OPTION_LABELS[other]}?`,
-                  description:
-                    other === "instructional"
-                      ? `You'll pay ${formatMoney(otherPrice)} instead and give up your drop-in spot${reg.status === "waitlisted" ? " (and your place on the waitlist)" : ""}.`
-                      : `You'll pay ${formatMoney(otherPrice)}. If drop-in is full you'll go on the waitlist, and your current payment hold is released.`,
-                  action: "Switch",
-                }}
-              >
-                Switch to {other === "instructional" ? "instructional only" : "instructional + drop-in"} · {formatMoney(otherPrice)}
-              </SubmitButton>
-            </form>
-          )}
+          {switchable &&
+            others.map((other) => {
+              const otherPrice = priceOf(other, reg.friend_discount);
+              const sameQueue = usesSpot(other) === usesSpot(reg.option);
+              return (
+                <form key={other} action={changeOption.bind(null, reg.id, other, path)}>
+                  <SubmitButton
+                    variant="secondary"
+                    size="sm"
+                    confirm={{
+                      title: `Switch to ${OPTION_LABELS[other]}?`,
+                      description: sameQueue
+                        ? `You'll pay ${formatMoney(otherPrice)} instead. You keep your ${reg.status === "waitlisted" ? "place in line" : "spot"}.`
+                        : other === "instructional"
+                          ? `You'll pay ${formatMoney(otherPrice)} instead and give up your drop-in ${reg.status === "waitlisted" ? "place in line" : "spot"}. If instructional is full you'll go on its waitlist.`
+                          : `You'll pay ${formatMoney(otherPrice)}. If drop-in is full you'll go on the waitlist, and your current payment hold is released.`,
+                      action: "Switch",
+                    }}
+                  >
+                    Switch to {OPTION_LABELS[other].toLowerCase()} · {formatMoney(otherPrice)}
+                  </SubmitButton>
+                </form>
+              );
+            })}
           <form action={cancelRegistration.bind(null, reg.id, path)} className="flex flex-wrap items-center gap-4">
             <SubmitButton
               variant="danger"
@@ -458,7 +476,7 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
             )}
           </form>
         </div>
-        {hasInstructional && reg.status === "confirmed" && (
+        {hasChoice && reg.status === "confirmed" && (
           <p className="text-sm text-ink-soft">Want to change your option after paying? Contact the host.</p>
         )}
       </div>
@@ -478,11 +496,12 @@ async function AttendeeList({ session }: { session: Session }) {
   ]);
   const teams = (teamRows ?? []) as Team[];
   const active = attendees.filter((a) => a.status === "confirmed" || a.status === "pending_payment");
-  const going = active.filter((a) => a.option === "full");
+  const going = active.filter((a) => usesSpot(a.option));
   const instructionalOnly = active.filter((a) => a.option === "instructional");
-  const waiting = attendees
-    .filter((a) => a.status === "waitlisted")
-    .sort((a, b) => (a.waitlist_position ?? 0) - (b.waitlist_position ?? 0));
+  const byPosition = (a: Attendee, b: Attendee) => (a.waitlist_position ?? 0) - (b.waitlist_position ?? 0);
+  const waitlisted = attendees.filter((a) => a.status === "waitlisted");
+  const waiting = waitlisted.filter((a) => usesSpot(a.option)).sort(byPosition);
+  const waitingInstructional = waitlisted.filter((a) => !usesSpot(a.option)).sort(byPosition);
 
   const waitlistSheet = (
     <Sheet label={`Waitlist · ${waiting.length}`}>
@@ -497,13 +516,29 @@ async function AttendeeList({ session }: { session: Session }) {
       )}
     </Sheet>
   );
-  const instructionalSheet = instructionalOnly.length > 0 && (
-    <Sheet label={`Instructional only · ${instructionalOnly.length}`}>
+  const instructionalSheet = (instructionalOnly.length > 0 || waitingInstructional.length > 0) && (
+    <Sheet
+      label={`Instructional only · ${instructionalOnly.length}${
+        session.instructional_capacity != null ? `/${session.instructional_capacity}` : ""
+      }`}
+    >
       <ul className="divide-y divide-ink/20">
         {instructionalOnly.map((a) => (
           <AttendeeRow key={a.registration_id} a={a} number="◇" numberClass="text-mat" />
         ))}
       </ul>
+      {waitingInstructional.length > 0 && (
+        <>
+          <p className="mt-4 font-display text-sm font-bold tracking-[0.2em] text-ink-soft uppercase">
+            Instructional waitlist · {waitingInstructional.length}
+          </p>
+          <ol className="divide-y divide-ink/20">
+            {waitingInstructional.map((a) => (
+              <AttendeeRow key={a.registration_id} a={a} number={pad2(a.waitlist_position ?? 0)} numberClass="text-mat" />
+            ))}
+          </ol>
+        </>
+      )}
     </Sheet>
   );
 
@@ -543,24 +578,5 @@ async function AttendeeList({ session }: { session: Session }) {
         {instructionalSheet}
       </div>
     </div>
-  );
-}
-
-/** The refund rule, next to the sign-up button: cancel before the session's cutoff to get your money back. */
-function RefundCutoff({ cutoff, className }: { cutoff: string; className?: string }) {
-  const passed = new Date(cutoff) <= new Date();
-  return (
-    <p className={`max-w-xl border-l-4 border-line py-1 pl-3 ${className ?? ""}`}>
-      <span className="font-display text-sm font-bold tracking-[0.15em] uppercase">Refunds</span>
-      <br />
-      {passed ? (
-        <>The refund cutoff has passed. Spots cancelled now aren&apos;t refunded.</>
-      ) : (
-        <>
-          Can&apos;t make it? Cancel before <b>{formatDateTime(cutoff)}</b> to get your money back. After that, no
-          refunds.
-        </>
-      )}
-    </p>
   );
 }

@@ -10,6 +10,7 @@ import { flash } from "@/lib/flash";
 import { cleanName, cleanNameList, cleanText, normalizePhone } from "@/lib/input";
 import { MAX_TEAMMATES } from "@/lib/teams";
 import { OPTION_LABELS, profileComplete } from "@/lib/profile";
+import type { SignupOption } from "@/lib/types";
 import { dispatchEvents, parseEvents } from "@/lib/registrations";
 import { createClient } from "@/lib/supabase/server";
 
@@ -28,7 +29,7 @@ const ERRORS: Record<string, string> = {
   teammate_unavailable: "One of those players isn't signed up for drop-in anymore. Pick again.",
   maintenance: "Sign-ups are paused for a few minutes while we fix something. Please try again soon.",
   not_first_timer: "Bring a Friend is for first-time players.",
-  buddy_unavailable: "That player isn't signed up for this session anymore. Pick again.",
+  buddy_unavailable: "Pick a regular (someone who's played before) who's signed up for this session.",
   friend_rate_unavailable: "This session is free, so there's no Bring a Friend rate.",
 };
 
@@ -37,7 +38,7 @@ function friendly(message: string) {
   return key ? ERRORS[key] : "Something went wrong. Please try again.";
 }
 
-const Option = z.enum(["full", "instructional"]);
+const Option = z.enum(["full", "instructional", "dropin"]);
 
 export async function registerForSession(sessionId: string, formData: FormData) {
   const path = `/s/${sessionId}`;
@@ -64,7 +65,7 @@ export async function registerForSession(sessionId: string, formData: FormData) 
   // Teammate requests (drop-in only) are saved once the sign-up exists.
   const teammates = teammateIds(formData);
   let teamNote = "";
-  if (option === "full" && teammates.length && events[0]) {
+  if (option !== "instructional" && teammates.length && events[0]) {
     const { error: teamError } = await supabase.rpc("set_team_requests", {
       p_registration_id: events[0].registration_id,
       p_requested: teammates,
@@ -132,7 +133,7 @@ const SIGNED_UP: Record<string, string> = {
   confirmed: "You're in! See you on court.",
 };
 
-export async function changeOption(registrationId: string, option: "full" | "instructional", returnTo: string) {
+export async function changeOption(registrationId: string, option: SignupOption, returnTo: string) {
   await requireProfile(returnTo);
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("change_registration_option", {

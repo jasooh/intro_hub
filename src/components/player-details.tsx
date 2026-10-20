@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { OptionMark } from "@/components/option-mark";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Avatar, Mark } from "@/components/ui";
 import { HEARD_LABELS, OPTION_LABELS, SKILL_LABELS } from "@/lib/profile";
@@ -67,11 +68,7 @@ export function PlayerDetails({
         </DialogHeader>
 
         <div className="flex flex-wrap gap-x-4 gap-y-1">
-          {r?.option === "instructional" && (
-            <Mark tone="mat" glyph="◇">
-              Instructional only
-            </Mark>
-          )}
+          {r && <OptionMark option={r.option} />}
           {p.attended_before === false && (
             <Mark tone="line" glyph="★">
               First time
