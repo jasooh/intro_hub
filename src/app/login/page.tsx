@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
 import { signInWithGoogle } from "@/app/auth/actions";
+import { LoginSubline, PlayerPass, PlayerPassFrame } from "@/components/player-pass";
 import { SubmitButton } from "@/components/submit-button";
 import { reveal } from "@/components/ui";
 
@@ -9,33 +11,96 @@ export const metadata: Metadata = {
   description: "Sign in with Google to sign up for Intro 2 Volleyball sessions.",
 };
 
+const PERKS = [
+  { title: "One-tap sign-up", body: "Fill in your profile once, then grab a spot in one tap." },
+  { title: "See your team", body: "See who's coming, and your team once the hosts post them." },
+  { title: "Add your hype song", body: "It goes on the session playlist." },
+];
+
 export default function LoginPage(props: PageProps<"/login">) {
   return (
-    <div className="mx-auto max-w-md space-y-8 py-6 sm:py-12">
-      <div className="reveal space-y-3" style={reveal(0)}>
-        <p className="font-display text-base font-bold tracking-[0.3em] text-line uppercase">Check in</p>
-        <h1 className="font-display text-6xl leading-[0.85] font-black tracking-tight uppercase sm:text-7xl">
-          Sign in to play<span className="text-line">.</span>
-        </h1>
-        <p className="text-lg text-ink-soft">Sign up for sessions, see who&apos;s coming, and manage your spot.</p>
+    <div className="mx-auto max-w-4xl space-y-12 py-6 sm:py-12">
+      <div className="grid grid-cols-1 items-start gap-10 sm:grid-cols-[1fr_auto] sm:gap-12">
+        <div className="space-y-6">
+          <div className="reveal space-y-3" style={reveal(0)}>
+            <p className="font-display text-base font-bold tracking-[0.3em] text-line uppercase">Check in</p>
+            <h1 className="font-display text-6xl leading-[0.85] font-black tracking-tight uppercase sm:text-7xl">
+              Sign in to play<span className="text-line">.</span>
+            </h1>
+            <p className="max-w-md text-lg text-ink-soft">
+              <Suspense fallback="Sign up for sessions, see who's coming, and manage your spot.">
+                <Sub searchParams={props.searchParams} />
+              </Suspense>
+            </p>
+          </div>
+          <div className="reveal max-w-md space-y-4" style={reveal(1)}>
+            <Suspense>
+              <LoginForm searchParams={props.searchParams} />
+            </Suspense>
+            <p className="text-sm text-ink-soft">
+              No password to remember. We only get your name, email and photo from Google. By signing in you agree to the{" "}
+              <Link href="/legal/waiver" className="underline decoration-line decoration-2 underline-offset-4">
+                waiver
+              </Link>{" "}
+              and{" "}
+              <Link href="/legal/media-release" className="underline decoration-line decoration-2 underline-offset-4">
+                media release
+              </Link>
+              .
+            </p>
+          </div>
+        </div>
+        <div className="reveal" style={reveal(2)}>
+          <Suspense
+            fallback={
+              <PlayerPassFrame>
+                <p className="font-display text-lg font-bold tracking-[0.15em] text-maple/70 uppercase">Next session…</p>
+              </PlayerPassFrame>
+            }
+          >
+            <Pass searchParams={props.searchParams} />
+          </Suspense>
+        </div>
       </div>
-      <div className="reveal border-t-2 border-ink pt-6" style={reveal(1)}>
-        <Suspense>
-          <LoginForm searchParams={props.searchParams} />
-        </Suspense>
-      </div>
+
+      <ol className="reveal grid grid-cols-1 divide-y divide-ink/20 border-t-2 border-ink sm:grid-cols-3 sm:divide-x sm:divide-y-0" style={reveal(3)}>
+        {PERKS.map((p, i) => (
+          <li key={p.title} className="flex gap-4 py-5 sm:flex-col sm:gap-2 sm:px-5 sm:first:pl-0 sm:last:pr-0">
+            <span className="font-score text-4xl leading-none font-black text-line">{String(i + 1).padStart(2, "0")}</span>
+            <div className="min-w-0">
+              <p className="font-display text-xl font-extrabold uppercase">{p.title}</p>
+              <p className="text-ink-soft">{p.body}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }
 
-async function LoginForm({ searchParams }: { searchParams: PageProps<"/login">["searchParams"] }) {
+async function nextPath(searchParams: PageProps<"/login">["searchParams"]) {
   const params = await searchParams;
-  const next = typeof params.next === "string" ? params.next : "/";
+  return typeof params.next === "string" ? params.next : "/";
+}
+
+async function Sub({ searchParams }: { searchParams: PageProps<"/login">["searchParams"] }) {
+  return <LoginSubline next={await nextPath(searchParams)} />;
+}
+
+async function Pass({ searchParams }: { searchParams: PageProps<"/login">["searchParams"] }) {
+  return <PlayerPass next={await nextPath(searchParams)} />;
+}
+
+async function LoginForm({ searchParams }: { searchParams: PageProps<"/login">["searchParams"] }) {
+  const next = await nextPath(searchParams);
   return (
-    <form action={signInWithGoogle} className="space-y-4">
+    <form action={signInWithGoogle}>
       <input type="hidden" name="next" value={next} />
-      <SubmitButton variant="secondary" className="w-full bg-[#fff8ee]">
-        <GoogleIcon /> Continue with Google
+      <SubmitButton className="w-full sm:w-auto">
+        <span className="grid size-7 place-items-center bg-[#fff8ee]">
+          <GoogleIcon />
+        </span>
+        Continue with Google
       </SubmitButton>
     </form>
   );
