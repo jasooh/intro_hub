@@ -64,7 +64,10 @@ async function Templates() {
 }
 
 function TemplateRow({ t }: { t: SessionTemplate }) {
-  const ends = clockAfter(t.start_time, t.duration_minutes);
+  const start = t.start_time.slice(0, 5);
+  const lessonEnds = clockAfter(start, t.instructional_minutes ?? 45);
+  const dropinStarts = t.dropin_offset_minutes != null ? clockAfter(start, t.dropin_offset_minutes) : lessonEnds;
+  const ends = clockAfter(start, t.duration_minutes);
   return (
     <li className={`flex flex-wrap items-center gap-x-6 gap-y-3 py-4 ${t.active ? "" : "opacity-60"}`}>
       <div className="flex w-16 shrink-0 flex-col items-center font-display leading-none uppercase">
@@ -79,7 +82,9 @@ function TemplateRow({ t }: { t: SessionTemplate }) {
           {t.title}
         </Link>
         <p className="text-ink-soft">
-          {t.start_time.slice(0, 5)} – {ends} · {t.location} · {t.capacity} spots
+          <b className="text-ink">{start}–{lessonEnds}</b> lesson · <b className="text-ink">{dropinStarts}–{ends}</b> drop-in
+          <br />
+          {t.location} · {t.capacity} spots
         </p>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
           <span className="font-score font-black">{formatMoney(t.price_cents)}</span>

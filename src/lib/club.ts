@@ -22,3 +22,6 @@ export const WHAT_TO_KNOW = [
   { label: "Arrive", body: "About 10 minutes early so you can check in and warm up." },
   { label: "Skill", body: "All levels welcome. Most people are beginners or getting back into it." },
 ];
+
+/** Where sessions usually are: the default location for new sessions and weekly sessions. */
+export const DEFAULT_LOCATION = "Aaniin Community Centre, 5665 14th Avenue, Markham";

@@ -1,6 +1,10 @@
 import { LocationInput } from "@/components/location-input";
 import { SubmitButton } from "@/components/submit-button";
 import { Field, FormGroup as Group, inputClass } from "@/components/ui";
+import { SessionTimes } from "@/components/session-times";
+import { DEFAULT_LOCATION } from "@/lib/club";
+import { TimingPreview } from "@/components/timing-preview";
+import { clockPlus, DEFAULT_CLOCKS, type BlockClocks } from "@/lib/session-times";
 import type { SessionTemplate } from "@/lib/types";
 import { pad2 } from "@/lib/format";
 
@@ -34,7 +38,7 @@ export function TemplateForm({
             </Field>
           </div>
           <Field label="Location">
-            <LocationInput name="location" defaultValue={t?.location ?? "Aaniin Community Centre, Gym 2, 5665 14th Avenue, Markham"} required />
+            <LocationInput name="location" defaultValue={t?.location ?? DEFAULT_LOCATION} required />
           </Field>
           <Field label="Spots">
             <input type="number" name="capacity" defaultValue={t?.capacity ?? 18} min={1} required className={inputClass} />
@@ -42,10 +46,10 @@ export function TemplateForm({
         </div>
       </Group>
 
-      <Group title="When">
-        <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-3">
+      <Group title="When" hint="Instructional first, then drop-in.">
+        <div className="space-y-5">
           <Field label="Day">
-            <select name="weekday" defaultValue={t?.weekday ?? 6} className={inputClass}>
+            <select name="weekday" defaultValue={t?.weekday ?? 6} className={`${inputClass} sm:max-w-56`}>
               {WEEKDAYS.map((d, i) => (
                 <option key={d} value={i}>
                   {d}
@@ -53,12 +57,7 @@ export function TemplateForm({
               ))}
             </select>
           </Field>
-          <Field label="Starts">
-            <input type="time" name="start_time" defaultValue={t?.start_time.slice(0, 5) ?? "20:00"} required className={inputClass} />
-          </Field>
-          <Field label="Length (minutes)">
-            <input type="number" name="duration_minutes" defaultValue={t?.duration_minutes ?? 225} min={15} required className={inputClass} />
-          </Field>
+          <SessionTimes defaultValue={t ? templateClocks(t) : DEFAULT_CLOCKS} />
         </div>
       </Group>
 
@@ -87,22 +86,6 @@ export function TemplateForm({
               step="0.01"
               min={0}
               defaultValue={t ? (t.instructional_price_cents != null ? t.instructional_price_cents / 100 : "") : 10}
-              className={inputClass}
-            />
-          </Field>
-          <Field label="Instructional ends">
-            <input
-              type="time"
-              name="instructional_ends"
-              defaultValue={t ? clockAfter(t.start_time, t.instructional_minutes) : "20:45"}
-              className={inputClass}
-            />
-          </Field>
-          <Field label="Drop-in starts">
-            <input
-              type="time"
-              name="dropin_starts"
-              defaultValue={t ? clockAfter(t.start_time, t.dropin_offset_minutes) : "21:00"}
               className={inputClass}
             />
           </Field>
@@ -146,7 +129,10 @@ export function TemplateForm({
           <Field label="Sign-ups open (hours before)" hint="120 = 5 days before">
             <input type="number" name="open_hours_before" defaultValue={t?.open_hours_before ?? 120} min={0} required className={inputClass} />
           </Field>
-          <Field label="Payment window (hours)" hint="How long a spot is held while unpaid">
+          <Field
+            label="Hours to pay after signing up"
+            hint="Each player must pay within this many hours of signing up, or their spot goes to the next person."
+          >
             <input type="number" name="hold_hours" defaultValue={t?.hold_hours ?? 12} min={1} required className={inputClass} />
           </Field>
           <Field label="Refund cutoff (hours before)" hint="Cancel before this for a refund">
@@ -162,6 +148,8 @@ export function TemplateForm({
         </div>
       </details>
 
+      <TimingPreview kind="template" />
+
       <div className="flex flex-wrap items-center gap-6 border-t-2 border-ink pt-5">
         <label className="flex items-center gap-2 font-display text-sm font-bold tracking-[0.15em] uppercase">
           <input type="checkbox" name="active" defaultChecked={t?.active ?? true} className="size-5 accent-[var(--line)]" />
@@ -171,4 +159,16 @@ export function TemplateForm({
       </div>
     </form>
   );
+}
+
+/** A weekly session's four clock times (older ones without the split get a 45-minute lesson). */
+function templateClocks(t: SessionTemplate): BlockClocks {
+  const start = t.start_time.slice(0, 5);
+  const instructionalEnd = clockPlus(start, t.instructional_minutes ?? 45);
+  return {
+    instructional_start: start,
+    instructional_end: instructionalEnd,
+    dropin_start: t.dropin_offset_minutes != null ? clockPlus(start, t.dropin_offset_minutes) : instructionalEnd,
+    dropin_end: clockPlus(start, t.duration_minutes),
+  };
 }

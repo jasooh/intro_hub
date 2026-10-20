@@ -1,7 +1,11 @@
 import { LocationInput } from "@/components/location-input";
 import { SubmitButton } from "@/components/submit-button";
 import { Field, FormGroup as Group, inputClass } from "@/components/ui";
+import { SessionTimes } from "@/components/session-times";
+import { DEFAULT_LOCATION } from "@/lib/club";
+import { TimingPreview } from "@/components/timing-preview";
 import { formatDateTime, utcToZonedLocal } from "@/lib/format";
+import { clockPlus, DEFAULT_CLOCKS, type BlockClocks } from "@/lib/session-times";
 import type { Session } from "@/lib/types";
 
 export function SessionForm({
@@ -13,9 +17,7 @@ export function SessionForm({
   session?: Session;
   submitLabel: string;
 }) {
-  const duration = session
-    ? Math.round((new Date(session.ends_at).getTime() - new Date(session.starts_at).getTime()) / 60_000)
-    : 120;
+  const clocks: BlockClocks = session ? sessionClocks(session) : DEFAULT_CLOCKS;
   const cutoffHours = session
     ? Math.round((new Date(session.starts_at).getTime() - new Date(session.cancel_cutoff).getTime()) / 3_600_000)
     : 24;
@@ -30,7 +32,7 @@ export function SessionForm({
             </Field>
           </div>
           <Field label="Location">
-            <LocationInput name="location" defaultValue={session?.location} required />
+            <LocationInput name="location" defaultValue={session?.location ?? DEFAULT_LOCATION} required />
           </Field>
           <Field label="Spots">
             <input type="number" name="capacity" defaultValue={session?.capacity ?? 12} min={1} required className={inputClass} />
@@ -38,20 +40,18 @@ export function SessionForm({
         </div>
       </Group>
 
-      <Group title="When">
-        <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-[1fr_12rem]">
-          <Field label="Starts at">
+      <Group title="When" hint="Instructional first, then drop-in. The session's start and end come from these.">
+        <div className="space-y-5">
+          <Field label="Date">
             <input
-              type="datetime-local"
-              name="starts_at"
-              defaultValue={session ? utcToZonedLocal(session.starts_at) : undefined}
+              type="date"
+              name="date"
+              defaultValue={session ? utcToZonedLocal(session.starts_at).slice(0, 10) : undefined}
               required
-              className={inputClass}
+              className={`${inputClass} sm:max-w-56`}
             />
           </Field>
-          <Field label="Length (minutes)">
-            <input type="number" name="duration_minutes" defaultValue={duration} min={15} required className={inputClass} />
-          </Field>
+          <SessionTimes defaultValue={clocks} />
         </div>
       </Group>
 
@@ -90,22 +90,6 @@ export function SessionForm({
               step="0.01"
               min={0}
               defaultValue={session?.instructional_price_cents != null ? session.instructional_price_cents / 100 : ""}
-              className={inputClass}
-            />
-          </Field>
-          <Field label="Instructional ends">
-            <input
-              type="time"
-              name="instructional_ends"
-              defaultValue={session?.instructional_ends_at ? utcToZonedLocal(session.instructional_ends_at).slice(11, 16) : ""}
-              className={inputClass}
-            />
-          </Field>
-          <Field label="Drop-in starts">
-            <input
-              type="time"
-              name="dropin_starts"
-              defaultValue={session?.dropin_starts_at ? utcToZonedLocal(session.dropin_starts_at).slice(11, 16) : ""}
               className={inputClass}
             />
           </Field>
@@ -148,12 +132,18 @@ export function SessionForm({
               className={inputClass}
             />
           </Field>
-          <Field label="Payment window (hours)" hint="How long a spot is held while unpaid">
+          <Field
+            label="Hours to pay after signing up"
+            hint="Each player must pay within this many hours of signing up, or their spot goes to the next person."
+          >
             <input type="number" name="hold_hours" defaultValue={session?.hold_hours ?? 12} min={1} required className={inputClass} />
           </Field>
           <Field label="Refund cutoff (hours before)" hint="Cancel before this for a refund">
             <input type="number" name="cancel_cutoff_hours" defaultValue={cutoffHours} min={0} required className={inputClass} />
           </Field>
+        </div>
+        <div className="mt-5">
+          <TimingPreview kind="session" />
         </div>
         <label className="mt-5 flex items-start gap-3">
           <input
@@ -185,4 +175,17 @@ export function SessionForm({
       </div>
     </form>
   );
+}
+
+/** A saved session's four clock times (older sessions without the split get a 45-minute lesson). */
+function sessionClocks(session: Session): BlockClocks {
+  const clock = (iso: string) => utcToZonedLocal(iso).slice(11, 16);
+  const start = clock(session.starts_at);
+  const instructionalEnd = session.instructional_ends_at ? clock(session.instructional_ends_at) : clockPlus(start, 45);
+  return {
+    instructional_start: start,
+    instructional_end: instructionalEnd,
+    dropin_start: session.dropin_starts_at ? clock(session.dropin_starts_at) : instructionalEnd,
+    dropin_end: clock(session.ends_at),
+  };
 }

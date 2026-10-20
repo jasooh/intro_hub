@@ -13,6 +13,7 @@ import { zonedLocalToUtc } from "@/lib/format";
 import { dispatchEvents, parseEvents } from "@/lib/registrations";
 import { isEmptyPost, sanitizePostHtml } from "@/lib/rich-text";
 import { roundRobin } from "@/lib/schedule";
+import { blockOffsets, type BlockClocks } from "@/lib/session-times";
 import { sendSessionMessage } from "@/lib/session-messages";
 import { balanceTeams } from "@/lib/teams";
 import type { SkillLevel } from "@/lib/types";
@@ -53,22 +54,26 @@ const optionalCount = z.preprocess(
   (v) => (v === "" || v == null ? null : v),
   z.coerce.number().int().min(1).max(200).nullable(),
 );
-const optionalClock = z
-  .string()
-  .regex(/^(\d{2}:\d{2})?$/, "Times must be HH:MM")
-  .default("")
-  .transform((v) => v || null);
+/** The four block times (HH:MM): instructional start/end, then drop-in start/end. */
+const clock = z.string().regex(/^\d{2}:\d{2}$/, "Times must be HH:MM");
+const clockFields = {
+  instructional_start: clock,
+  instructional_end: clock,
+  dropin_start: clock,
+  dropin_end: clock,
+};
 
-/** Minutes from `start` (HH:MM) to `time` (HH:MM), wrapping past midnight. */
-function minutesAfter(start: string, time: string) {
-  const toMin = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
-  return (toMin(time) - toMin(start) + 1440) % 1440;
+/** Minutes after the instructional start for each block edge, or a form error. */
+function offsetsOf(f: BlockClocks, path: string) {
+  const result = blockOffsets(f);
+  if ("error" in result) fail(path, result.error);
+  return result.offsets;
 }
 
 const SessionForm = z.object({
   title: z.string().trim().min(1).max(100),
-  starts_at: z.string().min(1, "Start time is required"),
-  duration_minutes: z.coerce.number().int().min(15).max(600),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Pick a date"),
+  ...clockFields,
   location: z.string().trim().min(1).max(200),
   capacity: z.coerce.number().int().min(1).max(200),
   price: dollars,
@@ -77,8 +82,6 @@ const SessionForm = z.object({
   cancel_cutoff_hours: z.coerce.number().int().min(0).max(336),
   notes: z.string().max(2000).optional(),
   instructional_price: optionalDollars,
-  instructional_ends: optionalClock,
-  dropin_starts: optionalClock,
   deposit: optionalDollars,
   dropin_price: optionalDollars,
   instructional_capacity: optionalCount,
@@ -89,11 +92,13 @@ function sessionRow(formData: FormData, path: string) {
   const parsed = SessionForm.safeParse(Object.fromEntries(formData));
   if (!parsed.success) fail(path, parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; "));
   const f = parsed.data;
-  const startsAt = zonedLocalToUtc(f.starts_at);
+  const o = offsetsOf(f, path);
+  const startsAt = zonedLocalToUtc(`${f.date}T${f.instructional_start}`);
+  const at = (minutes: number) => new Date(startsAt.getTime() + minutes * 60_000).toISOString();
   return {
     title: f.title,
     starts_at: startsAt.toISOString(),
-    ends_at: new Date(startsAt.getTime() + f.duration_minutes * 60_000).toISOString(),
+    ends_at: at(o.end),
     location: f.location,
     capacity: f.capacity,
     price_cents: f.price,
@@ -102,19 +107,13 @@ function sessionRow(formData: FormData, path: string) {
     cancel_cutoff: new Date(startsAt.getTime() - f.cancel_cutoff_hours * 3_600_000).toISOString(),
     notes: f.notes?.trim() || null,
     instructional_price_cents: f.instructional_price,
-    instructional_ends_at: atClock(startsAt, f.starts_at, f.instructional_ends),
-    dropin_starts_at: atClock(startsAt, f.starts_at, f.dropin_starts),
+    instructional_ends_at: at(o.instructionalEnd),
+    dropin_starts_at: at(o.dropinStart),
     deposit_cents: f.deposit,
     dropin_price_cents: f.dropin_price,
     instructional_capacity: f.instructional_price == null ? null : f.instructional_capacity,
     announce: f.announce === "on",
   };
-}
-
-/** The instant `clock` (HH:MM) falls at, on or after the session start. */
-function atClock(startsAt: Date, startsLocal: string, clock: string | null) {
-  if (!clock) return null;
-  return new Date(startsAt.getTime() + minutesAfter(startsLocal.slice(11, 16), clock) * 60_000).toISOString();
 }
 
 export async function createSession(formData: FormData) {
@@ -397,8 +396,7 @@ export async function deleteAccount(profileId: string) {
 const TemplateForm = z.object({
   title: z.string().trim().min(1).max(100),
   weekday: z.coerce.number().int().min(0).max(6),
-  start_time: z.string().regex(/^\d{2}:\d{2}$/, "Start time must be HH:MM"),
-  duration_minutes: z.coerce.number().int().min(15).max(600),
+  ...clockFields,
   location: z.string().trim().min(1).max(200),
   capacity: z.coerce.number().int().min(1).max(200),
   price: dollars,
@@ -407,8 +405,6 @@ const TemplateForm = z.object({
   cancel_cutoff_hours: z.coerce.number().int().min(0).max(336),
   active: z.literal("on").optional(),
   instructional_price: optionalDollars,
-  instructional_ends: optionalClock,
-  dropin_starts: optionalClock,
   dropin_price: optionalDollars,
   instructional_capacity: optionalCount,
 });
@@ -416,17 +412,17 @@ const TemplateForm = z.object({
 const TEMPLATE_FIELD_LABELS: Record<string, string> = {
   title: "Title",
   weekday: "Day",
-  start_time: "Start time",
-  duration_minutes: "Length",
+  instructional_start: "Instructional starts",
+  instructional_end: "Instructional ends",
+  dropin_start: "Drop-in starts",
+  dropin_end: "Drop-in ends",
   location: "Location",
   capacity: "Spots",
   price: "Price",
   open_hours_before: "Sign-ups open",
-  hold_hours: "Payment window",
+  hold_hours: "Hours to pay after signing up",
   cancel_cutoff_hours: "Refund cutoff",
   instructional_price: "Instructional-only price",
-  instructional_ends: "Instructional ends",
-  dropin_starts: "Drop-in starts",
   dropin_price: "Drop-in only price",
   instructional_capacity: "Instructional spots",
 };
@@ -441,16 +437,29 @@ export async function saveTemplate(templateId: string | null, formData: FormData
       parsed.error.issues.map((i) => `${TEMPLATE_FIELD_LABELS[String(i.path[0])] ?? i.path.join(".")}: ${i.message}`).join("; "),
     );
   }
-  const { price, active, instructional_price, instructional_ends, dropin_starts, dropin_price, instructional_capacity, ...rest } =
-    parsed.data;
+  const {
+    price,
+    active,
+    instructional_price,
+    dropin_price,
+    instructional_capacity,
+    instructional_start,
+    instructional_end,
+    dropin_start,
+    dropin_end,
+    ...rest
+  } = parsed.data;
+  const o = offsetsOf({ instructional_start, instructional_end, dropin_start, dropin_end }, formPath);
   const row = {
     ...rest,
+    start_time: instructional_start,
+    duration_minutes: o.end,
     price_cents: price,
     active: active === "on",
     timezone: env.timezone(),
     instructional_price_cents: instructional_price,
-    instructional_minutes: instructional_ends ? minutesAfter(rest.start_time, instructional_ends) || null : null,
-    dropin_offset_minutes: dropin_starts ? minutesAfter(rest.start_time, dropin_starts) : null,
+    instructional_minutes: o.instructionalEnd,
+    dropin_offset_minutes: o.dropinStart,
     dropin_price_cents: dropin_price,
     instructional_capacity: instructional_price == null ? null : instructional_capacity,
   };
