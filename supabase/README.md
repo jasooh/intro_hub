@@ -35,7 +35,7 @@ Open the file listed for the current version; older copies in earlier migrations
 | `_lock_attended_before` | `20261029000000_attended_before_locked.sql` | 1 |
 | `_log_registration_activity` | `20261106000000_host_notifications.sql` | 1 |
 | `_log_unmatched_payment` | `20261106000000_host_notifications.sql` | 1 |
-| `_maintenance_guard` | `20261023000000_dev_tools.sql` | 1 |
+| `_maintenance_guard` | `20261117000000_maintenance_guard_comment.sql` | 2 |
 | `_option_offered` | `20261101000000_signup_options.sql` | 1 |
 | `_owe_late_deposit` | `20261111000000_deposit_late_payments.sql` | 1 |
 | `_profile_complete` | `20261014000000_player_info_and_options.sql` | 1 |
