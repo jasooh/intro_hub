@@ -22,6 +22,7 @@ Open the file listed for the current version; older copies in earlier migrations
 |---|---|---|
 | `_apply_payment` | `20261026000000_partial_payments.sql` | 2 |
 | `_bump_overflow` | `20261104000000_capacity_overflow.sql` | 1 |
+| `_bump_schedule_revision` | `20261118000000_audit_fixes.sql` | 1 |
 | `_claim_regular` | `20261101000000_signup_options.sql` | 1 |
 | `_compute_session_stats` | `20261113000000_stats.sql` | 1 |
 | `_devtools_guard` | `20261023000000_dev_tools.sql` | 1 |
@@ -38,7 +39,7 @@ Open the file listed for the current version; older copies in earlier migrations
 | `_maintenance_guard` | `20261117000000_maintenance_guard_comment.sql` | 2 |
 | `_option_offered` | `20261101000000_signup_options.sql` | 1 |
 | `_owe_late_deposit` | `20261111000000_deposit_late_payments.sql` | 1 |
-| `_profile_complete` | `20261014000000_player_info_and_options.sql` | 1 |
+| `_profile_complete` | `20261118000000_audit_fixes.sql` | 2 |
 | `_promote` | `20261101000000_signup_options.sql` | 4 |
 | `_refunded_cents` | `20261113000000_stats.sql` | 1 |
 | `_release_regular` | `20261101000000_signup_options.sql` | 2 |
@@ -55,6 +56,7 @@ Open the file listed for the current version; older copies in earlier migrations
 | `admin_cancel_session` | `20261026000000_partial_payments.sql` | 4 |
 | `admin_dismiss_cancellation` | `20261107000000_payment_cancellations.sql` | 1 |
 | `admin_mark_paid` | `20261101000000_signup_options.sql` | 4 |
+| `admin_merge_guest` | `20261118000000_audit_fixes.sql` | 1 |
 | `admin_move_waitlist` | `20261101000000_signup_options.sql` | 2 |
 | `admin_nudge_player` | `20261105000000_owed_reminders.sql` | 1 |
 | `admin_nudge_unpaid` | `20261031000000_host_tools.sql` | 1 |
@@ -69,7 +71,7 @@ Open the file listed for the current version; older copies in earlier migrations
 | `change_registration_option` | `20261101000000_signup_options.sql` | 4 |
 | `clear_team_on_instructional` | `20261015000000_teams.sql` | 1 |
 | `create_sessions_from_templates` | `20261101000000_signup_options.sql` | 3 |
-| `devtools_backup` | `20261114000000_player_ratings.sql` | 3 |
+| `devtools_backup` | `20261118000000_audit_fixes.sql` | 4 |
 | `devtools_clear` | `20261023000000_dev_tools.sql` | 1 |
 | `devtools_delete_row` | `20261023000000_dev_tools.sql` | 1 |
 | `devtools_force_status` | `20261023000000_dev_tools.sql` | 1 |
