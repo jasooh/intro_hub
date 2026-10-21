@@ -15,6 +15,7 @@ import {
   WAIVER_VERSION,
 } from "@/lib/agreements";
 import { SkillLadder } from "@/components/skill-rank";
+import { EtransferNameExample } from "@/components/etransfer-name-example";
 import { CONTACT_EMAIL } from "@/app/contact/limits";
 import { defaultDisplayName, HEARD_LABELS, splitFullName } from "@/lib/profile";
 import type { Profile } from "@/lib/types";
@@ -178,6 +179,14 @@ export function ProfileForm({
             spellCheck={false}
             className={inputClass}
           />
+          <details className="group mt-2">
+            <summary className="-my-1 cursor-pointer list-none py-2 text-sm font-semibold text-mat underline decoration-2 underline-offset-4 sm:my-0 sm:py-0">
+              Where do I find this name?
+            </summary>
+            <div className="mt-3 pb-1">
+              <EtransferNameExample />
+            </div>
+          </details>
         </Field>
       </Group>
 
