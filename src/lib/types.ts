@@ -28,6 +28,8 @@ export type Profile = {
   /** Who to call if they're hurt (hosts only). */
   emergency_name: string | null;
   emergency_phone: string | null;
+  /** How the emergency contact knows them, e.g. "Partner". */
+  emergency_relationship: string | null;
   /** When they confirmed they're 18 or older. */
   adult_confirmed_at: string | null;
   skill_level: SkillLevel | null;

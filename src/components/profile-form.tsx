@@ -82,7 +82,7 @@ export function ProfileForm({
           Someone we can call if you get hurt at a session. Only the hosts can see this.
         </p>
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-          <Field label="Emergency contact name" required hint="And how they know you, e.g. Sam (partner).">
+          <Field label="Emergency contact name" required>
             <input
               name="emergency_name"
               defaultValue={text("emergency_name", profile.emergency_name ?? "")}
@@ -92,6 +92,24 @@ export function ProfileForm({
               autoCapitalize="words"
               className={inputClass}
             />
+          </Field>
+          <Field label="Relationship to you" required>
+            <input
+              name="emergency_relationship"
+              defaultValue={text("emergency_relationship", profile.emergency_relationship ?? "")}
+              required
+              maxLength={50}
+              list="emergency-relationships"
+              placeholder="e.g. Partner, Parent, Friend"
+              autoComplete="off"
+              autoCapitalize="words"
+              className={inputClass}
+            />
+            <datalist id="emergency-relationships">
+              {["Partner", "Spouse", "Parent", "Sibling", "Child", "Relative", "Friend", "Roommate"].map((r) => (
+                <option key={r} value={r} />
+              ))}
+            </datalist>
           </Field>
           <Field label="Their phone number" required>
             <PhoneInput name="emergency_phone" defaultValue={text("emergency_phone", profile.emergency_phone ?? "")} required />

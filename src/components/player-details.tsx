@@ -19,6 +19,7 @@ export type PlayerDetailsData = {
     | "phone"
     | "emergency_name"
     | "emergency_phone"
+    | "emergency_relationship"
     | "avatar_url"
     | "skill_level"
     | "attended_before"
@@ -124,6 +125,7 @@ export function PlayerDetails({
               {p.emergency_name || p.emergency_phone ? (
                 <>
                   {p.emergency_name}
+                  {p.emergency_relationship && <span className="text-ink-soft"> ({p.emergency_relationship})</span>}
                   {p.emergency_phone && (
                     <>
                       {" · "}

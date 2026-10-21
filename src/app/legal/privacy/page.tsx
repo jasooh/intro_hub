@@ -27,7 +27,7 @@ export default function PrivacyPage() {
             <b>From Google when you sign in:</b> your name, email address and profile picture.
           </li>
           <li>
-            <b>From your profile:</b> your name, phone number, emergency contact, skill level, whether you&apos;ve
+            <b>From your profile:</b> your name, phone number, emergency contact (name, relationship and phone), skill level, whether you&apos;ve
             played with us before, what you want to learn, your hype song, how you heard about us, the names your
             e-Transfers come from, and your answers to the waiver, media release and age check.
           </li>
