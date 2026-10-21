@@ -299,3 +299,49 @@ body.court-mode {
 body.court-mode :is(header, footer):not([data-court-mode] *) {
   display: none;
 }
+
+/* First-visit splash (src/components/splash.tsx). Hidden on later loads
+   (html.splash-skip), faded by SplashGate (html.splash-done), and hidden after
+   4s by CSS alone in case JavaScript never runs. */
+#splash {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--maple);
+  color: var(--ink);
+  animation: splash-out 0.3s ease 4s forwards;
+}
+html.splash-skip #splash {
+  display: none;
+}
+html.splash-done #splash {
+  animation: splash-out 0.3s ease forwards;
+  pointer-events: none;
+}
+.splash-line {
+  transform-origin: left;
+  animation: court-line 1.4s cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+}
+.splash-shadow {
+  animation: splash-shadow 0.6s cubic-bezier(0.5, 0, 0.5, 1) infinite alternate;
+}
+
+@keyframes splash-out {
+  to {
+    opacity: 0;
+    visibility: hidden;
+    transform: scale(1.02);
+  }
+}
+@keyframes court-line {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@keyframes splash-shadow {
+  from { transform: scaleX(1); opacity: 1; }
+  to { transform: scaleX(0.6); opacity: 0.5; }
+}

@@ -5,6 +5,8 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { FlashToaster } from "@/components/flash-toaster";
 import { MaintenanceBanner } from "@/components/maintenance-banner";
+import { Splash } from "@/components/splash";
+import { SplashGate } from "@/components/splash-gate";
 import { WireBall } from "@/components/wire-ball";
 import { SiteFooter } from "@/components/site-footer";
 import { UserMenu } from "@/components/user-menu";
@@ -35,8 +37,15 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${display.variable} ${score.variable} ${body.variable} h-full antialiased`}>
+    // suppressHydrationWarning: the splash's inline script may add a class to <html> before React loads.
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${display.variable} ${score.variable} ${body.variable} h-full antialiased`}
+    >
       <body className="flex min-h-full flex-col font-sans">
+        <Splash />
+        <SplashGate />
         {/* Lowkey spinning wireframe volleyball behind every page. */}
         <WireBall />
         <FlashToaster />

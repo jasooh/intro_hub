@@ -119,6 +119,9 @@ export function WireBall() {
     };
     fit();
     draw(ctx, size, 0.8, lines);
+    // First frame is up: the first-visit splash (SplashGate) can fade.
+    (window as Window & { __wireBallReady?: boolean }).__wireBallReady = true;
+    window.dispatchEvent(new Event("wireball:ready"));
     const onResize = () => {
       fit();
       draw(ctx, size, 0.8, lines);
