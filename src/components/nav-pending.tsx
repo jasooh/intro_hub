@@ -58,7 +58,17 @@ function Face({
   const { pending } = useLinkStatus();
   useReportPending(pending);
   const state = { active: active || pending, pending };
-  return <span className={cn("block", typeof className === "function" ? className(state) : className)}>{children}</span>;
+  // data-active / data-pending let server components style a NavLink with a plain string
+  // (functions can't be passed from server to client components), e.g. "data-[active=true]:underline".
+  return (
+    <span
+      data-active={state.active}
+      data-pending={pending}
+      className={cn("block", typeof className === "function" ? className(state) : className)}
+    >
+      {children}
+    </span>
+  );
 }
 
 /**

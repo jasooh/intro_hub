@@ -54,11 +54,7 @@ async function DataView({ searchParams }: { searchParams: PageProps<"/dev-tools/
               key={t}
               href={`/dev-tools/data?table=${t}`}
               active={t === table}
-              className={({ active }) =>
-                `font-display text-lg font-bold tracking-wide uppercase underline-offset-[6px] ${
-                  active ? "text-ink underline decoration-line decoration-[3px]" : "text-ink-soft hover:text-ink"
-                }`
-              }
+              className="font-display text-lg font-bold tracking-wide text-ink-soft uppercase underline-offset-[6px] hover:text-ink data-[active=true]:text-ink data-[active=true]:underline data-[active=true]:decoration-line data-[active=true]:decoration-[3px]"
             >
               {EDITABLE_TABLES[t].label}
             </NavLink>
