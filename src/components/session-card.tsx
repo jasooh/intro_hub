@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { OpensIn } from "@/components/countdown";
+import { CountTag, OpensIn } from "@/components/countdown";
 import { LinkPending } from "@/components/nav-pending";
 import { Mark, SpotDots } from "@/components/ui";
 import { dateParts, formatMoney, formatTime } from "@/lib/format";
@@ -28,6 +28,11 @@ export function isLive(session: Pick<Session, "starts_at" | "ends_at" | "status"
   );
 }
 
+/** True until the session starts. */
+export function startsLater(session: Pick<Session, "starts_at">, now = Date.now()) {
+  return new Date(session.starts_at).getTime() > now;
+}
+
 /** True while sign-ups haven't opened yet. */
 function opensLater(session: Pick<Session, "opens_at">, now = Date.now()) {
   return new Date(session.opens_at).getTime() > now;
@@ -47,7 +52,18 @@ export function LiveBadge({ label = "Live · on court now" }: { label?: string }
 }
 
 /** A session as one row on the roster sheet. Sessions on right now get a live look. */
-export function SessionCard({ session, counts, href }: { session: Session; counts?: SessionCounts; href: string }) {
+export function SessionCard({
+  session,
+  counts,
+  href,
+  countdown = false,
+}: {
+  session: Session;
+  counts?: SessionCounts;
+  href: string;
+  /** Show a "Starts in …" countdown (the home page's Next session). */
+  countdown?: boolean;
+}) {
   const live = isLive(session);
   const left = spotsLeft(session, counts);
   const confirmed = counts?.confirmed ?? 0;
@@ -69,6 +85,7 @@ export function SessionCard({ session, counts, href }: { session: Session; count
 
       <div className="min-w-0 space-y-1">
         {live && <LiveBadge />}
+        {countdown && !cancelled && !live && startsLater(session) && <CountTag to={session.starts_at} label="Starts in" />}
         <p className={`font-display text-2xl leading-tight font-extrabold uppercase ${cancelled ? "line-through" : ""}`}>
           {session.title}
         </p>

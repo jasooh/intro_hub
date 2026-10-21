@@ -112,7 +112,7 @@ async function Featured() {
 async function NextSession() {
   const next = await getNext();
   if (!next) return <EmptyState>No sessions scheduled yet. Check back soon!</EmptyState>;
-  return <SessionCard session={next.session} counts={next.counts} href={`/s/${next.session.id}`} />;
+  return <SessionCard session={next.session} counts={next.counts} href={`/s/${next.session.id}`} countdown />;
 }
 
 const CALENDAR_WEEKS = 5;

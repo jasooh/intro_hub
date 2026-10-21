@@ -38,13 +38,21 @@ function useRefreshWhenDone(done: boolean) {
   }, [done, router]);
 }
 
-/** Big scoreboard countdown: DAYS · HRS · MIN · SEC. */
-export function Countdown({ to }: { to: string }) {
+/** Big scoreboard countdown: DAYS · HRS · MIN · SEC. `label` is read out by screen readers ("Sign-ups open in"). */
+export function Countdown({
+  to,
+  label = "Sign-ups open in",
+  doneText = "Opening now…",
+}: {
+  to: string;
+  label?: string;
+  doneText?: string;
+}) {
   const now = useNow();
   const left = now == null ? null : new Date(to).getTime() - now;
   useRefreshWhenDone(left != null && left <= 0);
   if (left == null) return <div className="h-[5.5rem]" aria-hidden />;
-  if (left <= 0) return <p className="font-display text-2xl font-black tracking-[0.15em] text-line uppercase">Opening now…</p>;
+  if (left <= 0) return <p className="font-display text-2xl font-black tracking-[0.15em] text-line uppercase">{doneText}</p>;
   const { days, hours, minutes, seconds } = parts(left);
   const cells: [string, string][] = [
     ...(days > 0 ? ([[String(days), days === 1 ? "Day" : "Days"]] as [string, string][]) : []),
@@ -53,7 +61,7 @@ export function Countdown({ to }: { to: string }) {
     [two(seconds), "Sec"],
   ];
   return (
-    <div role="timer" aria-label={`Sign-ups open in ${days} days ${hours} hours ${minutes} minutes`} className="flex flex-wrap gap-3 sm:gap-4">
+    <div role="timer" aria-label={`${label} ${days} days ${hours} hours ${minutes} minutes`} className="flex flex-wrap gap-3 sm:gap-4">
       {cells.map(([value, label]) => (
         <Scoreboard key={label} value={value} label={label} size="sm" className="min-w-[4.5rem]" />
       ))}
@@ -61,8 +69,8 @@ export function Countdown({ to }: { to: string }) {
   );
 }
 
-/** Small "Opens in 2d 4h" tag for session rows; down to the second in the last hour. */
-export function OpensIn({ to }: { to: string }) {
+/** Small LED tag like "Starts in 2d 4h" for session rows; down to the second in the last hour. */
+export function CountTag({ to, label }: { to: string; label: string }) {
   const now = useNow();
   const left = now == null ? null : new Date(to).getTime() - now;
   useRefreshWhenDone(left != null && left <= 0);
@@ -71,7 +79,9 @@ export function OpensIn({ to }: { to: string }) {
     left == null ? "soon" : left <= 0 ? "now" : days > 0 ? `${days}d ${hours}h` : hours > 0 ? `${hours}h ${two(minutes)}m` : `${two(minutes)}:${two(seconds)}`;
   return (
     <span className="inline-flex items-center gap-2 bg-board px-2 pt-1 pb-0.5 font-display text-xs font-bold tracking-[0.2em] whitespace-nowrap text-led uppercase">
-      Sign-ups open in <span className="font-score text-sm tabular-nums">{text}</span>
+      {label} <span className="font-score text-sm tabular-nums">{text}</span>
     </span>
   );
 }
+
+export const OpensIn = ({ to }: { to: string }) => <CountTag to={to} label="Sign-ups open in" />;

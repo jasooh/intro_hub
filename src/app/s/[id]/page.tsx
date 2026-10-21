@@ -10,7 +10,7 @@ import { FirstTimeSheet, HostNotes, HowItWorks } from "@/components/session-info
 import { BringAFriendField } from "@/components/bring-a-friend-field";
 import { LiveRefresh } from "@/components/live-refresh";
 import { PaymentInstructions } from "@/components/payment-instructions";
-import { DateBlock } from "@/components/session-card";
+import { DateBlock, startsLater } from "@/components/session-card";
 import { AttendeeRow, OptionRadio } from "@/components/signup-parts";
 import { TeammatePicker, type TeammateOption } from "@/components/teammate-picker";
 import { TeamsView } from "@/components/teams-view";
@@ -162,8 +162,15 @@ async function SessionView({
         </header>
       </div>
 
+      {!cancelled && startsLater(session) && (
+        <div className="reveal space-y-3" style={reveal(2)}>
+          <p className="font-display text-sm font-bold tracking-[0.3em] text-line uppercase">Starts in</p>
+          <Countdown to={session.starts_at} label="Session starts in" doneText="Starting now…" />
+        </div>
+      )}
+
       {!cancelled && (
-        <div className="reveal space-y-2" style={reveal(2)}>
+        <div className="reveal space-y-2" style={reveal(3)}>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
             <span className="font-display text-sm font-bold tracking-[0.2em] text-ink-soft uppercase">
               Drop-in spots
