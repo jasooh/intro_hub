@@ -5,12 +5,12 @@ import { Suspense } from "react";
 import { PostBody } from "@/components/post-body";
 import { BackLink, buttonClass, Mark, PageSpinner, reveal } from "@/components/ui";
 import { formatDateTime } from "@/lib/format";
-import { getPost } from "@/lib/queries";
+import { getPublicPost } from "@/lib/public-data";
 import { postExcerpt } from "@/lib/rich-text";
 
 export async function generateMetadata({ params }: PageProps<"/updates/[id]">): Promise<Metadata> {
   const { id } = await params;
-  const post = await getPost(id);
+  const post = await getPublicPost(id);
   if (!post) return { title: "Post not found" };
   const description = postExcerpt(post.body_html, 160) || "An update from the Intro 2 Volleyball hosts.";
   return { title: post.title, description, openGraph: { title: post.title, description, type: "article" } };
@@ -26,7 +26,7 @@ export default function PostPage(props: PageProps<"/updates/[id]">) {
 
 async function PostView({ params }: { params: PageProps<"/updates/[id]">["params"] }) {
   const { id } = await params;
-  const post = await getPost(id);
+  const post = await getPublicPost(id);
   if (!post) notFound();
 
   return (

@@ -18,6 +18,7 @@ import { sendSessionMessage } from "@/lib/session-messages";
 import { balanceTeams } from "@/lib/teams";
 import type { RegistrationEvent, SkillLevel } from "@/lib/types";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
+import { expireCounts, expirePosts, expireSession } from "@/lib/public-cache";
 
 function fail(path: string, message: string): never {
   redirect(`${path}?error=${encodeURIComponent(message)}`);
@@ -44,6 +45,7 @@ async function rpc(fn: string, args: Record<string, unknown>, path: string, succ
   const events = parseEvents(data);
   after(() => dispatchEvents(events));
   revalidatePath(path);
+  expireCounts(); // every admin_* change here touches sign-ups
   if (success) await flash("success", success);
 }
 
@@ -157,6 +159,7 @@ function sessionRow(formData: FormData, path: string) {
 
 export async function createSession(formData: FormData) {
   await requireAdmin();
+  expireSession();
   const row = sessionRow(formData, "/admin/sessions/new");
   const supabase = await createClient();
   const { data, error } = await supabase.from("sessions").insert(row).select("id").single();
@@ -168,6 +171,7 @@ export async function createSession(formData: FormData) {
 
 export async function updateSession(sessionId: string, formData: FormData) {
   await requireAdmin();
+  expireSession(sessionId);
   const path = `/admin/sessions/${sessionId}`;
   const row = sessionRow(formData, path);
   const supabase = await createClient();
@@ -225,6 +229,7 @@ export async function removeFriendDiscount(registrationId: string, sessionId: st
 
 export async function cancelSession(sessionId: string, formData: FormData) {
   await requireAdmin();
+  expireSession(sessionId);
   const reason = String(formData.get("reason") ?? "").trim().slice(0, 500);
   await rpc(
     "admin_cancel_session",
@@ -907,6 +912,7 @@ const PostForm = z.object({
 });
 
 function revalidatePosts() {
+  expirePosts();
   revalidatePath("/");
   revalidatePath("/updates");
   revalidatePath("/admin/updates");

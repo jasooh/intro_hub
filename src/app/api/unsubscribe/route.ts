@@ -1,3 +1,4 @@
+import { allowed, clientIp } from "@/lib/rate-limit";
 import { applyUnsubscribe } from "@/lib/unsubscribe-apply";
 
 /**
@@ -6,6 +7,7 @@ import { applyUnsubscribe } from "@/lib/unsubscribe-apply";
  * which asks first (so link scanners can't unsubscribe anyone).
  */
 export async function POST(request: Request) {
+  if (!(await allowed("unsubscribe", await clientIp(), 20, 60))) return new Response("Too many requests", { status: 429 });
   const q = new URL(request.url).searchParams;
   const ok = await applyUnsubscribe(q.get("u") ?? "", q.get("k") ?? "", q.get("t") ?? "");
   return new Response(ok ? "Unsubscribed" : "Invalid link", { status: ok ? 200 : 400 });

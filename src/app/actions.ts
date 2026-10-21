@@ -7,6 +7,8 @@ import { z } from "zod";
 import { WAIVER_VERSION } from "@/lib/agreements";
 import { requireProfile } from "@/lib/auth";
 import { flash } from "@/lib/flash";
+import { allowed, SLOW_DOWN } from "@/lib/rate-limit";
+import { expireCounts } from "@/lib/public-cache";
 import { cleanName, cleanNameList, cleanText, normalizePhone } from "@/lib/input";
 import { MAX_TEAMMATES } from "@/lib/teams";
 import { OPTION_LABELS, profileComplete } from "@/lib/profile";
@@ -60,6 +62,7 @@ export async function registerForSession(sessionId: string, formData: FormData) 
     redirect(`${path}?error=${encodeURIComponent(friendly(error.message))}`);
   }
 
+  expireCounts();
   const events = parseEvents(data);
   after(() => dispatchEvents(events));
 
@@ -96,9 +99,15 @@ export async function registerForSession(sessionId: string, formData: FormData) 
 }
 
 /** Bring a Friend from the session page: set, change or clear who brought you. */
+/** Players' own changes: plenty for real use, stops scripted spam. */
+async function playerLimit(profileId: string, path: string) {
+  if (!(await allowed("player-action", profileId, 20, 60))) redirect(`${path}?error=${encodeURIComponent(SLOW_DOWN)}`);
+}
+
 export async function setBroughtBy(registrationId: string, sessionId: string, formData: FormData) {
   const path = `/s/${sessionId}`;
-  await requireProfile(path);
+  const me = await requireProfile(path);
+  await playerLimit(me.id, path);
   const buddy = String(formData.get("brought_by") ?? "") || null;
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("set_brought_by", { p_registration_id: registrationId, p_buddy_id: buddy });
@@ -116,7 +125,8 @@ function teammateIds(formData: FormData) {
 
 export async function setTeammates(registrationId: string, sessionId: string, formData: FormData) {
   const path = `/s/${sessionId}`;
-  await requireProfile(path);
+  const me = await requireProfile(path);
+  await playerLimit(me.id, path);
   const supabase = await createClient();
   const { error } = await supabase.rpc("set_team_requests", {
     p_registration_id: registrationId,
@@ -135,7 +145,8 @@ const SIGNED_UP: Record<string, string> = {
 };
 
 export async function changeOption(registrationId: string, option: SignupOption, returnTo: string) {
-  await requireProfile(returnTo);
+  const me = await requireProfile(returnTo);
+  await playerLimit(me.id, returnTo);
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("change_registration_option", {
     p_registration_id: registrationId,
@@ -143,6 +154,7 @@ export async function changeOption(registrationId: string, option: SignupOption,
   });
   if (error) redirect(`${returnTo}?error=${encodeURIComponent(friendly(error.message))}`);
 
+  expireCounts();
   const events = parseEvents(data);
   after(() => dispatchEvents(events));
   revalidatePath(returnTo);
@@ -150,11 +162,13 @@ export async function changeOption(registrationId: string, option: SignupOption,
 }
 
 export async function cancelRegistration(registrationId: string, returnTo: string) {
-  await requireProfile(returnTo);
+  const me = await requireProfile(returnTo);
+  await playerLimit(me.id, returnTo);
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("cancel_registration", { p_registration_id: registrationId });
   if (error) redirect(`${returnTo}?error=${encodeURIComponent(friendly(error.message))}`);
 
+  expireCounts();
   const events = parseEvents(data);
   after(() => dispatchEvents(events));
   revalidatePath(returnTo);
@@ -228,6 +242,7 @@ export async function saveProfile(_prev: ProfileFormState, formData: FormData): 
   const raw = Object.fromEntries(formData);
   const values = Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, typeof v === "string" ? v : ""]));
   const failed = (error: string): ProfileFormState => ({ error, values, at: Date.now() });
+  if (!(await allowed("player-action", profile.id, 20, 60))) return failed(SLOW_DOWN);
   const parsed = ProfileForm.safeParse(raw);
   if (!parsed.success) return failed(parsed.error.issues[0].message);
   const f = parsed.data;
@@ -283,6 +298,7 @@ export async function saveProfile(_prev: ProfileFormState, formData: FormData): 
  */
 export async function deleteMyAccount() {
   const profile = await requireProfile("/me");
+  if (!(await allowed("delete-account", profile.id, 3, 3600))) redirect(`/me?error=${encodeURIComponent(SLOW_DOWN)}`);
   if (profile.role === "admin") {
     redirect(`/me?error=${encodeURIComponent("Hosts can't delete their account here. Ask another host to remove your host access first.")}`);
   }

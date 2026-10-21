@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { SubmitButton } from "@/components/submit-button";
 import { buttonClass, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
 import { isUnsubscribeKind, UNSUBSCRIBE_LABELS, verifyUnsubscribe } from "@/lib/unsubscribe";
+import { allowed, clientIp } from "@/lib/rate-limit";
 import { applyUnsubscribe } from "@/lib/unsubscribe-apply";
 
 export const metadata: Metadata = {
@@ -23,7 +24,7 @@ export default function UnsubscribePage(props: PageProps<"/unsubscribe">) {
 async function stopEmails(formData: FormData) {
   "use server";
   const [u, k, t] = ["u", "k", "t"].map((f) => String(formData.get(f) ?? ""));
-  const ok = await applyUnsubscribe(u, k, t);
+  const ok = (await allowed("unsubscribe", await clientIp(), 20, 60)) && (await applyUnsubscribe(u, k, t));
   redirect(`/unsubscribe?u=${encodeURIComponent(u)}&k=${encodeURIComponent(k)}&t=${encodeURIComponent(t)}&${ok ? "done=1" : "bad=1"}`);
 }
 

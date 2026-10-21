@@ -1,5 +1,6 @@
 "use server";
 
+import { allowed, clientIp } from "@/lib/rate-limit";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { z } from "zod";
@@ -33,6 +34,12 @@ export async function submitFeedback(formData: FormData) {
   if (String(formData.get("website") ?? "")) {
     await flash("success", "Thanks! Your feedback was sent.");
     redirect("/contact");
+  }
+
+  // Each message emails the club inbox: cap it per IP so a script can't burn Gmail's daily limit.
+  const ip = await clientIp();
+  if (!(await allowed("feedback", ip, 5, 600)) || !(await allowed("feedback-day", ip, 20, 86400))) {
+    redirect(`/contact?error=${encodeURIComponent("Too many messages from here. Please try again later.")}`);
   }
 
   const anonymous = formData.get("anonymous") === "on";

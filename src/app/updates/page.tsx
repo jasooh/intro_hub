@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { DateBlock } from "@/components/session-card";
 import { EmptyState, Mark, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
-import { getPublishedPosts } from "@/lib/queries";
+import { getPublicPosts } from "@/lib/public-data";
 import { postExcerpt } from "@/lib/rich-text";
 
 export const metadata: Metadata = {
@@ -25,7 +25,7 @@ export default function UpdatesPage() {
 }
 
 async function Posts() {
-  const posts = await getPublishedPosts();
+  const posts = await getPublicPosts();
   if (posts.length === 0) return <EmptyState>No updates yet. Check back soon!</EmptyState>;
   return (
     <ol className="divide-y divide-ink/25">

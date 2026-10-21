@@ -121,3 +121,43 @@ describe("admin_merge_guest", () => {
     await expect(asUser(db, host, `select public.admin_merge_guest($1, $2)`, [guest, guest])).rejects.toThrow(/not_an_account/);
   });
 });
+
+describe("rate limits", () => {
+  it("allow up to the limit in a window, then refuse; only the server can use them", async () => {
+    const hit = () => asService<{ ok: boolean }>(db, `select public.rate_limit_hit('feedback:ip:1.2.3.4', 2, 600) as ok`);
+    expect((await hit()).rows[0].ok).toBe(true);
+    expect((await hit()).rows[0].ok).toBe(true);
+    expect((await hit()).rows[0].ok).toBe(false);
+    // Another key has its own count.
+    expect((await asService<{ ok: boolean }>(db, `select public.rate_limit_hit('feedback:ip:5.6.7.8', 2, 600) as ok`)).rows[0].ok).toBe(true);
+    const a = await createUser(db, "A");
+    await expect(asUser(db, a, `select public.rate_limit_hit('x', 1, 60)`)).rejects.toThrow();
+  });
+
+  it("old windows are cleared by run_tick", async () => {
+    await db.query(`insert into public.rate_limits (key, window_start, hits) values ('old', now() - interval '2 days', 3), ('new', now(), 1)`);
+    await asService(db, `select public.run_tick()`);
+    expect((await db.query(`select key from public.rate_limits`)).rows).toEqual([{ key: "new" }]);
+  });
+});
+
+describe("client privileges", () => {
+  it("no client role can truncate, and anon can't write, on any table (new ones included)", async () => {
+    await db.query(`create table public.zz_new_table (id int)`);
+    const res = await db.query<{ t: string; role: string; priv: string }>(`
+      select c.relname as t, r.role, p.priv
+        from pg_class c
+        cross join (values ('anon'), ('authenticated')) r(role)
+        cross join (values ('TRUNCATE'), ('INSERT'), ('UPDATE'), ('DELETE')) p(priv)
+       where c.relnamespace = 'public'::regnamespace and c.relkind = 'r'
+         and has_table_privilege(r.role, c.oid, p.priv)
+         and (p.priv = 'TRUNCATE' or r.role = 'anon')`);
+    expect(res.rows).toEqual([]);
+  });
+
+  it("public pages can still read sessions and spot counts without signing in", async () => {
+    const sid = await createSession(db);
+    expect((await asUser(db, null, `select id from public.sessions`)).rows).toHaveLength(1);
+    await asUser(db, null, `select * from public.get_session_counts(array[$1]::uuid[])`, [sid]);
+  });
+});

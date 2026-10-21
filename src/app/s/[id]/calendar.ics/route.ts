@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { env } from "@/lib/env";
 import { sessionIcs } from "@/lib/ics";
+import { allowed, clientIp } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 import type { Session, SignupOption } from "@/lib/types";
 
 /** "Add to calendar" file for a session. Sessions are public, so no sign-in needed. */
 export async function GET(request: Request, ctx: RouteContext<"/s/[id]/calendar.ics">) {
+  if (!(await allowed("calendar", await clientIp(), 60, 60))) {
+    return NextResponse.json({ error: "too many requests" }, { status: 429 });
+  }
   const { id } = await ctx.params;
   const supabase = await createClient();
   const { data: session } = await supabase.from("sessions").select("*").eq("id", id).maybeSingle<Session>();

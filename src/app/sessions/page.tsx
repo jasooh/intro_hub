@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { LiveRefresh } from "@/components/live-refresh";
 import { SessionCard } from "@/components/session-card";
 import { EmptyState, PageSpinner, reveal, Sheet } from "@/components/ui";
-import { getCounts, getUpcomingSessions } from "@/lib/queries";
+import { getPublicCounts, getPublicSessions } from "@/lib/public-data";
 
 export const metadata: Metadata = {
   title: "Sessions",
@@ -30,8 +30,8 @@ export default function SessionsPage() {
 }
 
 async function SessionList() {
-  const sessions = await getUpcomingSessions(10, { includeCancelled: false });
-  const counts = await getCounts(sessions.map((s) => s.id));
+  const sessions = await getPublicSessions(10);
+  const counts = await getPublicCounts(sessions.map((s) => s.id));
   if (sessions.length === 0) return <EmptyState>No sessions scheduled yet. Check back soon!</EmptyState>;
   return (
     <div className="divide-y divide-ink/25">

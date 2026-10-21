@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { connection } from "next/server";
 import { cache, Suspense } from "react";
 import { FeaturedPost } from "@/components/featured-post";
 import { LiveRefresh } from "@/components/live-refresh";
@@ -7,13 +8,13 @@ import { isLive, SessionCard } from "@/components/session-card";
 import { buttonClass, EmptyState, PageSpinner, reveal, Scoreboard, Sheet } from "@/components/ui";
 import { env } from "@/lib/env";
 import { calendarDays, dateParts, pad2, zonedDayKey } from "@/lib/format";
-import { getCounts, getFeaturedPost, getUpcomingSessions } from "@/lib/queries";
+import { getPublicCounts, getPublicFeaturedPost, getPublicSessions } from "@/lib/public-data";
 
 // Shared by the hero scoreboard and the "Next session" row within one request.
 const getNext = cache(async () => {
-  const [next] = await getUpcomingSessions(1, { includeCancelled: false });
+  const [next] = await getPublicSessions(1);
   if (!next) return null;
-  const counts = await getCounts([next.id]);
+  const counts = await getPublicCounts([next.id]);
   return { session: next, counts: counts.get(next.id) };
 });
 
@@ -100,7 +101,7 @@ async function NextScoreboard() {
 
 /** The host's featured post, if any: an announcement panel with no section divider. */
 async function Featured() {
-  const post = await getFeaturedPost();
+  const post = await getPublicFeaturedPost();
   if (!post) return null;
   return (
     <div className="reveal" style={reveal(5)}>
@@ -119,11 +120,12 @@ const CALENDAR_WEEKS = 5;
 
 /** The next few weeks at a glance; session days link to their sign-up page. */
 async function Calendar() {
-  const upcoming = await getUpcomingSessions(20, { includeCancelled: false });
+  const upcoming = await getPublicSessions(20);
+  await connection(); // "today" is per request; the session list itself is cached
   const today = zonedDayKey(new Date().toISOString());
   const lastDay = calendarDays(today, CALENDAR_WEEKS).at(-1)!.key;
   const sessions = upcoming.filter((s) => zonedDayKey(s.starts_at) <= lastDay);
-  const counts = await getCounts(sessions.map((s) => s.id));
+  const counts = await getPublicCounts(sessions.map((s) => s.id));
   return <SessionCalendar sessions={sessions} counts={counts} today={today} weeks={CALENDAR_WEEKS} />;
 }
 

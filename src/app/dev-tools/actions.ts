@@ -1,5 +1,6 @@
 "use server";
 
+import { expireAllPublic } from "@/lib/public-cache";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -27,6 +28,7 @@ const EMAIL_EVENTS = new Set<string>(["signed_up", "waitlisted", "promoted", "co
 
 export async function saveRow(table: string, id: string, formData: FormData) {
   await requireDevTools();
+  expireAllPublic();
   const path = `/dev-tools/data/${table}/${id}`;
   if (!isEditableTable(table)) fail("/dev-tools/data", "Unknown table");
 
@@ -57,6 +59,7 @@ export async function saveRow(table: string, id: string, formData: FormData) {
 
 export async function deleteRow(table: string, id: string) {
   await requireDevTools();
+  expireAllPublic();
   if (!isEditableTable(table)) fail("/dev-tools/data", "Unknown table");
   const supabase = await createClient();
   const { error } = await supabase.rpc("devtools_delete_row", { p_table: table, p_id: id });
@@ -68,6 +71,7 @@ export async function deleteRow(table: string, id: string) {
 
 export async function forceStatus(registrationId: string, formData: FormData) {
   await requireDevTools();
+  expireAllPublic();
   const path = `/dev-tools/data/registrations/${registrationId}`;
   const status = String(formData.get("status"));
   if (!STATUSES.includes(status as RegistrationStatus)) fail(path, "Pick a status");
@@ -94,6 +98,7 @@ export async function forceStatus(registrationId: string, formData: FormData) {
 /** Runs the every-minute job now (expire holds, promote, reminders, weekly sessions, host emails). */
 export async function runTickNow() {
   await requireDevTools();
+  expireAllPublic();
   const { data, error } = await createAdminClient().rpc("run_tick");
   if (error) fail("/dev-tools", error.message);
   const events = parseEvents(data);
@@ -105,6 +110,7 @@ export async function runTickNow() {
 
 export async function createFromTemplates() {
   await requireDevTools();
+  expireAllPublic();
   const { data, error } = await createAdminClient().rpc("create_sessions_from_templates");
   if (error) fail("/dev-tools", error.message);
   revalidatePath("/", "layout");
@@ -149,6 +155,7 @@ const CLEAR_LABELS: Record<string, string> = {
 
 export async function clearData(formData: FormData) {
   await requireDevTools();
+  expireAllPublic();
   const scope = String(formData.get("scope"));
   if (!(scope in CLEAR_LABELS)) fail("/dev-tools/danger", "Unknown clean-up");
   const supabase = await createClient();
@@ -160,6 +167,7 @@ export async function clearData(formData: FormData) {
 
 export async function resetDatabase(formData: FormData) {
   await requireDevTools();
+  expireAllPublic();
   const db = databaseName();
   if (String(formData.get("confirm") ?? "").trim() !== `RESET ${db}`) {
     fail("/dev-tools/danger", `Type RESET ${db} exactly to reset`);

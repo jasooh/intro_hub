@@ -10,6 +10,7 @@ export function LiveRefresh({ sessionId }: { sessionId?: string }) {
 
   useEffect(() => {
     const supabase = createClient();
+    let timer: ReturnType<typeof setTimeout> | undefined;
     const channel = supabase
       .channel(`sessions:${sessionId ?? "all"}`)
       .on(
@@ -20,10 +21,15 @@ export function LiveRefresh({ sessionId }: { sessionId?: string }) {
           table: "sessions",
           ...(sessionId ? { filter: `id=eq.${sessionId}` } : {}),
         },
-        () => router.refresh(),
+        () => {
+          // A burst of changes (e.g. several sign-ups at once) becomes one refresh.
+          clearTimeout(timer);
+          timer = setTimeout(() => router.refresh(), 1000);
+        },
       )
       .subscribe();
     return () => {
+      clearTimeout(timer);
       supabase.removeChannel(channel);
     };
   }, [router, sessionId]);

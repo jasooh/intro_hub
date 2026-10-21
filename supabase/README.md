@@ -91,6 +91,7 @@ Open the file listed for the current version; older copies in earlier migrations
 | `ingest_reverse_payment` | `20261108000000_cancellation_ref_code.sql` | 2 |
 | `is_admin` | `20261012000000_init.sql` | 1 |
 | `is_devtools_user` | `20261023000000_dev_tools.sql` | 1 |
+| `rate_limit_hit` | `20261122000000_rate_limits.sql` | 1 |
 | `register_for_session` | `20261101000000_signup_options.sql` | 6 |
 | `run_tick` | `20261113000000_stats.sql` | 7 |
 | `set_brought_by` | `20261101000000_signup_options.sql` | 2 |

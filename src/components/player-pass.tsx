@@ -2,7 +2,7 @@ import { cache } from "react";
 import { DateBlock } from "@/components/session-card";
 import { OpensIn } from "@/components/countdown";
 import { dateParts, formatTime, pad2 } from "@/lib/format";
-import { getCounts, getUpcomingSessions } from "@/lib/queries";
+import { getPublicCounts, getPublicSessions } from "@/lib/public-data";
 import { createClient } from "@/lib/supabase/server";
 import type { Session, SessionCounts } from "@/lib/types";
 
@@ -17,9 +17,9 @@ const getPassSession = cache(async (next: string) => {
     const { data } = await supabase.from("sessions").select("*").eq("id", id).neq("status", "cancelled").maybeSingle();
     session = (data as Session | null) ?? null;
   }
-  session ??= (await getUpcomingSessions(1, { includeCancelled: false }))[0] ?? null;
+  session ??= (await getPublicSessions(1))[0] ?? null;
   if (!session) return null;
-  const counts: SessionCounts | undefined = (await getCounts([session.id])).get(session.id);
+  const counts: SessionCounts | undefined = (await getPublicCounts([session.id])).get(session.id);
   return { session, counts, notOpenYet: new Date(session.opens_at).getTime() > Date.now() };
 });
 

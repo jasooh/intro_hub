@@ -35,7 +35,8 @@ import { offeredOptions, optionFull, optionPrice, usesSpot } from "@/lib/options
 import { Countdown } from "@/components/countdown";
 import { getMaintenance } from "@/lib/maintenance";
 import { OPTION_LABELS } from "@/lib/profile";
-import { getAttendees, getCounts, getMySpot, getTeamRequests, isFirstTimer, spotsLeft } from "@/lib/queries";
+import { getAttendees, getMySpot, getTeamRequests, isFirstTimer, spotsLeft } from "@/lib/queries";
+import { getPublicCounts, getPublicSession } from "@/lib/public-data";
 import { MAX_TEAMMATES } from "@/lib/teams";
 import { createClient } from "@/lib/supabase/server";
 import type { Attendee, Match, Profile, Session, SessionCounts, SignupOption, Team } from "@/lib/types";
@@ -43,12 +44,7 @@ import type { Attendee, Match, Profile, Session, SessionCounts, SignupOption, Te
 
 export async function generateMetadata({ params }: PageProps<"/s/[id]">): Promise<Metadata> {
   const { id } = await params;
-  const supabase = await createClient();
-  const { data: session } = await supabase
-    .from("sessions")
-    .select("title, starts_at, location, price_cents, status")
-    .eq("id", id)
-    .maybeSingle<Pick<Session, "title" | "starts_at" | "location" | "price_cents" | "status">>();
+  const session = await getPublicSession(id);
   if (!session) return { title: "Session not found" };
 
   const when = formatDateTime(session.starts_at);
@@ -71,12 +67,10 @@ async function SessionView({
   params: PageProps<"/s/[id]">["params"];
 }) {
   const { id } = await params;
-  const supabase = await createClient();
-
-  const { data: session } = await supabase.from("sessions").select("*").eq("id", id).maybeSingle<Session>();
+  const session = await getPublicSession(id);
   if (!session) notFound();
 
-  const [profile, counts] = await Promise.all([getProfile(), getCounts([id])]);
+  const [profile, counts] = await Promise.all([getProfile(), getPublicCounts([id])]);
   const sessionCounts = counts.get(id);
   const confirmed = sessionCounts?.confirmed ?? 0;
   const holding = sessionCounts?.holding ?? 0;
