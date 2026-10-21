@@ -805,9 +805,18 @@ describe("dev tools", () => {
     expect(await n("profiles")).toBe(2);
     expect(await n("session_templates")).toBe(1);
 
+    // Every other table is emptied too, including ones added after the reset was written.
+    const kept = ["profiles", "session_templates", "app_settings", "devtools_audit", "email_health"];
+    await db.query(`insert into public.feedback (message) values ('hi')`);
+    await db.query(`insert into public.app_errors (message) values ('boom')`);
+    await asUser(db, devUser, `select public.devtools_reset('RESET')`);
+    const tables = await db.query<{ t: string }>(`select tablename as t from pg_tables where schemaname = 'public'`);
+    for (const { t } of tables.rows) if (!kept.includes(t)) expect(await n(t), t).toBe(0);
+    expect(await n("email_health")).toBe(1);
+
     await asUser(db, devUser, `select public.devtools_reset('RESET', true)`);
     expect(await n("profiles")).toBe(1);
-    expect((await audit()).map((x) => x.action)).toEqual(["reset", "reset"]);
+    expect((await audit()).map((x) => x.action)).toEqual(["reset", "reset", "reset"]);
   });
 
   it("maintenance mode pauses sign-ups and option switches for players, not cancelling or hosts", async () => {

@@ -78,7 +78,7 @@ Open the file listed for the current version; older copies in earlier migrations
 | `devtools_get_row` | `20261023000000_dev_tools.sql` | 1 |
 | `devtools_health` | `20261025000000_match_schedule.sql` | 2 |
 | `devtools_release_email` | `20261023000000_dev_tools.sql` | 1 |
-| `devtools_reset` | `20261113000000_stats.sql` | 6 |
+| `devtools_reset` | `20261121000000_reset_all_tables.sql` | 7 |
 | `devtools_rows` | `20261023000000_dev_tools.sql` | 1 |
 | `devtools_set_maintenance` | `20261023000000_dev_tools.sql` | 1 |
 | `devtools_table_columns` | `20261023000000_dev_tools.sql` | 1 |

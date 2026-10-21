@@ -82,8 +82,8 @@ async function DangerView() {
       <Sheet label={`Reset the ${db} database`} className="reveal" style={reveal(3)}>
         <form action={resetDatabase} className="space-y-5 border-2 border-bad p-4 sm:p-5">
           <p>
-            Deletes <b>every session, sign-up, payment, team, post and email record</b>. Keeps player accounts, the weekly
-            schedule, settings and the audit log.
+            Deletes <b>everything else</b>: sessions, sign-ups, payments, teams, posts, feedback, songs, ratings,
+            blocks, email records and logs. Keeps player accounts, the weekly schedule, settings and the audit log.
             {db === "PROD" && <b className="text-bad"> This is the live site.</b>}
           </p>
           <label className="flex items-start gap-2">
