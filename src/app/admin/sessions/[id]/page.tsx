@@ -569,6 +569,17 @@ function PlayerRow({
               Guest · added by host
             </Mark>
           )}
+          {/* Asked after launch: doesn't block sign-up, so hosts see who still hasn't added it. */}
+          {!reg.profile.guest && !(reg.profile.emergency_name?.trim() && reg.profile.emergency_phone?.trim()) && (
+            <Mark tone="warn" glyph="!">
+              No emergency contact
+            </Mark>
+          )}
+          {!reg.profile.guest && !reg.profile.adult_confirmed_at && (
+            <Mark tone="warn" glyph="!">
+              18+ not confirmed
+            </Mark>
+          )}
           {extras.blocked.has(reg.profile_id) && (
             <Mark tone="bad" glyph="⊘">
               Blocked

@@ -29,6 +29,7 @@ import {
   StatusMark,
 } from "@/components/ui";
 import { getProfile } from "@/lib/auth";
+import { ProfileExtrasNotice } from "@/components/profile-extras-notice";
 import { formatDateTime, formatMoney, pad2, sessionTimes } from "@/lib/format";
 import { offeredOptions, optionFull, optionPrice, usesSpot } from "@/lib/options";
 import { Countdown } from "@/components/countdown";
@@ -89,6 +90,7 @@ async function SessionView({
   return (
     <div className="space-y-10">
       <LiveRefresh sessionId={id} />
+      {!cancelled && <ProfileExtrasNotice profile={profile} />}
       <div>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <BackLink href="/sessions">All sessions</BackLink>

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { HostNotificationsForm } from "@/components/host-notifications-form";
 import { deleteMyAccount } from "@/app/actions";
+import { ProfileExtrasNotice } from "@/components/profile-extras-notice";
 import { ProfileForm } from "@/components/profile-form";
 import { SubmitButton } from "@/components/submit-button";
 import { Avatar, PageSpinner, reveal, Sheet } from "@/components/ui";
@@ -62,6 +63,9 @@ async function Account() {
       )}
 
       <Sheet label="Profile" className="reveal max-w-xl" style={reveal(2)}>
+        <div className="mb-8 empty:hidden">
+          <ProfileExtrasNotice profile={profile} linked={false} />
+        </div>
         <ProfileForm profile={profile} next="/me" submitLabel="Save changes" requireChange />
       </Sheet>
 

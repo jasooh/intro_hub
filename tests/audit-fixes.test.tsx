@@ -3,7 +3,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { groupErrors } from "@/lib/app-errors";
 import { buildAnnouncementEmail, buildEmail, type EmailContext } from "@/lib/email/templates";
 import { sessionIcs } from "@/lib/ics";
-import { profileComplete } from "@/lib/profile";
+import { missingProfileExtras, profileComplete } from "@/lib/profile";
 import type { Profile } from "@/lib/types";
 import { unsubscribeHeaders, unsubscribeUrl, verifyUnsubscribe } from "@/lib/unsubscribe";
 
@@ -100,12 +100,14 @@ describe("profile completeness", () => {
     waiver_accepted_at: "2026-10-01",
   } as unknown as Profile;
 
-  it("needs an emergency contact and the 18+ tick", async () => {
+  it("doesn't need the emergency contact or 18+ tick; those are reminders", async () => {
     const { WAIVER_VERSION } = await import("@/lib/agreements");
     const p = { ...complete, waiver_version: WAIVER_VERSION } as Profile;
     expect(profileComplete(p)).toBe(true);
-    expect(profileComplete({ ...p, emergency_phone: " " })).toBe(false);
-    expect(profileComplete({ ...p, adult_confirmed_at: null })).toBe(false);
+    expect(missingProfileExtras(p)).toEqual([]);
+    const bare = { ...p, emergency_phone: " ", adult_confirmed_at: null };
+    expect(profileComplete(bare)).toBe(true);
+    expect(missingProfileExtras(bare)).toEqual(["an emergency contact", "your 18+ confirmation"]);
   });
 });
 

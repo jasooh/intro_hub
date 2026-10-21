@@ -10,16 +10,20 @@ beforeEach(async () => {
 const register = (u: string, sid: string) => asUser(db, u, `select public.register_for_session($1, 'full')`, [sid]);
 
 describe("emergency contact and 18+", () => {
-  it("are needed to sign up", async () => {
+  it("don't block signing up (players are reminded instead), and players can fill them in", async () => {
     const a = await createUser(db, "A");
     const sid = await createSession(db);
-    await db.query(`update public.profiles set emergency_phone = null where id = $1`, [a]);
-    await expect(register(a, sid)).rejects.toThrow(/profile_incomplete/);
-    await db.query(`update public.profiles set emergency_phone = '555', adult_confirmed_at = null where id = $1`, [a]);
-    await expect(register(a, sid)).rejects.toThrow(/profile_incomplete/);
-    // Players can fill them in themselves.
-    await asUser(db, a, `update public.profiles set adult_confirmed_at = now() where id = $1`, [a]);
+    await db.query(`update public.profiles set emergency_name = null, emergency_phone = null, adult_confirmed_at = null where id = $1`, [a]);
     await register(a, sid);
+    await asUser(db, a, `update public.profiles set emergency_name = 'Sam', adult_confirmed_at = now() where id = $1`, [a]);
+    const res = await db.query<{ emergency_name: string }>(`select emergency_name from public.profiles where id = $1`, [a]);
+    expect(res.rows[0].emergency_name).toBe("Sam");
+  });
+
+  it("the rest of the profile still has to be done first", async () => {
+    const a = await createUser(db, "A", { incomplete: true });
+    const sid = await createSession(db);
+    await expect(register(a, sid)).rejects.toThrow(/profile_incomplete/);
   });
 });
 

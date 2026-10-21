@@ -15,14 +15,24 @@ export const OPTION_LABELS: Record<SignupOption, string> = {
 };
 
 /** Everything sign-up needs. Mirrors public._profile_complete() plus the current waiver version. */
+/**
+ * Profile details asked for after launch that don't block signing up (players
+ * are reminded instead): "an emergency contact", "your 18+ confirmation".
+ */
+export function missingProfileExtras(
+  p: Pick<Profile, "emergency_name" | "emergency_phone" | "adult_confirmed_at">,
+): string[] {
+  const missing: string[] = [];
+  if (!p.emergency_name?.trim() || !p.emergency_phone?.trim()) missing.push("an emergency contact");
+  if (!p.adult_confirmed_at) missing.push("your 18+ confirmation");
+  return missing;
+}
+
 export function profileComplete(p: Profile): boolean {
   return Boolean(
     p.first_name?.trim() &&
       p.last_name?.trim() &&
       p.phone?.trim() &&
-      p.emergency_name?.trim() &&
-      p.emergency_phone?.trim() &&
-      p.adult_confirmed_at &&
       p.skill_level &&
       p.attended_before !== null &&
       p.media_consent !== null &&

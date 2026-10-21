@@ -39,7 +39,7 @@ Open the file listed for the current version; older copies in earlier migrations
 | `_maintenance_guard` | `20261117000000_maintenance_guard_comment.sql` | 2 |
 | `_option_offered` | `20261101000000_signup_options.sql` | 1 |
 | `_owe_late_deposit` | `20261111000000_deposit_late_payments.sql` | 1 |
-| `_profile_complete` | `20261118000000_audit_fixes.sql` | 2 |
+| `_profile_complete` | `20261119000000_soft_profile_extras.sql` | 3 |
 | `_promote` | `20261101000000_signup_options.sql` | 4 |
 | `_refunded_cents` | `20261113000000_stats.sql` | 1 |
 | `_release_regular` | `20261101000000_signup_options.sql` | 2 |
