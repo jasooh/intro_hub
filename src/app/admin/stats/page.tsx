@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { STAT_TABS, StatsView, type StatTab } from "@/components/stats-view";
-import { PageSpinner } from "@/components/ui";
+import { StatsShell } from "@/components/stats-shell";
+import { StatsView } from "@/components/stats-view";
+import { PageSpinner, PageTitle } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { env } from "@/lib/env";
 import { zonedLocalToUtc } from "@/lib/format";
@@ -14,9 +15,19 @@ export const metadata: Metadata = {
 
 export default function StatsPage(props: PageProps<"/admin/stats">) {
   return (
-    <Suspense fallback={<PageSpinner />}>
-      <StatsData searchParams={props.searchParams} />
-    </Suspense>
+    <div className="space-y-12">
+      <PageTitle eyebrow="Host bench" sub="Money in, how full sessions were, and who's coming back.">
+        Stats
+      </PageTitle>
+      {/* The controls show at once; the numbers stream in behind the bouncing ball. */}
+      <Suspense fallback={<PageSpinner />}>
+        <StatsShell>
+          <Suspense fallback={<PageSpinner />}>
+            <StatsData searchParams={props.searchParams} />
+          </Suspense>
+        </StatsShell>
+      </Suspense>
+    </div>
   );
 }
 
@@ -38,7 +49,5 @@ async function StatsData({ searchParams }: { searchParams: PageProps<"/admin/sta
   });
   if (error) throw error;
 
-  const tab = (STAT_TABS.find((t) => t.key === params.tab)?.key ?? "overview") as StatTab;
-
-  return <StatsView stats={data as Stats} range={range} tab={tab} custom={custom} now={preset.now} />;
+  return <StatsView stats={data as Stats} now={preset.now} />;
 }

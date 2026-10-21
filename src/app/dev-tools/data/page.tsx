@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { NavGroup, NavLink, PendingContent } from "@/components/nav-pending";
 import { buttonClass, EmptyState, inputClass, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
 import { requireDevTools } from "@/lib/auth";
 import { cellText, isEditableTable, EDITABLE_TABLES, type EditableTable } from "@/lib/dev-tools";
@@ -45,19 +46,22 @@ async function DataView({ searchParams }: { searchParams: PageProps<"/dev-tools/
         Data
       </PageTitle>
 
+      <NavGroup>
       <div className="reveal space-y-4" style={reveal(1)}>
         <nav aria-label="Tables" className="flex flex-wrap gap-x-5 gap-y-2">
           {(Object.keys(EDITABLE_TABLES) as EditableTable[]).map((t) => (
-            <Link
+            <NavLink
               key={t}
               href={`/dev-tools/data?table=${t}`}
-              aria-current={t === table ? "page" : undefined}
-              className={`font-display text-lg font-bold tracking-wide uppercase underline-offset-[6px] ${
-                t === table ? "text-ink underline decoration-line decoration-[3px]" : "text-ink-soft hover:text-ink"
-              }`}
+              active={t === table}
+              className={({ active }) =>
+                `font-display text-lg font-bold tracking-wide uppercase underline-offset-[6px] ${
+                  active ? "text-ink underline decoration-line decoration-[3px]" : "text-ink-soft hover:text-ink"
+                }`
+              }
             >
               {EDITABLE_TABLES[t].label}
-            </Link>
+            </NavLink>
           ))}
         </nav>
         <form className="flex items-end gap-3">
@@ -85,6 +89,7 @@ async function DataView({ searchParams }: { searchParams: PageProps<"/dev-tools/
         className="reveal"
         style={reveal(2)}
       >
+        <PendingContent>
         {rows.length === 0 ? (
           <EmptyState>No rows{q ? " match" : ""}</EmptyState>
         ) : (
@@ -127,7 +132,9 @@ async function DataView({ searchParams }: { searchParams: PageProps<"/dev-tools/
             )}
           </div>
         )}
+        </PendingContent>
       </Sheet>
+      </NavGroup>
     </div>
   );
 }

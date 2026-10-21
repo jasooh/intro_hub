@@ -1,103 +1,29 @@
 import Link from "next/link";
 import { DateBlock } from "@/components/session-card";
-import { buttonClass, EmptyState, inputClass, Mark, PageTitle, reveal, Scoreboard, ScoreboardRow, Sheet } from "@/components/ui";
+import { TrendChart } from "@/components/stat-charts";
+import { StatsPanelSwitch } from "@/components/stats-shell";
+import { EmptyState, Mark, reveal, Scoreboard, ScoreboardRow, Sheet } from "@/components/ui";
 import { GrowthSection, MoneySection, ReliabilitySection, TimingSection } from "@/components/stats-sections";
+import { env } from "@/lib/env";
 import { formatMoney, pad2 } from "@/lib/format";
-import { STAT_RANGES, summarize, type SessionStat, type StatRange, type Stats } from "@/lib/stats";
+import { fillByDate, summarize, type SessionStat, type Stats } from "@/lib/stats";
 
 const shortDate = (iso: string) =>
   new Intl.DateTimeFormat("en-CA", { month: "short", day: "numeric", year: "numeric" }).format(new Date(iso));
 
-/** The host stats page: money, how full sessions were, and who's coming (or not coming) back. */
-export const STAT_TABS = [
-  { key: "overview", label: "Overview" },
-  { key: "timing", label: "Timing" },
-  { key: "reliability", label: "Reliability" },
-  { key: "growth", label: "Growth" },
-  { key: "money", label: "Money" },
-] as const;
-export type StatTab = (typeof STAT_TABS)[number]["key"];
-
-export function StatsView({
-  stats,
-  range,
-  tab,
-  custom,
-  now,
-}: {
-  stats: Stats;
-  range: StatRange;
-  tab: StatTab;
-  /** The picked dates when range is "custom". */
-  custom: { from: string; to: string } | null;
-  now: number;
-}) {
+/**
+ * The five sections, rendered on the server and handed to the shell, which shows the picked one.
+ * They all come from the same query, so changing tab never goes back to the database.
+ */
+export function StatsView({ stats, now }: { stats: Stats; now: number }) {
   const totals = summarize(stats.sessions, now);
   const upcoming = stats.sessions.filter((s) => Date.parse(s.starts_at) > now);
   const past = stats.sessions.filter((s) => Date.parse(s.starts_at) <= now).reverse();
   const { lapsed } = stats.players;
+  const fillRows = fillByDate(stats.sessions, now, env.timezone());
 
-  return (
+  const overview = (
     <div className="space-y-12">
-      <PageTitle eyebrow="Host bench" sub="Money in, how full sessions were, and who's coming back.">
-        Stats
-      </PageTitle>
-
-      <div className="reveal space-y-4" style={reveal(1)}>
-        <nav className="flex flex-wrap gap-3" aria-label="Time range">
-          {STAT_RANGES.map((r) => (
-            <Link
-              key={r.key}
-              href={`/admin/stats?range=${r.key}${tab === "overview" ? "" : `&tab=${tab}`}`}
-              aria-current={r.key === range ? "page" : undefined}
-              className={buttonClass(r.key === range ? "primary" : "secondary", "sm")}
-            >
-              {r.label}
-            </Link>
-          ))}
-        </nav>
-        {/* A plain GET form: the dates land in the URL, so a custom range can be bookmarked or shared. */}
-        <form
-          action="/admin/stats"
-          className={`flex flex-wrap items-end gap-x-4 gap-y-3 border-l-4 py-1 pl-3 ${range === "custom" ? "border-line" : "border-ink/20"}`}
-        >
-          <input type="hidden" name="range" value="custom" />
-          {tab !== "overview" && <input type="hidden" name="tab" value={tab} />}
-          <label className="block min-w-0 space-y-1">
-            <span className="font-display text-sm font-bold tracking-[0.15em] uppercase">From</span>
-            <input type="date" name="from" required defaultValue={custom?.from} className={`${inputClass} w-44`} />
-          </label>
-          <label className="block min-w-0 space-y-1">
-            <span className="font-display text-sm font-bold tracking-[0.15em] uppercase">To</span>
-            <input type="date" name="to" required defaultValue={custom?.to} className={`${inputClass} w-44`} />
-          </label>
-          <button type="submit" className={buttonClass(range === "custom" ? "primary" : "secondary", "sm")}>
-            {range === "custom" ? "Update range" : "Custom range"}
-          </button>
-        </form>
-      </div>
-
-      <nav aria-label="Stats sections" className="reveal flex flex-wrap gap-x-5 border-b-2 border-ink" style={reveal(2)}>
-        {STAT_TABS.map((t) => (
-          <Link
-            key={t.key}
-            href={`/admin/stats?${range === "custom" && custom ? `range=custom&from=${custom.from}&to=${custom.to}` : `range=${range}`}${t.key === "overview" ? "" : `&tab=${t.key}`}`}
-            aria-current={t.key === tab ? "page" : undefined}
-            className={`-mb-[2px] border-b-4 py-2 font-display text-base font-bold tracking-wide whitespace-nowrap uppercase ${
-              t.key === tab ? "border-line text-ink" : "border-transparent text-ink-soft hover:text-ink"
-            }`}
-          >
-            {t.label}
-          </Link>
-        ))}
-      </nav>
-
-      {tab === "timing" && <TimingSection stats={stats} />}
-      {tab === "reliability" && <ReliabilitySection stats={stats} />}
-      {tab === "growth" && <GrowthSection stats={stats} />}
-      {tab === "money" && <MoneySection stats={stats} sessions={stats.sessions} />}
-      {tab === "overview" && (
-        <>
         <ScoreboardRow className="reveal" style={reveal(2)}>
           <Scoreboard size="sm" className="w-full" value={formatMoney(totals.collected)} label="Collected" />
           <Scoreboard size="sm" className="w-full" value={formatMoney(totals.owed)} label="Still owed" />
@@ -116,6 +42,13 @@ export function StatsView({
             {totals.waitlisted > 0 && `, ${totals.waitlisted} with a waitlist (more people wanted in than there were spots)`}
             . &ldquo;Avg. full&rdquo; counts paid drop-in spots.
           </p>
+        )}
+
+        {fillRows.length > 1 && (
+          <Sheet label="Drop-in fill by session" className="reveal" style={reveal(3)}>
+            <TrendChart label="Share of drop-in spots paid, by session" format="percent" max={100} rows={fillRows} />
+            <p className="mt-2 max-w-2xl text-sm text-ink-soft">Each point is one session: how much of the drop-in was paid for.</p>
+          </Sheet>
         )}
 
         {upcoming.length > 0 && (
@@ -153,9 +86,19 @@ export function StatsView({
             </ul>
           )}
         </Sheet>
-        </>
-      )}
     </div>
+  );
+
+  return (
+    <StatsPanelSwitch
+      panels={{
+        overview,
+        timing: <TimingSection stats={stats} />,
+        reliability: <ReliabilitySection stats={stats} />,
+        growth: <GrowthSection stats={stats} />,
+        money: <MoneySection stats={stats} sessions={stats.sessions} />,
+      }}
+    />
   );
 }
 

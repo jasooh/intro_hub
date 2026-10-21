@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
+import { type ChartRow, ColumnChart, HBarChart } from "@/components/stat-charts";
 import { Scoreboard, ScoreboardRow, Sheet } from "@/components/ui";
+import { env } from "@/lib/env";
 import { formatMoney } from "@/lib/format";
 import { HEARD_LABELS, OPTION_LABELS } from "@/lib/profile";
 import { SKILL_RANKS } from "@/lib/skill";
@@ -11,14 +13,15 @@ import {
   hourLabel,
   monthLabel,
   percent,
+  shortDay,
   WEEKDAYS_SHORT,
   type SessionStat,
   type Stats,
 } from "@/lib/stats";
 
-// The Stats page's sections. Every chart is a single series (one colour), with
-// the number written next to each bar and a hover title, so nothing relies on
-// colour alone; the heatmap is one orange from light to dark, with a scale.
+// The Stats page's sections. Charts are shadcn charts (src/components/stat-charts.tsx) with the
+// number written on each bar and in the tooltip, so nothing relies on colour alone; the heatmap
+// is one orange from light to dark, with a scale.
 
 /** A plain-language takeaway at the top of a section. */
 function Takeaway({ children }: { children: ReactNode }) {
@@ -30,41 +33,10 @@ function Note({ children }: { children: ReactNode }) {
   return <p className="max-w-2xl text-sm text-ink-soft">{children}</p>;
 }
 
-/** Ruled rows with a horizontal bar each (one series): label, bar, value. */
-export function BarList({
-  rows,
-  format = (n) => String(n),
-  empty = "Nothing yet",
-}: {
-  rows: { label: string; value: number; detail?: string }[];
-  format?: (n: number) => string;
-  empty?: string;
-}) {
-  const max = Math.max(0, ...rows.map((r) => r.value));
-  if (rows.length === 0 || max === 0) return <p className="text-ink-soft">{empty}</p>;
-  return (
-    <ul className="divide-y divide-ink/15">
-      {rows.map((r) => (
-        <li
-          key={r.label}
-          title={`${r.label}: ${format(r.value)}${r.detail ? ` · ${r.detail}` : ""}`}
-          className="grid grid-cols-[minmax(0,7.5rem)_minmax(0,1fr)_auto] items-center gap-3 py-2 sm:grid-cols-[minmax(0,10rem)_minmax(0,1fr)_auto]"
-        >
-          <span className="truncate text-sm">{r.label}</span>
-          <span className="h-3 min-w-0">
-            <span
-              className="block h-full rounded-r-[4px] bg-mat"
-              style={{ width: `${Math.max((r.value / max) * 100, r.value > 0 ? 2 : 0)}%` }}
-            />
-          </span>
-          <span className="text-right font-score text-sm font-black whitespace-nowrap">
-            {format(r.value)}
-            {r.detail && <span className="ml-1 font-sans text-xs font-normal text-ink-soft">{r.detail}</span>}
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
+const hasData = (rows: ChartRow[]) => rows.some((r) => r.value > 0);
+
+function Empty({ children }: { children: ReactNode }) {
+  return <p className="text-ink-soft">{children}</p>;
 }
 
 /** Sign-ups by weekday and hour: one orange, light to dark, with a scale and a title on every cell. */
@@ -145,15 +117,19 @@ export function TimingSection({ stats }: { stats: Stats }) {
       </Sheet>
 
       <Sheet label="How fast sessions fill">
-        <BarList
-          rows={fills.map((s) => ({
-            label: new Intl.DateTimeFormat("en-CA", { month: "short", day: "numeric" }).format(new Date(s.starts_at)),
-            value: s.first_day_pct ?? 0,
-            detail: s.minutes_to_full != null ? `full in ${formatDuration(s.minutes_to_full)}` : "never filled",
-          }))}
-          format={(n) => `${n}%`}
-          empty="No sessions with sign-ups in this range."
-        />
+        {fills.length === 0 ? (
+          <Empty>No sessions with sign-ups in this range.</Empty>
+        ) : (
+          <ColumnChart
+            label="Share of drop-in spots claimed in the first day of sign-ups"
+            format="percent"
+            rows={fills.map((s) => ({
+              label: shortDay(s.starts_at, env.timezone()),
+              value: s.first_day_pct ?? 0,
+              detail: s.minutes_to_full != null ? `Full in ${formatDuration(s.minutes_to_full)}` : "Never filled",
+            }))}
+          />
+        )}
         <Note>Bars: share of drop-in spots claimed in the first day of sign-ups.</Note>
       </Sheet>
     </div>
@@ -188,14 +164,18 @@ export function ReliabilitySection({ stats }: { stats: Stats }) {
         />
       </ScoreboardRow>
       <Sheet label="How payments were matched">
-        <BarList
-          rows={[
-            { label: "By VB- code", value: m.ref, detail: percent(m.ref, matchedTotal) },
-            { label: "By name + amount", value: m.name_amount, detail: percent(m.name_amount, matchedTotal) },
-            { label: "By hand", value: m.admin, detail: percent(m.admin, matchedTotal) },
-          ]}
-          empty="No payments in this range."
-        />
+        {matchedTotal === 0 ? (
+          <Empty>No payments in this range.</Empty>
+        ) : (
+          <HBarChart
+            label="How payments were matched"
+            rows={[
+              { label: "By VB- code", value: m.ref, detail: percent(m.ref, matchedTotal) },
+              { label: "By name + amount", value: m.name_amount, detail: percent(m.name_amount, matchedTotal) },
+              { label: "By hand", value: m.admin, detail: percent(m.admin, matchedTotal) },
+            ]}
+          />
+        )}
         <Note>&quot;By hand&quot; is a host pressing Mark paid (cash, or a transfer that didn&apos;t match on its own).</Note>
       </Sheet>
     </div>
@@ -212,6 +192,11 @@ export function GrowthSection({ stats }: { stats: Stats }) {
     Object.entries(o)
       .sort((a, b) => b[1] - a[1])
       .map(([k, v]) => ({ label: labels[k] ?? (k === "unknown" ? "Didn't say" : k), value: v }));
+  const heardRows: ChartRow[] = byCount(g.heard_about, HEARD_LABELS);
+  const skillRows: ChartRow[] = [
+    ...SKILL_RANKS.map((r) => ({ label: `${r.value} · ${r.label}`, value: g.skill[String(r.value)] ?? 0 })),
+    ...(g.skill.unknown ? [{ label: "Didn't say", value: g.skill.unknown }] : []),
+  ];
   return (
     <div className="space-y-10">
       <Takeaway>
@@ -230,18 +215,19 @@ export function GrowthSection({ stats }: { stats: Stats }) {
         <Scoreboard size="sm" className="w-full" value={String(reg.occasional)} label="Occasional" />
       </ScoreboardRow>
       <Sheet label="New players by month">
-        <BarList rows={g.new_by_month.map((x) => ({ label: monthLabel(x.month), value: x.count }))} empty="No new players in this range." />
+        {newTotal === 0 ? (
+          <Empty>No new players in this range.</Empty>
+        ) : (
+          <ColumnChart label="New players by month" rows={g.new_by_month.map((x) => ({ label: monthLabel(x.month), value: x.count }))} />
+        )}
         <Note>Counted in the month of their first session.</Note>
       </Sheet>
       <div className="grid grid-cols-1 gap-10 md:grid-cols-2">
         <Sheet label="How they found us">
-          <BarList rows={byCount(g.heard_about, HEARD_LABELS)} empty="No new players in this range." />
+          {hasData(heardRows) ? <HBarChart label="How new players found us" rows={heardRows} /> : <Empty>No new players in this range.</Empty>}
         </Sheet>
         <Sheet label="Skill levels">
-          <BarList
-            rows={[...SKILL_RANKS.map((r) => ({ label: `${r.value} · ${r.label}`, value: g.skill[String(r.value)] ?? 0 })), ...(g.skill.unknown ? [{ label: "Didn't say", value: g.skill.unknown }] : [])]}
-            empty="No one played in this range."
-          />
+          {hasData(skillRows) ? <HBarChart label="Skill levels" rows={skillRows} /> : <Empty>No one played in this range.</Empty>}
         </Sheet>
       </div>
       <Sheet label="Bring a Friend">
@@ -272,22 +258,28 @@ export function MoneySection({ stats, sessions }: { stats: Stats; sessions: Sess
         )}
       </Takeaway>
       <Sheet label="Money by month">
-        <BarList
-          rows={months.map((m) => ({
-            label: monthLabel(m.month),
-            value: m.collected,
-            detail: [m.refunded ? `${formatMoney(m.refunded)} refunded` : null, m.owed ? `${formatMoney(m.owed)} owed` : null]
-              .filter(Boolean)
-              .join(" · "),
-          }))}
-          format={formatMoney}
-          empty="No money in this range yet."
-        />
-        <Note>Bars: money in (after refunds), by the month of the session.</Note>
+        {total === 0 && months.every((m) => !m.owed) ? (
+          <Empty>No money in this range yet.</Empty>
+        ) : (
+          <ColumnChart
+            label="Money in by month"
+            color="var(--line)"
+            format="money"
+            extraLabel="still owed"
+            rows={months.map((m) => ({
+              label: monthLabel(m.month),
+              value: m.collected,
+              extra: m.owed,
+              detail: m.refunded ? `${formatMoney(m.refunded)} refunded` : undefined,
+            }))}
+          />
+        )}
+        <Note>Solid: money in (after refunds), by the month of the session. Light: still owed.</Note>
       </Sheet>
       <div className="grid grid-cols-1 gap-10 md:grid-cols-2">
         <Sheet label="What people sign up for">
-          <BarList
+          <HBarChart
+            label="What people sign up for"
             rows={[
               { label: OPTION_LABELS.full, value: o.full },
               { label: OPTION_LABELS.dropin, value: o.dropin },

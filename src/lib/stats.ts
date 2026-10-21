@@ -17,6 +17,16 @@ export function customDates(from: unknown, to: unknown): { from: string; to: str
   return from <= to ? { from, to } : { from: to, to: from };
 }
 
+/** The Stats page's sections. All of them come from the same query, so switching is instant. */
+export const STAT_TABS = [
+  { key: "overview", label: "Overview" },
+  { key: "timing", label: "Timing" },
+  { key: "reliability", label: "Reliability" },
+  { key: "growth", label: "Growth" },
+  { key: "money", label: "Money" },
+] as const;
+export type StatTab = (typeof STAT_TABS)[number]["key"];
+
 const DAY = 86_400_000;
 
 /** Sessions starting from the range's start through the next month (so money owed for upcoming ones shows). */
@@ -148,6 +158,23 @@ export function averageFillMinutes(sessions: SessionStat[]) {
 export function monthLabel(month: string) {
   const [y, m] = month.split("-").map(Number);
   return new Intl.DateTimeFormat("en-CA", { month: "short", year: "numeric", timeZone: "UTC" }).format(Date.UTC(y, m - 1, 1));
+}
+
+/** "Oct 17": a session's date for a chart axis. */
+export function shortDay(iso: string, timeZone: string) {
+  return new Intl.DateTimeFormat("en-CA", { month: "short", day: "numeric", timeZone }).format(new Date(iso));
+}
+
+/** How full each played session was (paid ÷ drop-in spots), oldest first, for a trend chart. */
+export function fillByDate(sessions: SessionStat[], now: number, timeZone: string) {
+  return sessions
+    .filter((s) => s.status === "scheduled" && s.capacity > 0 && Date.parse(s.starts_at) <= now)
+    .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at))
+    .map((s) => ({
+      label: shortDay(s.starts_at, timeZone),
+      value: Math.min(Math.round((100 * s.confirmed) / s.capacity), 100),
+      detail: `${s.confirmed}/${s.capacity} paid${s.waitlisted > 0 ? ` · ${s.waitlisted} waitlisted` : ""}`,
+    }));
 }
 
 export function summarize(sessions: SessionStat[], now: number) {

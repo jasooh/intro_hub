@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { OpensIn } from "@/components/countdown";
+import { LinkPending } from "@/components/nav-pending";
 import { Mark, SpotDots } from "@/components/ui";
 import { dateParts, formatMoney, formatTime } from "@/lib/format";
 import { spotsLeft } from "@/lib/queries";
@@ -59,10 +60,11 @@ export function SessionCard({ session, counts, href }: { session: Session; count
   return (
     <Link
       href={href}
-      className={`group grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-4 py-5 transition-colors hover:bg-maple-deep/50 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-x-6 sm:gap-y-2 sm:px-2 sm:py-4 ${
+      className={`group relative grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-4 py-5 transition-colors hover:bg-maple-deep/50 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-x-6 sm:gap-y-2 sm:px-2 sm:py-4 ${
         live ? "border-l-4 border-line bg-line/[0.06] pl-3 sm:pl-4" : ""
       }`}
     >
+      <LinkPending />
       <DateBlock iso={session.starts_at} className="sm:row-span-2" />
 
       <div className="min-w-0 space-y-1">

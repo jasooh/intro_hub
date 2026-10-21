@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { customDates, statWindow } from "@/lib/stats";
+import { customDates, fillByDate, statWindow, type SessionStat } from "@/lib/stats";
 
 describe("stats ranges", () => {
   it("custom dates must both be YYYY-MM-DD; backwards ranges are swapped", () => {
@@ -45,5 +45,35 @@ describe("stats helpers", () => {
     expect(g.rows[6].hours[9]).toBe(4);
     expect(g.max).toBe(4);
     expect(g.total).toBe(6);
+  });
+});
+
+describe("fillByDate", () => {
+  const base = { id: "x", title: "T", status: "scheduled", capacity: 10, confirmed: 0, holding: 0, instructional: 0, waitlisted: 0, expired: 0, collected: 0, owed: 0, minutes_to_full: null, first_hour_pct: null, first_day_pct: null };
+  const session = (starts_at: string, over: Partial<SessionStat> = {}) => ({ ...base, starts_at, ...over }) as SessionStat;
+  const now = Date.parse("2026-10-20T12:00:00Z");
+
+  it("lists played sessions oldest first with the percent paid", () => {
+    const rows = fillByDate(
+      [session("2026-10-17T22:00:00Z", { confirmed: 10, waitlisted: 3 }), session("2026-10-03T22:00:00Z", { confirmed: 4 })],
+      now,
+      "America/Toronto",
+    );
+    expect(rows.map((r) => [r.label, r.value])).toEqual([["Oct 3", 40], ["Oct 17", 100]]);
+    expect(rows[1].detail).toBe("10/10 paid · 3 waitlisted");
+  });
+
+  it("skips upcoming, cancelled and zero-capacity sessions, and caps at 100", () => {
+    const rows = fillByDate(
+      [
+        session("2026-10-27T22:00:00Z", { confirmed: 5 }),
+        session("2026-10-10T22:00:00Z", { status: "cancelled", confirmed: 5 }),
+        session("2026-10-11T22:00:00Z", { capacity: 0 }),
+        session("2026-10-12T22:00:00Z", { confirmed: 12 }),
+      ],
+      now,
+      "America/Toronto",
+    );
+    expect(rows.map((r) => r.value)).toEqual([100]);
   });
 });

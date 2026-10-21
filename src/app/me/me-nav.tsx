@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { NavLink } from "@/components/nav-pending";
 import { usePathname } from "next/navigation";
 import { Suspense } from "react";
 
@@ -28,16 +28,18 @@ function Tabs({ path }: { path: string | null }) {
       {links.map((l) => {
         const active = path === l.href;
         return (
-          <Link
+          <NavLink
             key={l.href}
             href={l.href}
-            aria-current={active ? "page" : undefined}
-            className={`px-3 py-1.5 font-display text-lg font-bold tracking-wide whitespace-nowrap uppercase transition-colors ${
-              active ? "bg-line text-board" : "text-maple/70 hover:bg-maple/10 hover:text-maple"
-            }`}
+            active={active}
+            className={({ active: on }) =>
+              `px-3 py-1.5 font-display text-lg font-bold tracking-wide whitespace-nowrap uppercase transition-colors ${
+                on ? "bg-line text-board" : "text-maple/70 hover:bg-maple/10 hover:text-maple"
+              }`
+            }
           >
             {l.label}
-          </Link>
+          </NavLink>
         );
       })}
     </nav>

@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { NavLink } from "@/components/nav-pending";
 import { usePathname } from "next/navigation";
 import { Suspense } from "react";
 
@@ -41,16 +41,18 @@ function Tabs({
   return (
     <nav className="flex gap-1 overflow-x-auto overflow-y-hidden bg-board p-1.5 shadow-[4px_4px_0_var(--line)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {links.map((l) => (
-        <Link
+        <NavLink
           key={l.href}
           href={l.href}
-          aria-current={active(l.href) ? "page" : undefined}
-          className={`px-3 py-1.5 font-display text-lg font-bold tracking-wide whitespace-nowrap uppercase transition-colors ${
-            active(l.href) ? "bg-line text-board" : "text-maple/70 hover:bg-maple/10 hover:text-maple"
-          }`}
+          active={active(l.href)}
+          className={({ active: on }) =>
+            `px-3 py-1.5 font-display text-lg font-bold tracking-wide whitespace-nowrap uppercase transition-colors ${
+              on ? "bg-line text-board" : "text-maple/70 hover:bg-maple/10 hover:text-maple"
+            }`
+          }
         >
           {l.label}
-        </Link>
+        </NavLink>
       ))}
     </nav>
   );
@@ -107,34 +109,37 @@ function GroupedTabs({
         {groups.map((g) => {
           const on = g === current;
           return (
-            <Link
+            <NavLink
               key={g.label}
               href={g.links[0].href}
-              aria-current={on ? "true" : undefined}
-              className={`px-1 py-1.5 text-center font-display text-base font-bold tracking-wide whitespace-nowrap uppercase transition-colors sm:px-3 sm:text-lg ${
-                on ? "bg-line text-board" : "text-maple/70 hover:bg-maple/10 hover:text-maple"
-              }`}
+              active={on}
+              linkClassName="flex"
+              className={({ active: lit }) =>
+                `w-full px-1 py-1.5 text-center font-display text-base font-bold tracking-wide whitespace-nowrap uppercase transition-colors sm:px-3 sm:text-lg ${
+                  lit ? "bg-line text-board" : "text-maple/70 hover:bg-maple/10 hover:text-maple"
+                }`
+              }
             >
               {g.label}
-            </Link>
+            </NavLink>
           );
         })}
       </div>
       {current.links.length > 1 && (
         <div className={`flex gap-x-5 border-t border-maple/15 px-3 py-1.5 ${scroll}`}>
           {current.links.map((l) => (
-            <Link
+            <NavLink
               key={l.href}
               href={l.href}
-              aria-current={active(l.href) ? "page" : undefined}
-              className={`py-1 font-display text-base font-bold tracking-wide whitespace-nowrap uppercase underline-offset-[6px] transition-colors ${
-                active(l.href)
-                  ? "text-maple underline decoration-line decoration-2"
-                  : "text-maple/60 hover:text-maple"
-              }`}
+              active={active(l.href)}
+              className={({ active: lit }) =>
+                `py-1 font-display text-base font-bold tracking-wide whitespace-nowrap uppercase underline-offset-[6px] transition-colors ${
+                  lit ? "text-maple underline decoration-line decoration-2" : "text-maple/60 hover:text-maple"
+                }`
+              }
             >
               {l.label}
-            </Link>
+            </NavLink>
           ))}
         </div>
       )}
