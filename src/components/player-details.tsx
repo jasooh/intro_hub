@@ -17,6 +17,8 @@ export type PlayerDetailsData = {
     | "last_name"
     | "email"
     | "phone"
+    | "emergency_name"
+    | "emergency_phone"
     | "avatar_url"
     | "skill_level"
     | "attended_before"
@@ -116,6 +118,21 @@ export function PlayerDetails({
                 <a href={`tel:${p.phone}`} className="text-mat underline underline-offset-2">
                   {p.phone}
                 </a>
+              ) : null}
+            </Row>
+            <Row label="Emergency">
+              {p.emergency_name || p.emergency_phone ? (
+                <>
+                  {p.emergency_name}
+                  {p.emergency_phone && (
+                    <>
+                      {" · "}
+                      <a href={`tel:${p.emergency_phone}`} className="text-mat underline underline-offset-2">
+                        {p.emergency_phone}
+                      </a>
+                    </>
+                  )}
+                </>
               ) : null}
             </Row>
           </Rows>

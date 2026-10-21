@@ -250,6 +250,9 @@ update public.profiles p
        media_consent_at = now() - make_interval(days => d.joined_days),
        waiver_accepted_at = now() - make_interval(days => d.joined_days),
        waiver_version = '2026-10',
+       emergency_name = 'Demo Contact (family)',
+       emergency_phone = '(416) 555-' || lpad((2000 + d.n)::text, 4, '0'),
+       adult_confirmed_at = now() - make_interval(days => d.joined_days),
        announcement_emails = false, -- never email the demo addresses
        onboarded_at = now() - make_interval(days => d.joined_days),
        created_at = now() - make_interval(days => d.joined_days)

@@ -25,6 +25,11 @@ export type Profile = {
   first_name: string | null;
   last_name: string | null;
   phone: string | null;
+  /** Who to call if they're hurt (hosts only). */
+  emergency_name: string | null;
+  emergency_phone: string | null;
+  /** When they confirmed they're 18 or older. */
+  adult_confirmed_at: string | null;
   skill_level: SkillLevel | null;
   attended_before: boolean | null;
   learning_goals: string | null;
@@ -100,6 +105,8 @@ export type Session = {
   cancel_reason: string | null;
   /** Minutes per game in the team schedule; null = order only, no times. */
   schedule_game_minutes: number | null;
+  /** Goes up each time the date, time or place changes (calendar SEQUENCE, "session changed" emails). */
+  schedule_revision: number;
   /** Free session with a refundable deposit: what each sign-up pays to hold a spot. */
   deposit_cents: number | null;
   /** Set once the deposits were marked as owed back after the session. */
@@ -234,10 +241,14 @@ export type RegistrationEvent = {
     | "hold_reminder"
     | "payment_reversed"
     | "spot_released"
-    | "session_cancelled";
+    | "session_cancelled"
+    | "session_changed";
   registration_id: string;
   /** partial_payment: the payment that arrived; payment_reversed / spot_released: the one cancelled (each gets its own email). */
   payment_id?: string;
   /** hold_reminder only: when it was sent (each reminder gets its own email). */
   nudged_at?: string;
+  /** session_changed only: the new revision (one email per change) and the old time and place. */
+  revision?: number;
+  before?: { when: string; location: string };
 };

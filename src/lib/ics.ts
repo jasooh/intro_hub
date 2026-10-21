@@ -8,7 +8,7 @@ import type { Session, SignupOption } from "@/lib/types";
 type CalendarSession = Pick<
   Session,
   "id" | "title" | "starts_at" | "ends_at" | "location" | "instructional_ends_at" | "dropin_starts_at"
->;
+> & { schedule_revision?: number };
 
 /** Instructional-only players leave when the lesson ends; drop-in-only players come for the games. */
 function startOf(session: CalendarSession, option: SignupOption) {
@@ -65,6 +65,8 @@ export function sessionIcs(
     "METHOD:PUBLISH",
     "BEGIN:VEVENT",
     `UID:session-${session.id}@intro-hub`,
+    // Same UID + a higher SEQUENCE: calendar apps update the event they already have.
+    `SEQUENCE:${session.schedule_revision ?? 0}`,
     `DTSTAMP:${utcStamp(now.toISOString())}`,
     `DTSTART:${utcStamp(startOf(session, option))}`,
     `DTEND:${utcStamp(endOf(session, option))}`,

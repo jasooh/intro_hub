@@ -29,7 +29,7 @@ export async function GET(_request: Request, ctx: RouteContext<"/admin/sessions/
 
   const rows = (regs ?? []) as (Registration & { profile: Profile; payments: Payment[] })[];
   const header = [
-    "display_name", "first_name", "last_name", "email", "phone", "option", "owes", "status", "ref_code",
+    "display_name", "first_name", "last_name", "email", "phone", "emergency_name", "emergency_phone", "option", "owes", "status", "ref_code",
     "skill_level", "attended_before", "media_consent", "note", "learning_goals", "hype_song", "heard_about",
     "signed_up_at", "confirmed_at", "paid", "payer_name", "matched_by", "refund_owed", "refunded_at",
     "bring_a_friend",
@@ -48,6 +48,8 @@ export async function GET(_request: Request, ctx: RouteContext<"/admin/sessions/
       r.profile.last_name,
       r.profile.email,
       r.profile.phone,
+      r.profile.emergency_name,
+      r.profile.emergency_phone,
       OPTION_LABELS[r.option],
       (r.amount_cents / 100).toFixed(2),
       r.status,

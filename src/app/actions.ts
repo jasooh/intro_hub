@@ -12,7 +12,7 @@ import { MAX_TEAMMATES } from "@/lib/teams";
 import { OPTION_LABELS, profileComplete } from "@/lib/profile";
 import type { SignupOption } from "@/lib/types";
 import { dispatchEvents, parseEvents } from "@/lib/registrations";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient, createClient } from "@/lib/supabase/server";
 
 const ERRORS: Record<string, string> = {
   not_authenticated: "Please sign in first.",
@@ -21,6 +21,7 @@ const ERRORS: Record<string, string> = {
   session_started: "This session has already started.",
   forbidden: "You can't do that.",
   profile_incomplete: "Please finish your profile first.",
+  blocked: "You can't sign up right now. Please contact the hosts.",
   option_unavailable: "That option isn't offered for this session.",
   option_locked: "You've already paid, so the option can't be changed here. Please contact the host.",
   too_many_signups: "You've signed up for this session a few times already. Please message the host if you still need a spot.",
@@ -172,9 +173,9 @@ const personName = (label: string) =>
     }
     return r.value;
   });
-const phone = z.string().transform((v, ctx) => {
+const phoneField = (label: string) => z.string().transform((v, ctx) => {
   if (!v.trim()) {
-    ctx.addIssue({ code: "custom", message: "Contact number is required" });
+    ctx.addIssue({ code: "custom", message: `${label} is required` });
     return z.NEVER;
   }
   const r = normalizePhone(v);
@@ -190,7 +191,10 @@ const ProfileForm = z
     first_name: personName("First name"),
     last_name: personName("Last name"),
     display_name: required("Display name", 60).transform((v) => v.replace(/\n/g, " ")),
-    phone,
+    phone: phoneField("Contact number"),
+    emergency_name: required("Emergency contact name", 100),
+    emergency_phone: phoneField("Emergency contact number"),
+    adult: z.literal("on", { message: "Please confirm you're 18 or older" }),
     skill_level: z.enum(["1", "2", "3", "4", "5"], { message: "Please pick your skill level" }).transform(Number),
     // Asked once (it decides Bring a Friend); not sent again after it's answered.
     attended_before: z.enum(["yes", "no"]).optional(),
@@ -227,6 +231,7 @@ export async function saveProfile(_prev: ProfileFormState, formData: FormData): 
   if (!parsed.success) return failed(parsed.error.issues[0].message);
   const f = parsed.data;
   if (profile.attended_before == null && !f.attended_before) return failed("Please say whether you've attended before");
+  if (f.emergency_phone === f.phone) return failed("Your emergency contact needs a different number from yours");
   const names = cleanNameList(f.etransfer_names, 5);
   const consent = f.media_consent === "agree";
   const now = new Date().toISOString();
@@ -240,6 +245,9 @@ export async function saveProfile(_prev: ProfileFormState, formData: FormData): 
       last_name: f.last_name,
       display_name: f.display_name,
       phone: f.phone,
+      emergency_name: f.emergency_name,
+      emergency_phone: f.emergency_phone,
+      adult_confirmed_at: profile.adult_confirmed_at ?? now,
       skill_level: f.skill_level,
       attended_before: profile.attended_before ?? f.attended_before === "yes",
       learning_goals: f.learning_goals || null,
@@ -264,4 +272,24 @@ export async function saveProfile(_prev: ProfileFormState, formData: FormData): 
   revalidatePath("/", "layout");
   await flash("success", "Profile saved");
   redirect(localPath(f.next, "/"));
+}
+
+/**
+ * A player deletes their own account: sign-in, profile and sign-ups go (spots
+ * they held are refilled from the waitlist by the every-minute job). Payment
+ * records stay for the hosts, unlinked. Hosts have to lose host access first.
+ */
+export async function deleteMyAccount() {
+  const profile = await requireProfile("/me");
+  if (profile.role === "admin") {
+    redirect(`/me?error=${encodeURIComponent("Hosts can't delete their account here. Ask another host to remove your host access first.")}`);
+  }
+  const { error } = await createAdminClient().auth.admin.deleteUser(profile.id);
+  if (error) redirect(`/me?error=${encodeURIComponent(error.message)}`);
+  // The sign-in is gone; clear this browser's session cookies too.
+  const supabase = await createClient();
+  await supabase.auth.signOut().catch(() => {});
+  revalidatePath("/", "layout");
+  await flash("success", "Your account has been deleted");
+  redirect("/");
 }

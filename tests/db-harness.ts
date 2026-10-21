@@ -57,7 +57,8 @@ export async function createUser(db: Db, name: string, opts: { admin?: boolean; 
     await db.query(
       `update public.profiles
           set first_name = 'Test', last_name = $2, phone = '555-0100', skill_level = 2,
-              attended_before = false, media_consent = true, waiver_accepted_at = now(), waiver_version = 'test'
+              attended_before = false, media_consent = true, waiver_accepted_at = now(), waiver_version = 'test',
+              emergency_name = 'Pat', emergency_phone = '555-0199', adult_confirmed_at = now()
         where id = $1`,
       [id, name],
     );

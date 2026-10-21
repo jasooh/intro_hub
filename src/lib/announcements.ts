@@ -2,6 +2,7 @@ import "server-only";
 import { render } from "@react-email/components";
 import { buildAnnouncementEmail } from "@/lib/email/templates";
 import { sendEmail } from "@/lib/email/send";
+import { unsubscribeHeaders, unsubscribeUrl } from "@/lib/unsubscribe";
 import { env } from "@/lib/env";
 import { sanitizePostHtml } from "@/lib/rich-text";
 import { createAdminClient } from "@/lib/supabase/server";
@@ -68,10 +69,12 @@ export async function sendPostToPlayers(postId: string): Promise<void> {
       playerName: r.display_name ?? r.full_name ?? "there",
       postUrl: `${appUrl}/updates/${post.id}`,
       profileUrl: `${appUrl}/me`,
+      unsubscribeUrl: unsubscribeUrl(r.id, "updates"),
     });
     try {
       await sendEmail({
         to: r.email,
+        headers: unsubscribeHeaders(r.id, "updates"),
         subject,
         html: await render(element),
         text: await render(element, { plainText: true }),

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { deleteAccount, setPlayerRating, setRole, updateEtransferNames } from "@/app/admin/actions";
+import { blockPlayer, deleteAccount, setPlayerRating, setRole, unblockPlayer, updateEtransferNames } from "@/app/admin/actions";
 import { SkillRating } from "@/components/skill-rating";
 import { PlayerDetails } from "@/components/player-details";
 import { SubmitButton } from "@/components/submit-button";
@@ -23,6 +23,7 @@ export function PlayerRow({
   complete,
   isMe,
   rating,
+  block,
 }: {
   p: Profile;
   stats: PlayerStats;
@@ -30,6 +31,8 @@ export function PlayerRow({
   isMe: boolean;
   /** Host's 1–5 skill rating, if set. */
   rating: number | null;
+  /** Set when hosts blocked them from signing up. */
+  block: { reason: string | null; at: string } | null;
 }) {
   const name = p.display_name ?? p.full_name ?? p.email;
   const fullName = [p.first_name, p.last_name].filter(Boolean).join(" ");
@@ -50,6 +53,40 @@ export function PlayerRow({
           Save
         </SubmitButton>
       </form>
+      {!isMe && p.role !== "admin" && (
+        block ? (
+          <div className="space-y-2 border-l-4 border-bad pl-3">
+            <p className="text-sm">
+              <b className="text-bad">Blocked from signing up</b> since {block.at.slice(0, 10)}
+              {block.reason && <span className="block text-ink-soft [overflow-wrap:anywhere]">Why: {block.reason}</span>}
+            </p>
+            <form action={unblockPlayer.bind(null, p.id)}>
+              <SubmitButton size="sm" variant="secondary">
+                Unblock
+              </SubmitButton>
+            </form>
+          </div>
+        ) : (
+          <form action={blockPlayer.bind(null, p.id)} className="flex items-end gap-3">
+            <label className="block flex-1 space-y-1">
+              <span className="font-display text-sm font-bold tracking-[0.15em] uppercase">Block from signing up</span>
+              <input name="reason" maxLength={500} placeholder="Why (only hosts see this)" className={`${inputClass} text-base`} />
+            </label>
+            <SubmitButton
+              size="sm"
+              variant="danger"
+              confirm={{
+                title: `Block ${name}?`,
+                description:
+                  "They won't be able to sign up for sessions and are told to contact the hosts. Sign-ups they already have stay: remove those from the session roster if needed. You can unblock them any time.",
+                action: "Block",
+              }}
+            >
+              Block
+            </SubmitButton>
+          </form>
+        )
+      )}
       {!isMe && (
         <div className="flex flex-wrap gap-3">
         <form action={setRole.bind(null, p.id, p.role === "admin" ? "player" : "admin")}>
@@ -111,6 +148,11 @@ export function PlayerRow({
           {p.role === "admin" && (
             <Mark tone="line" glyph="★">
               Host
+            </Mark>
+          )}
+          {block && (
+            <Mark tone="bad" glyph="⊘">
+              Blocked
             </Mark>
           )}
           {!complete && (

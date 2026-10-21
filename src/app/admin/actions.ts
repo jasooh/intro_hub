@@ -9,14 +9,14 @@ import { AUDIENCES, audienceOf } from "@/lib/audiences";
 import { requireAdmin } from "@/lib/auth";
 import { env } from "@/lib/env";
 import { flash } from "@/lib/flash";
-import { zonedLocalToUtc } from "@/lib/format";
+import { formatDateTime, zonedLocalToUtc } from "@/lib/format";
 import { dispatchEvents, parseEvents } from "@/lib/registrations";
 import { isEmptyPost, sanitizePostHtml } from "@/lib/rich-text";
 import { roundRobin } from "@/lib/schedule";
 import { blockOffsets, type BlockClocks } from "@/lib/session-times";
 import { sendSessionMessage } from "@/lib/session-messages";
 import { balanceTeams } from "@/lib/teams";
-import type { SkillLevel } from "@/lib/types";
+import type { RegistrationEvent, SkillLevel } from "@/lib/types";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 
 function fail(path: string, message: string): never {
@@ -32,6 +32,9 @@ const RPC_ERRORS: Record<string, string> = {
   player_not_found: "That player doesn't exist anymore.",
   payment_unavailable: "That payment was already taken back.",
   cancellation_handled: "This cancellation was already sorted out.",
+  merge_conflict: "They're both signed up for the same session. Remove one of those sign-ups first, then link them.",
+  not_a_guest: "Only guests a host added can be linked to an account.",
+  not_an_account: "Pick a player who signed in with Google.",
 };
 
 async function rpc(fn: string, args: Record<string, unknown>, path: string, success?: string) {
@@ -168,15 +171,44 @@ export async function updateSession(sessionId: string, formData: FormData) {
   const path = `/admin/sessions/${sessionId}`;
   const row = sessionRow(formData, path);
   const supabase = await createClient();
-  const { error } = await supabase.from("sessions").update(row).eq("id", sessionId);
+  const timeAndPlace = "schedule_revision, starts_at, location, status";
+  const { data: before } = await supabase.from("sessions").select(timeAndPlace).eq("id", sessionId).maybeSingle();
+  const { data: updated, error } = await supabase.from("sessions").update(row).eq("id", sessionId).select(timeAndPlace).single();
   if (error) fail(path, error.message);
+
+  // Date, time or place changed (the DB bumps schedule_revision): tell everyone signed up or waiting.
+  let notified = 0;
+  if (
+    before &&
+    updated.schedule_revision > before.schedule_revision &&
+    updated.status === "scheduled" &&
+    new Date(updated.starts_at) > new Date()
+  ) {
+    const { data: signedUp } = await supabase
+      .from("registrations")
+      .select("id")
+      .eq("session_id", sessionId)
+      .in("status", ["confirmed", "pending_payment", "waitlisted"]);
+    const changed: RegistrationEvent[] = (signedUp ?? []).map((r) => ({
+      event: "session_changed",
+      registration_id: r.id,
+      revision: updated.schedule_revision,
+      before: { when: formatDateTime(before.starts_at), location: before.location },
+    }));
+    notified = changed.length;
+    if (changed.length) after(() => dispatchEvents(changed));
+  }
+
   // Prices or the deposit may have changed: unpaid sign-ups owe the new amount.
   const { data: repriced, error: repriceError } = await supabase.rpc("admin_reprice_session", { p_session_id: sessionId });
   if (repriceError) fail(path, repriceError.message);
   const repricedEvents = parseEvents(repriced);
   after(() => dispatchEvents(repricedEvents));
   // Capacity may have gone up: pull people off the waitlist.
-  await rpc("admin_promote", { p_session_id: sessionId }, path, "Session saved");
+  const saved = notified
+    ? `Session saved · ${notified} player${notified === 1 ? "" : "s"} emailed about the change`
+    : "Session saved";
+  await rpc("admin_promote", { p_session_id: sessionId }, path, saved);
   revalidatePath("/", "layout");
 }
 
@@ -456,6 +488,37 @@ export async function updateEtransferNames(profileId: string, formData: FormData
  * profile and sign-ups (cascade); their payment records stay, unlinked. Hosts
  * must be demoted first, and you can't delete yourself.
  */
+/** Stop a player signing up (they're told to contact the hosts). Existing sign-ups stay until removed. */
+export async function blockPlayer(profileId: string, formData: FormData) {
+  const me = await requireAdmin();
+  if (profileId === me.id) fail("/admin/players", "You can't block yourself.");
+  const reason = String(formData.get("reason") ?? "").trim().slice(0, 500) || null;
+  const supabase = await createClient();
+  const { error } = await supabase.from("player_blocks").upsert({ profile_id: profileId, reason, blocked_by: me.id });
+  if (error) fail("/admin/players", error.message);
+  revalidatePath("/admin", "layout");
+  await flash("success", "Blocked from signing up");
+}
+
+export async function unblockPlayer(profileId: string) {
+  await requireAdmin();
+  const supabase = await createClient();
+  const { error } = await supabase.from("player_blocks").delete().eq("profile_id", profileId);
+  if (error) fail("/admin/players", error.message);
+  revalidatePath("/admin", "layout");
+  await flash("success", "Unblocked: they can sign up again");
+}
+
+/** A guest a host added has since signed in: move their sign-ups (and history) onto that account. */
+export async function mergeGuest(guestId: string, sessionId: string, formData: FormData) {
+  await requireAdmin();
+  const path = `/admin/sessions/${sessionId}`;
+  const account = String(formData.get("account") ?? "");
+  if (!/^[0-9a-f-]{36}$/i.test(account)) fail(path, "Pick their account first");
+  await rpc("admin_merge_guest", { p_guest: guestId, p_account: account }, path, "Guest linked to their account");
+  revalidatePath("/admin", "layout");
+}
+
 export async function deleteAccount(profileId: string) {
   const me = await requireAdmin();
   if (profileId === me.id) fail("/admin/players", "You can't delete your own account.");

@@ -3,6 +3,7 @@ import { render } from "@react-email/components";
 import { announcementRecipients, pause } from "@/lib/announcements";
 import { buildSessionOpenEmail } from "@/lib/email/templates";
 import { sendEmail } from "@/lib/email/send";
+import { unsubscribeHeaders, unsubscribeUrl } from "@/lib/unsubscribe";
 import { env } from "@/lib/env";
 import { formatDateTime, formatMoney, sessionTimes } from "@/lib/format";
 import { offeredOptions, optionPrice } from "@/lib/options";
@@ -51,10 +52,12 @@ export async function sendSessionOpen(sessionId: string): Promise<void> {
       notes: session.notes,
       sessionUrl: `${appUrl}/s/${session.id}`,
       profileUrl: `${appUrl}/me`,
+      unsubscribeUrl: unsubscribeUrl(r.id, "session_open"),
     });
     try {
       await sendEmail({
         to: r.email,
+        headers: unsubscribeHeaders(r.id, "session_open"),
         subject,
         html: await render(element),
         text: await render(element, { plainText: true }),

@@ -1,4 +1,5 @@
 import "server-only";
+import { unsubscribeHeaders, unsubscribeUrl } from "@/lib/unsubscribe";
 import { render } from "@react-email/components";
 import { buildEmail } from "@/lib/email/templates";
 import { sendEmail } from "@/lib/email/send";
@@ -71,7 +72,9 @@ async function sendForEvent(event: RegistrationEvent, reg: Loaded) {
       ? `${event.event}:${event.payment_id}`
       : event.event === "hold_reminder" && event.nudged_at
         ? `hold_reminder:${reg.id}:${event.nudged_at}`
-        : `${event.event}:${reg.id}`;
+        : event.event === "session_changed"
+          ? `session_changed:${reg.id}:${event.revision ?? 0}`
+          : `${event.event}:${reg.id}`;
   const { error: claimError } = await admin
     .from("email_log")
     .insert({ dedupe_key: dedupeKey, registration_id: reg.id, kind: event.event });
@@ -113,11 +116,14 @@ async function sendForEvent(event: RegistrationEvent, reg: Loaded) {
     cancelReason: reg.session.cancel_reason,
     calendarUrl: `${appUrl}${icsPath(reg.session_id, reg.option)}`,
     googleCalendarUrl: googleCalendarUrl(reg.session, sessionUrl, { option: reg.option }),
+    unsubscribeUrl: event.event === "reminder" ? unsubscribeUrl(reg.profile_id, "reminders") : undefined,
+    previous: event.before,
   });
 
   try {
     await sendEmail({
       to: reg.profile.email,
+      headers: event.event === "reminder" ? unsubscribeHeaders(reg.profile_id, "reminders") : undefined,
       subject,
       html: await render(element),
       text: await render(element, { plainText: true }),

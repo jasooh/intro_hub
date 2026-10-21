@@ -3,6 +3,8 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { SubmitButton } from "@/components/submit-button";
 import { inputClass, Mark, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
+import { TickHealthBanner } from "@/components/tick-health-banner";
+import { groupErrors } from "@/lib/app-errors";
 import { requireDevTools } from "@/lib/auth";
 import { formatDateTime } from "@/lib/format";
 import { ENV_CHECKS, EDITABLE_TABLES } from "@/lib/dev-tools";
@@ -40,6 +42,12 @@ async function HealthView() {
   const { data, error } = await supabase.rpc("devtools_health");
   if (error) throw error;
   const h = data as Health;
+  const { data: errorRows } = await supabase
+    .from("app_errors")
+    .select("message, at, path, kind")
+    .order("at", { ascending: false })
+    .limit(200);
+  const errorGroups = groupErrors(errorRows ?? []).slice(0, 50);
 
   const lastCron = h.cron?.[0];
   const cronOk = lastCron?.status === "succeeded" && minutesSince(lastCron.start_time) < 5;
@@ -50,6 +58,7 @@ async function HealthView() {
       <PageTitle eyebrow="Dev tools" sub="What's running, what's stuck, and buttons to nudge it.">
         Health
       </PageTitle>
+      <TickHealthBanner />
 
       <Sheet label="Checks" className="reveal" style={reveal(1)}>
         <ul className="divide-y divide-ink/20 border-b border-ink/20">
@@ -126,6 +135,26 @@ async function HealthView() {
           The tick expires unpaid holds, moves waitlists up, sends reminders and posts weekly sessions (it normally runs
           every minute).
         </p>
+      </Sheet>
+
+      <Sheet label={`Server errors · ${errorGroups.reduce((n, g) => n + g.count, 0)}`} className="reveal" style={reveal(4)}>
+        {errorGroups.length === 0 ? (
+          <p className="text-ink-soft">No server errors in the last 30 days.</p>
+        ) : (
+          <ul className="divide-y divide-ink/20 border-y border-ink/20">
+            {errorGroups.map((g) => (
+              <li key={g.message} className="space-y-0.5 py-2">
+                <p className="font-mono text-sm [overflow-wrap:anywhere]">
+                  {g.count > 1 && <b className="font-score text-bad">{g.count}× </b>}
+                  {g.message}
+                </p>
+                <p className="text-xs text-ink-soft [overflow-wrap:anywhere]">
+                  {g.kind} · {g.path} · last {formatDateTime(g.last)}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
       </Sheet>
 
       <Sheet label="Recent emails" className="reveal" style={reveal(4)}>

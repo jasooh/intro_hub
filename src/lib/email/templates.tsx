@@ -24,6 +24,10 @@ export type EmailContext = {
   /** "Add to calendar" links: the .ics file and Google Calendar. */
   calendarUrl?: string;
   googleCalendarUrl?: string;
+  /** Optional emails only (the reminder): turns them off. */
+  unsubscribeUrl?: string;
+  /** session_changed: the time and place before the host changed them. */
+  previous?: { when: string; location: string };
 };
 
 // The site's "gym-floor scoreboard" look, in email-safe inline styles. Web fonts
@@ -347,7 +351,11 @@ export function buildEmail(kind: RegistrationEvent["event"], ctx: EmailContext):
       return {
         subject: `Tomorrow: ${ctx.sessionTitle} at ${ctx.location}`,
         element: (
-          <Layout preview={`See you ${ctx.when}`} ctx={ctx}>
+          <Layout
+            preview={`See you ${ctx.when}`}
+            ctx={ctx}
+            footerNote={ctx.unsubscribeUrl && <OptOut unsubscribeUrl={ctx.unsubscribeUrl} settingsUrl={`${new URL(ctx.myUrl).origin}/me`} />}
+          >
             <Title>See you tomorrow</Title>
             {hi}
             <Text style={s.text}>
@@ -418,6 +426,39 @@ export function buildEmail(kind: RegistrationEvent["event"], ctx: EmailContext):
           </Layout>
         ),
       };
+    case "session_changed": {
+      const moved = ctx.previous && ctx.previous.location !== ctx.location;
+      const retimed = !ctx.previous || ctx.previous.when !== ctx.when;
+      return {
+        subject: `Changed: ${ctx.sessionTitle} is now ${retimed ? ctx.when : `at ${ctx.location}`}`,
+        element: (
+          <Layout preview={`Now ${ctx.when} at ${ctx.location}`} ctx={ctx}>
+            <Title>Session changed</Title>
+            {hi}
+            <Text style={s.text}>
+              The host changed {retimed && moved ? "the time and place" : retimed ? "the time" : "the place"} of a session
+              you&apos;re signed up for. Your sign-up stays as it is.
+            </Text>
+            <Section style={s.note}>
+              {ctx.previous && (
+                <Text style={{ ...s.text, margin: "0 0 6px", color: c.inkSoft, textDecoration: "line-through" }}>
+                  Was: {ctx.previous.when} · {ctx.previous.location}
+                </Text>
+              )}
+              <Text style={{ ...s.text, margin: 0 }}>
+                <b>Now: {ctx.when} · {ctx.location}</b>
+              </Text>
+            </Section>
+            <Text style={s.text}>
+              Can&apos;t make it any more? Cancel from your sign-ups so someone on the waitlist gets your spot, and message
+              the host about a refund.
+            </Text>
+            {viewButton}
+            <CalendarLinks ctx={ctx} />
+          </Layout>
+        ),
+      };
+    }
     case "session_cancelled":
       return {
         subject: `Cancelled: ${ctx.sessionTitle} (${ctx.when})`,
@@ -472,6 +513,7 @@ export function buildAnnouncementEmail({
   playerName,
   postUrl,
   profileUrl,
+  unsubscribeUrl,
 }: {
   title: string;
   /** Already sanitized (sanitizePostHtml). */
@@ -479,6 +521,8 @@ export function buildAnnouncementEmail({
   playerName: string;
   postUrl: string;
   profileUrl: string;
+  /** One-click link that turns these emails off (src/lib/unsubscribe.ts). */
+  unsubscribeUrl?: string;
 }): Built {
   return {
     subject: `${title} · Intro 2 Volleyball`,
@@ -487,13 +531,7 @@ export function buildAnnouncementEmail({
         preview={title}
         eyebrow="Update from the hosts"
         footerNote={
-          <>
-            Don&apos;t want these? Turn off announcement emails in{" "}
-            <Link href={profileUrl} style={s.footerLink}>
-              your profile
-            </Link>
-            . You&apos;ll still get emails about your own sign-ups.
-          </>
+<OptOut unsubscribeUrl={unsubscribeUrl} settingsUrl={profileUrl} />
         }
       >
         <Title>{title.replace(/[.!?]$/, "")}</Title>
@@ -561,6 +599,7 @@ export function buildSessionOpenEmail({
   notes,
   sessionUrl,
   profileUrl,
+  unsubscribeUrl,
 }: {
   playerName: string;
   sessionTitle: string;
@@ -575,6 +614,7 @@ export function buildSessionOpenEmail({
   notes: string | null;
   sessionUrl: string;
   profileUrl: string;
+  unsubscribeUrl?: string;
 }): Built {
   return {
     subject: `Sign-ups open: ${sessionTitle} (${when})`,
@@ -583,13 +623,7 @@ export function buildSessionOpenEmail({
         preview={`${spotsLeft} spots · ${when} at ${location}`}
         eyebrow="Sign-ups are open"
         footerNote={
-          <>
-            Don&apos;t want these? Turn off announcement emails in{" "}
-            <Link href={profileUrl} style={s.footerLink}>
-              your profile
-            </Link>
-            . You&apos;ll still get emails about your own sign-ups.
-          </>
+<OptOut unsubscribeUrl={unsubscribeUrl} settingsUrl={profileUrl} />
         }
       >
         <Title>{sessionTitle}</Title>
@@ -635,14 +669,45 @@ export function buildSessionOpenEmail({
 // ---------------------------------------------------------------------------
 
 /** Footer on every host email: why they got it, and where to change it. */
-function HostFooter({ settingsUrl }: { settingsUrl: string }) {
+function HostFooter({ settingsUrl, unsubscribeUrl }: { settingsUrl: string; unsubscribeUrl?: string }) {
   return (
     <>
       You&apos;re getting this as a host.{" "}
       <Link href={settingsUrl} style={s.footerLink}>
         Change host emails
       </Link>{" "}
-      in your account.
+      in your account
+      {unsubscribeUrl && (
+        <>
+          , or{" "}
+          <Link href={unsubscribeUrl} style={s.footerLink}>
+            unsubscribe
+          </Link>
+        </>
+      )}
+      .
+    </>
+  );
+}
+
+/** Footer on optional player emails: unsubscribe in one click, or change settings. */
+function OptOut({ unsubscribeUrl, settingsUrl }: { unsubscribeUrl?: string; settingsUrl: string }) {
+  return (
+    <>
+      Don&apos;t want these?{" "}
+      {unsubscribeUrl && (
+        <>
+          <Link href={unsubscribeUrl} style={s.footerLink}>
+            Unsubscribe
+          </Link>{" "}
+          or change{" "}
+        </>
+      )}
+      {!unsubscribeUrl && "Change "}
+      <Link href={settingsUrl} style={s.footerLink}>
+        your email settings
+      </Link>
+      . You&apos;ll still get emails about your own sign-ups.
     </>
   );
 }
@@ -669,6 +734,7 @@ export function buildHostDigestEmail({
   unmatched,
   paymentsUrl,
   settingsUrl,
+  unsubscribeUrl,
 }: {
   hostName: string;
   /** "since 3:00 p.m." */
@@ -678,12 +744,13 @@ export function buildHostDigestEmail({
   unmatched: number;
   paymentsUrl: string;
   settingsUrl: string;
+  unsubscribeUrl?: string;
 }): Built {
   const changes = sessions.reduce((n, x) => n + x.lines.reduce((m, l) => m + l.names.length, 0), 0);
   return {
     subject: `Host update: ${changes} change${changes === 1 ? "" : "s"} ${since}`,
     element: (
-      <Layout preview={sessions.map((x) => `${x.title} ${x.status}`).join(" · ")} eyebrow={`Host update · ${since}`} footerNote={<HostFooter settingsUrl={settingsUrl} />}>
+      <Layout preview={sessions.map((x) => `${x.title} ${x.status}`).join(" · ")} eyebrow={`Host update · ${since}`} footerNote={<HostFooter settingsUrl={settingsUrl} unsubscribeUrl={unsubscribeUrl} />}>
         <Title>What changed</Title>
         <Text style={s.text}>Hi {hostName},</Text>
         {sessions.map((x) => (
@@ -736,6 +803,7 @@ export function buildSessionDayEmail({
   notes,
   adminUrl,
   settingsUrl,
+  unsubscribeUrl,
 }: {
   hostName: string;
   sessionTitle: string;
@@ -751,6 +819,7 @@ export function buildSessionDayEmail({
   notes: string | null;
   adminUrl: string;
   settingsUrl: string;
+  unsubscribeUrl?: string;
 }): Built {
   const list = (players: SessionDayPlayer[]) =>
     players.map((p, i) => (
@@ -762,7 +831,7 @@ export function buildSessionDayEmail({
   return {
     subject: `Today: ${sessionTitle} (${when}) · ${status}`,
     element: (
-      <Layout preview={`${status}${owed ? ` · ${owed}` : ""}`} eyebrow={`Today · ${when}`} footerNote={<HostFooter settingsUrl={settingsUrl} />}>
+      <Layout preview={`${status}${owed ? ` · ${owed}` : ""}`} eyebrow={`Today · ${when}`} footerNote={<HostFooter settingsUrl={settingsUrl} unsubscribeUrl={unsubscribeUrl} />}>
         <Title>Game day</Title>
         <Text style={s.text}>
           Hi {hostName}, here&apos;s tonight at <b>{location}</b>: <b>{status}</b>.
@@ -804,6 +873,7 @@ export function buildHostAlertEmail({
   buttonLabel,
   buttonUrl,
   settingsUrl,
+  unsubscribeUrl,
 }: {
   title: string;
   subject: string;
@@ -812,11 +882,12 @@ export function buildHostAlertEmail({
   buttonLabel: string;
   buttonUrl: string;
   settingsUrl: string;
+  unsubscribeUrl?: string;
 }): Built {
   return {
     subject,
     element: (
-      <Layout preview={lines[0] ?? title} eyebrow="Host alert" footerNote={<HostFooter settingsUrl={settingsUrl} />}>
+      <Layout preview={lines[0] ?? title} eyebrow="Host alert" footerNote={<HostFooter settingsUrl={settingsUrl} unsubscribeUrl={unsubscribeUrl} />}>
         <Title>{title}</Title>
         <Text style={s.text}>Hi {hostName},</Text>
         {lines.map((l) => (

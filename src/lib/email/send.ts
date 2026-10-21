@@ -3,7 +3,8 @@ import nodemailer from "nodemailer";
 import { classifyEmailError, PAUSE_MINUTES, QUEUE_MAX_AGE_HOURS, type EmailFailure } from "@/lib/email/errors";
 import { createAdminClient } from "@/lib/supabase/server";
 
-export type OutgoingEmail = { to: string; subject: string; html: string; text: string };
+/** `headers`: extra mail headers, e.g. List-Unsubscribe on optional emails. */
+export type OutgoingEmail = { to: string; subject: string; html: string; text: string; headers?: Record<string, string> };
 /** sent: delivered to Gmail. queued: Gmail can't take it right now; the every-minute job retries it. */
 export type SendResult = "sent" | "queued" | "failed" | "logged";
 
@@ -28,6 +29,7 @@ function deliver(email: OutgoingEmail) {
     subject: email.subject,
     html: email.html,
     text: email.text,
+    headers: email.headers,
     replyTo: process.env.EMAIL_REPLY_TO || undefined,
   });
 }
@@ -85,6 +87,7 @@ export async function sendEmail(email: OutgoingEmail): Promise<SendResult> {
       subject: email.subject,
       html: email.html,
       body_text: email.text,
+      headers: email.headers ?? null,
       status: "queued",
       next_try_at: paused.toISOString(),
     });
@@ -107,6 +110,7 @@ export async function sendEmail(email: OutgoingEmail): Promise<SendResult> {
       subject: email.subject,
       html: email.html,
       body_text: email.text,
+      headers: email.headers ?? null,
       status: "queued",
       attempts: 1,
       last_error: errorText(err),
@@ -141,7 +145,7 @@ export async function retryQueuedEmails(limit = 20): Promise<void> {
 
   const { data: due } = await admin
     .from("email_sends")
-    .select("id, to_email, subject, html, body_text, attempts")
+    .select("id, to_email, subject, html, body_text, headers, attempts")
     .eq("status", "queued")
     .lte("next_try_at", now.toISOString())
     .order("created_at")
@@ -158,7 +162,13 @@ export async function retryQueuedEmails(limit = 20): Promise<void> {
     if (!claimed?.length) continue;
 
     try {
-      await deliver({ to: row.to_email, subject: row.subject, html: row.html ?? "", text: row.body_text ?? "" });
+      await deliver({
+        to: row.to_email,
+        subject: row.subject,
+        html: row.html ?? "",
+        text: row.body_text ?? "",
+        headers: (row.headers as Record<string, string> | null) ?? undefined,
+      });
     } catch (err) {
       const kind = classifyEmailError(err);
       if (kind === "recipient") {

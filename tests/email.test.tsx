@@ -29,6 +29,7 @@ const kinds: RegistrationEvent["event"][] = [
   "reminder",
   "hold_reminder",
   "session_cancelled",
+  "session_changed",
 ];
 
 describe("email templates", () => {
@@ -101,7 +102,7 @@ describe("announcement email", () => {
     expect(html).toMatch(/<li style="[^"]+">Same time<\/li>/);
     const text = await render(element, { plainText: true });
     expect(text).toContain("Hi Jane");
-    expect(text).toContain("Turn off announcement emails");
+    expect(text).toContain("your email settings");
     expect(text).toContain("Please do not reply. This inbox is not monitored for replies.");
   });
 });
@@ -157,7 +158,7 @@ describe("sign-ups open email", () => {
     });
     expect(subject).toBe("Sign-ups open: Intro 2 Volleyball (Sat, Oct 24, 8:00 p.m.)");
     const text = await render(element, { plainText: true });
-    for (const bit of ["Hi Jane", "Drop-in only", "$8.00", "12 drop-in spots left", "Gym 2 this week.", "Turn off announcement emails"]) {
+    for (const bit of ["Hi Jane", "Drop-in only", "$8.00", "12 drop-in spots left", "Gym 2 this week.", "your email settings"]) {
       expect(text).toContain(bit);
     }
   });

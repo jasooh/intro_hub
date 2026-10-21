@@ -27,7 +27,7 @@ export async function requireAdmin(): Promise<Profile> {
 }
 
 /** The one account that gets /dev-tools. Must match public.is_devtools_user() (supabase/migrations/20261023000000_dev_tools.sql). */
-const DEV_TOOLS_EMAIL = "abuyuanjustin@gmail.com";
+export const DEV_TOOLS_EMAIL = "abuyuanjustin@gmail.com";
 
 /** Whether the signed-in user can use dev tools, from the email in their auth token. Cached per request. */
 export const canUseDevTools = cache(async (): Promise<boolean> => {

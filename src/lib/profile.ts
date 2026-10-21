@@ -20,6 +20,9 @@ export function profileComplete(p: Profile): boolean {
     p.first_name?.trim() &&
       p.last_name?.trim() &&
       p.phone?.trim() &&
+      p.emergency_name?.trim() &&
+      p.emergency_phone?.trim() &&
+      p.adult_confirmed_at &&
       p.skill_level &&
       p.attended_before !== null &&
       p.media_consent !== null &&

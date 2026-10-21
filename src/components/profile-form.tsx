@@ -15,6 +15,7 @@ import {
   WAIVER_VERSION,
 } from "@/lib/agreements";
 import { SkillLadder } from "@/components/skill-rank";
+import { CONTACT_EMAIL } from "@/app/contact/limits";
 import { defaultDisplayName, HEARD_LABELS, splitFullName } from "@/lib/profile";
 import type { Profile } from "@/lib/types";
 
@@ -72,6 +73,28 @@ export function ProfileForm({
           </Field>
           <Field label="Contact number" required hint="Only the hosts can see this.">
             <PhoneInput name="phone" defaultValue={text("phone", profile.phone ?? "")} required />
+          </Field>
+        </div>
+      </Group>
+
+      <Group title="In an emergency">
+        <p className="-mt-2 text-sm text-ink-soft">
+          Someone we can call if you get hurt at a session. Only the hosts can see this.
+        </p>
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <Field label="Emergency contact name" required hint="And how they know you, e.g. Sam (partner).">
+            <input
+              name="emergency_name"
+              defaultValue={text("emergency_name", profile.emergency_name ?? "")}
+              required
+              maxLength={100}
+              autoComplete="off"
+              autoCapitalize="words"
+              className={inputClass}
+            />
+          </Field>
+          <Field label="Their phone number" required>
+            <PhoneInput name="emergency_phone" defaultValue={text("emergency_phone", profile.emergency_phone ?? "")} required />
           </Field>
         </div>
       </Group>
@@ -147,6 +170,13 @@ export function ProfileForm({
       </Group>
 
       <Group title="Agreements">
+        <p className="-mt-2 text-sm text-ink-soft">
+          How we use your information:{" "}
+          <a href="/legal/privacy" target="_blank" className="text-mat underline underline-offset-2">
+            privacy policy
+          </a>
+          .
+        </p>
         <div className="space-y-6">
           <Choice label="Multimedia release" required>
             <Legal summary="Read the media release">
@@ -158,6 +188,26 @@ export function ProfileForm({
             <Radio name="media_consent" value="disagree" defaultChecked={picked("media_consent", "disagree", profile.media_consent === false)} required>
               I don&apos;t agree. Please keep me out of photos and videos
             </Radio>
+          </Choice>
+
+          <Choice label="Age" required>
+            <label className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                name="adult"
+                defaultChecked={ticked("adult", Boolean(profile.adult_confirmed_at))}
+                required
+                className="mt-1 size-5 shrink-0 accent-[var(--line)]"
+              />
+              <span>I&apos;m 18 or older</span>
+            </label>
+            <p className="text-sm text-ink-soft">
+              Under 18? Email{" "}
+              <a href={`mailto:${CONTACT_EMAIL}`} className="text-mat underline underline-offset-2">
+                {CONTACT_EMAIL}
+              </a>{" "}
+              first: a parent or guardian has to sign the waiver for you.
+            </p>
           </Choice>
 
           <Choice label="Waiver" required>

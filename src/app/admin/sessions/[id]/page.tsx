@@ -11,6 +11,7 @@ import {
   moveWaitlist,
   nudgeUnpaid,
   removeFriendDiscount,
+  mergeGuest,
   removeRegistration,
   setPlayerRating,
   updateSession,
@@ -42,10 +43,13 @@ import { offeredOptions, optionPrice, usesSpot } from "@/lib/options";
 import { AUDIENCE_LABELS, AUDIENCES, audienceOf, type Audience } from "@/lib/audiences";
 import { SessionForm } from "../session-form";
 import { AddPlayerForm, type AddablePlayer } from "./add-player-form";
+import { LinkGuestForm } from "./link-guest-form";
 import { RosterEmailForm } from "./roster-email-form";
 import { TeamsBoard, type TeamRow } from "./teams-board";
 
 type SentMessage = { id: string; subject: string; audiences: Audience[]; recipient_count: number; created_at: string };
+
+type RowExtras = { blocked: Set<string>; linkTargets: AddablePlayer[] };
 
 type Row = Registration & { profile: Profile; payments: Pick<Payment, "matched_by" | "sender_name" | "amount_cents">[] };
 
@@ -114,6 +118,12 @@ async function AdminSession({
         .in("profile_id", [...new Set(rows.map((r) => r.profile_id))])
     : { data: [] };
   const ratings: Record<string, number> = Object.fromEntries((ratingRows ?? []).map((r) => [r.profile_id, r.rating]));
+  const { data: blockRows } = rows.length
+    ? await supabase
+        .from("player_blocks")
+        .select("profile_id")
+        .in("profile_id", [...new Set(rows.map((r) => r.profile_id))])
+    : { data: [] };
   const teamRequests = (requestRows ?? []).map((r) => ({ from: r.registration_id as string, to: r.requested_id as string }));
   const nameById = new Map(rows.map((r) => [r.id, name(r)]));
   // Bring a Friend: "Friend of Sam" on the friend, "Brought Jess" on the regular.
@@ -156,6 +166,11 @@ async function AdminSession({
   const addable: AddablePlayer[] = (playerRows ?? [])
     .filter((p) => !activeIds.has(p.id))
     .map((p) => ({ id: p.id, name: p.display_name ?? p.full_name ?? p.email, email: p.email }));
+  // Roster extras: who's blocked, and accounts a guest can be linked to (not already in this session).
+  const rowExtras: RowExtras = {
+    blocked: new Set((blockRows ?? []).map((b) => b.profile_id as string)),
+    linkTargets: addable,
+  };
   const offered = offeredOptions(session);
   const addFull = {
     full: dropIn.length >= session.capacity,
@@ -258,7 +273,7 @@ async function AdminSession({
             <PlayerRow
               key={r.id}
               reg={r}
-              sessionId={id} friendNote={friendNoteOf(r)}
+              sessionId={id} extras={rowExtras} friendNote={friendNoteOf(r)}
               teamName={r.team_id ? teamNames.get(r.team_id) : null}
               teammates={wantsWith(r.id)}
               rating={ratings[r.profile_id] ?? null}
@@ -328,7 +343,7 @@ async function AdminSession({
               )}
               <ol className="divide-y divide-ink/20">
                 {q.list.map((r, i) => (
-                <PlayerRow key={r.id} reg={r} sessionId={id} friendNote={friendNoteOf(r)} prefix={pad2(i + 1)}>
+                <PlayerRow key={r.id} reg={r} sessionId={id} extras={rowExtras} friendNote={friendNoteOf(r)} prefix={pad2(i + 1)}>
                   <form action={moveWaitlist.bind(null, r.id, -1, id)}>
                     <SubmitButton size="sm" variant="ghost">↑</SubmitButton>
                   </form>
@@ -371,7 +386,7 @@ async function AdminSession({
           </summary>
           <ul className="mt-3 divide-y divide-ink/20">
             {inactive.map((r) => (
-              <PlayerRow key={r.id} reg={r} sessionId={id} friendNote={friendNoteOf(r)}>
+              <PlayerRow key={r.id} reg={r} sessionId={id} extras={rowExtras} friendNote={friendNoteOf(r)}>
                 {r.status === "expired" && (
                   <form action={markPaid.bind(null, r.id, id)}>
                     <SubmitButton
@@ -488,6 +503,7 @@ function PlayerRow({
   teamName,
   teammates,
   rating,
+  extras,
   friendNote,
   prefix,
   children,
@@ -501,6 +517,7 @@ function PlayerRow({
   teammates?: string[];
   /** Host's 1–5 skill rating, if set. */
   rating?: number | null;
+  extras: RowExtras;
   prefix?: string;
   children?: React.ReactNode;
 }) {
@@ -518,6 +535,11 @@ function PlayerRow({
         <p className="truncate">
           <PlayerDetails
             data={{ profile: reg.profile, registration: reg, paid, teamName: teamName ?? null, teammates }}
+            actions={
+              reg.profile.guest && extras.linkTargets.length > 0 ? (
+                <LinkGuestForm action={mergeGuest.bind(null, reg.profile_id, sessionId)} accounts={extras.linkTargets} name={name(reg)} />
+              ) : undefined
+            }
             rating={
               <SkillRating
                 action={setPlayerRating.bind(null, reg.profile_id, `/admin/sessions/${sessionId}`)}
@@ -545,6 +567,11 @@ function PlayerRow({
           {reg.profile.guest && (
             <Mark tone="muted" glyph="○">
               Guest · added by host
+            </Mark>
+          )}
+          {extras.blocked.has(reg.profile_id) && (
+            <Mark tone="bad" glyph="⊘">
+              Blocked
             </Mark>
           )}
           {reg.profile.attended_before === false && (

@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { HostNotificationsForm } from "@/components/host-notifications-form";
+import { deleteMyAccount } from "@/app/actions";
 import { ProfileForm } from "@/components/profile-form";
+import { SubmitButton } from "@/components/submit-button";
 import { Avatar, PageSpinner, reveal, Sheet } from "@/components/ui";
 import { requireProfile } from "@/lib/auth";
 import { getMySignups } from "@/lib/queries";
@@ -68,6 +70,35 @@ async function Account() {
           <HostNotificationsForm profile={profile} />
         </Sheet>
       )}
+
+      <Sheet label="Delete account" className="reveal max-w-xl" style={reveal(4)}>
+        {profile.role === "admin" ? (
+          <p className="text-ink-soft">
+            You&apos;re a host. To delete your account, ask another host to remove your host access first.
+          </p>
+        ) : (
+          <form action={deleteMyAccount} className="space-y-3">
+            <p className="text-ink-soft">
+              Removes your sign-in, profile and sign-ups. Any spot you hold goes to the next person on the waitlist.{" "}
+              <Link href="/legal/privacy" className="text-mat underline underline-offset-2">
+                What we keep
+              </Link>
+            </p>
+            <SubmitButton
+              variant="danger"
+              size="sm"
+              confirm={{
+                title: "Delete your account?",
+                description:
+                  "Your profile and sign-ups are removed and can't be brought back. If you've paid for an upcoming session, contact the hosts first about a refund. Money you owe is still owed to the hosts.",
+                action: "Delete my account",
+              }}
+            >
+              Delete my account
+            </SubmitButton>
+          </form>
+        )}
+      </Sheet>
     </div>
   );
 }

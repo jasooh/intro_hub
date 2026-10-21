@@ -9,6 +9,7 @@ import {
   type SessionDayPlayer,
 } from "@/lib/email/templates";
 import { sendEmail } from "@/lib/email/send";
+import { unsubscribeHeaders, unsubscribeUrl } from "@/lib/unsubscribe";
 import { env } from "@/lib/env";
 import { formatDateTime, formatMoney, formatTime } from "@/lib/format";
 import { digestDue, digestSince, sessionDayDue, type HostDigest } from "@/lib/host-schedule";
@@ -87,6 +88,7 @@ async function sendTo(admin: Admin, host: Host, dedupeKey: string, built: { subj
   try {
     await sendEmail({
       to: host.email,
+      headers: unsubscribeHeaders(host.id, "host"),
       subject: built.subject,
       html: await render(built.element),
       text: await render(built.element, { plainText: true }),
@@ -168,6 +170,7 @@ async function sendAlerts(admin: Admin, hosts: Host[], now: Date) {
             buttonLabel: "Assign it",
             buttonUrl: u.payments,
             settingsUrl: u.settings,
+            unsubscribeUrl: unsubscribeUrl(h.id, "host"),
           }),
         );
       }
@@ -208,6 +211,7 @@ async function sendAlerts(admin: Admin, hosts: Host[], now: Date) {
             buttonLabel: a.payment ? "See payments" : "Pick the payment",
             buttonUrl: a.session && a.payment ? u.session(a.session.id) : u.payments,
             settingsUrl: u.settings,
+            unsubscribeUrl: unsubscribeUrl(h.id, "host"),
           }),
         );
       }
@@ -234,6 +238,7 @@ async function sendAlerts(admin: Admin, hosts: Host[], now: Date) {
           buttonLabel: "Open the session",
           buttonUrl: u.session(a.session.id),
           settingsUrl: u.settings,
+            unsubscribeUrl: unsubscribeUrl(h.id, "host"),
         }),
       );
     }
@@ -340,6 +345,7 @@ async function sendDigests(admin: Admin, hosts: Host[], now: Date) {
         unmatched,
         paymentsUrl: u.payments,
         settingsUrl: u.settings,
+            unsubscribeUrl: unsubscribeUrl(h.id, "host"),
       }),
     );
   }
@@ -423,6 +429,7 @@ async function sendSessionDays(admin: Admin, hosts: Host[], now: Date) {
           notes: s.notes,
           adminUrl: u.session(s.id),
           settingsUrl: u.settings,
+            unsubscribeUrl: unsubscribeUrl(h.id, "host"),
         }),
       );
     }

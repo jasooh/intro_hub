@@ -47,6 +47,9 @@ export function SiteFooter() {
             <Link href="/legal/media-release" className={linkClass}>
               Media release
             </Link>
+            <Link href="/legal/privacy" className={linkClass}>
+              Privacy
+            </Link>
           </Stack>
         </div>
 
