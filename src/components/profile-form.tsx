@@ -99,17 +99,11 @@ export function ProfileForm({
               defaultValue={text("emergency_relationship", profile.emergency_relationship ?? "")}
               required
               maxLength={50}
-              list="emergency-relationships"
               placeholder="e.g. Partner, Parent, Friend"
               autoComplete="off"
               autoCapitalize="words"
               className={inputClass}
             />
-            <datalist id="emergency-relationships">
-              {["Partner", "Spouse", "Parent", "Sibling", "Child", "Relative", "Friend", "Roommate"].map((r) => (
-                <option key={r} value={r} />
-              ))}
-            </datalist>
           </Field>
           <Field label="Their phone number" required>
             <PhoneInput name="emergency_phone" defaultValue={text("emergency_phone", profile.emergency_phone ?? "")} required />

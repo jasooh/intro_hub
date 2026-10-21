@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getHostMenuData } from "@/lib/host-badges";
 import { AccountMenu } from "@/components/account-menu";
 import { buttonClass } from "@/components/ui";
 import { canUseDevTools, getProfile } from "@/lib/auth";
@@ -18,7 +19,7 @@ export async function UserMenu() {
       name={name}
       email={profile.email}
       avatarUrl={profile.avatar_url}
-      isAdmin={profile.role === "admin"}
+      host={profile.role === "admin" ? await getHostMenuData() : null}
       showDevTools={await canUseDevTools()}
     />
   );
