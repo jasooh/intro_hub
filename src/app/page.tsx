@@ -86,6 +86,7 @@ export default function Home() {
 }
 
 async function NextScoreboard() {
+  await connection(); // "live now" depends on the time, not just the cached data
   const next = await getNext();
   if (!next) return <Scoreboard value="--/--" label="No session yet" />;
   const taken = (next.counts?.confirmed ?? 0) + (next.counts?.holding ?? 0);
@@ -111,6 +112,8 @@ async function Featured() {
 }
 
 async function NextSession() {
+  // Per request: the card shows when sign-ups open until they do, then when it starts.
+  await connection();
   const next = await getNext();
   if (!next) return <EmptyState>No sessions scheduled yet. Check back soon!</EmptyState>;
   return <SessionCard session={next.session} counts={next.counts} href={`/s/${next.session.id}`} countdown />;

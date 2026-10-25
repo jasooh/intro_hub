@@ -34,7 +34,7 @@ export function startsLater(session: Pick<Session, "starts_at">, now = Date.now(
 }
 
 /** True while sign-ups haven't opened yet. */
-function opensLater(session: Pick<Session, "opens_at">, now = Date.now()) {
+export function opensLater(session: Pick<Session, "opens_at">, now = Date.now()) {
   return new Date(session.opens_at).getTime() > now;
 }
 
@@ -61,7 +61,7 @@ export function SessionCard({
   session: Session;
   counts?: SessionCounts;
   href: string;
-  /** Show a "Starts in …" countdown (the home page's Next session). */
+  /** Show a "Starts in …" countdown once sign-ups are open (the home page's Next session); before that the row shows when they open. */
   countdown?: boolean;
 }) {
   const live = isLive(session);
@@ -85,7 +85,7 @@ export function SessionCard({
 
       <div className="min-w-0 space-y-1">
         {live && <LiveBadge />}
-        {countdown && !cancelled && !live && startsLater(session) && <CountTag to={session.starts_at} label="Starts in" />}
+        {countdown && !cancelled && !live && !notOpenYet && startsLater(session) && <CountTag to={session.starts_at} label="Starts in" />}
         <p className={`font-display text-2xl leading-tight font-extrabold uppercase ${cancelled ? "line-through" : ""}`}>
           {session.title}
         </p>

@@ -10,7 +10,7 @@ import { FirstTimeSheet, HostNotes, HowItWorks } from "@/components/session-info
 import { BringAFriendField } from "@/components/bring-a-friend-field";
 import { LiveRefresh } from "@/components/live-refresh";
 import { PaymentInstructions } from "@/components/payment-instructions";
-import { DateBlock, startsLater } from "@/components/session-card";
+import { DateBlock, opensLater, startsLater } from "@/components/session-card";
 import { AttendeeRow, OptionRadio } from "@/components/signup-parts";
 import { TeammatePicker, type TeammateOption } from "@/components/teammate-picker";
 import { TeamsView } from "@/components/teams-view";
@@ -158,7 +158,7 @@ async function SessionView({
         </header>
       </div>
 
-      {!cancelled && startsLater(session) && (
+      {!cancelled && !opensLater(session) && startsLater(session) && (
         <div className="reveal space-y-3" style={reveal(2)}>
           <p className="font-display text-sm font-bold tracking-[0.3em] text-line uppercase">Starts in</p>
           <Countdown to={session.starts_at} label="Session starts in" doneText="Starting now…" />
