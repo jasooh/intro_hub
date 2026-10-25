@@ -33,7 +33,8 @@ import {
   SpotDots,
   StatusMark,
 } from "@/components/ui";
-import { requireAdmin } from "@/lib/auth";
+import { deleteSessionForever } from "@/app/dev-tools/actions";
+import { canUseDevTools, requireAdmin } from "@/lib/auth";
 import { formatDateTime, formatMoney, formatTime, pad2 } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import { DateBlock } from "@/components/session-card";
@@ -73,6 +74,7 @@ async function AdminSession({
   await requireAdmin();
   const { id } = await params;
   const supabase = await createClient();
+  const isDev = await canUseDevTools();
 
   const [
     { data: session },
@@ -480,6 +482,28 @@ async function AdminSession({
               }}
             >
               Cancel session
+            </SubmitButton>
+          </form>
+        </section>
+      )}
+
+      {isDev && (
+        <section className="flex flex-wrap items-center justify-between gap-4 border-t-2 border-dashed border-bad pt-4">
+          <p className="min-w-0 flex-1 text-ink-soft">
+            Deletes the session and all its sign-ups, teams and matches from
+            the database. Payments stay, unmatched. Nobody is emailed.
+          </p>
+          <form action={deleteSessionForever.bind(null, id)}>
+            <SubmitButton
+              variant="danger"
+              confirm={{
+                title: "Delete this session permanently?",
+                description:
+                  "The session and every sign-up, team and match in it are removed from the database. Nobody is emailed and this can't be undone. If a weekly session made it and it's still in the next week, the weekly session will create it again; pause that first.",
+                action: "Delete forever",
+              }}
+            >
+              Delete permanently
             </SubmitButton>
           </form>
         </section>

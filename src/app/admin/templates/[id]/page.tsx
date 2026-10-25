@@ -5,6 +5,7 @@ import { deleteTemplate, saveTemplate } from "@/app/admin/actions";
 import { SubmitButton } from "@/components/submit-button";
 import { BackLink, PageSpinner, PageTitle, reveal } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
+import { zonedDayKey } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import type { SessionTemplate } from "@/lib/types";
 import { TemplateForm, WEEKDAYS } from "../template-form";
@@ -31,6 +32,7 @@ async function EditTemplate({
   const supabase = await createClient();
   const { data: template } = await supabase.from("session_templates").select("*").eq("id", id).maybeSingle<SessionTemplate>();
   if (!template) notFound();
+  const today = zonedDayKey(new Date().toISOString());
 
   return (
     <div className="space-y-10">
@@ -44,7 +46,12 @@ async function EditTemplate({
         </PageTitle>
       </div>
       <div className="reveal" style={reveal(1)}>
-        <TemplateForm action={saveTemplate.bind(null, template.id)} template={template} submitLabel="Save changes" />
+        <TemplateForm
+          action={saveTemplate.bind(null, template.id)}
+          template={template}
+          today={today}
+          submitLabel="Save changes"
+        />
       </div>
       <section className="flex flex-wrap items-center justify-between gap-4 border-t-2 border-bad pt-4">
         <p className="text-ink-soft">

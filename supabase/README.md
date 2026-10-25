@@ -33,6 +33,7 @@ Open the file listed for the current version; older copies in earlier migrations
 | `_has_room` | `20261101000000_signup_options.sql` | 1 |
 | `_instructional_used` | `20261101000000_signup_options.sql` | 1 |
 | `_is_first_timer` | `20261028000000_bring_a_friend_and_deposits.sql` | 1 |
+| `_limit_identity_changes` | `20261126000000_identity_change_limit.sql` | 1 |
 | `_lock_attended_before` | `20261029000000_attended_before_locked.sql` | 1 |
 | `_log_registration_activity` | `20261106000000_host_notifications.sql` | 1 |
 | `_log_unmatched_payment` | `20261106000000_host_notifications.sql` | 1 |
@@ -46,6 +47,7 @@ Open the file listed for the current version; older copies in earlier migrations
 | `_reprice` | `20261028000000_bring_a_friend_and_deposits.sql` | 1 |
 | `_reset_hold_nudge` | `20261031000000_host_tools.sql` | 1 |
 | `_reverse_payment` | `20261107000000_payment_cancellations.sql` | 1 |
+| `_set_avatar_url` | `20261125000000_dicebear_avatars.sql` | 1 |
 | `_signup_price` | `20261101000000_signup_options.sql` | 2 |
 | `_spots_used` | `20261101000000_signup_options.sql` | 2 |
 | `_sync_holds_to_session` | `20261019000000_holds_follow_session.sql` | 1 |
@@ -70,7 +72,7 @@ Open the file listed for the current version; older copies in earlier migrations
 | `cancel_registration` | `20261028000000_bring_a_friend_and_deposits.sql` | 4 |
 | `change_registration_option` | `20261101000000_signup_options.sql` | 4 |
 | `clear_team_on_instructional` | `20261015000000_teams.sql` | 1 |
-| `create_sessions_from_templates` | `20261101000000_signup_options.sql` | 3 |
+| `create_sessions_from_templates` | `20261124000000_template_start_date.sql` | 4 |
 | `devtools_backup` | `20261118000000_audit_fixes.sql` | 4 |
 | `devtools_clear` | `20261023000000_dev_tools.sql` | 1 |
 | `devtools_delete_row` | `20261023000000_dev_tools.sql` | 1 |

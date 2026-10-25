@@ -18,6 +18,9 @@ export type Profile = {
   full_name: string | null;
   display_name: string | null;
   avatar_url: string | null;
+  /** DiceBear style and seed; avatar_url is built from them by the database. */
+  avatar_style: string;
+  avatar_seed: string;
   role: Role;
   etransfer_names: string[];
   onboarded_at: string | null;
@@ -83,6 +86,8 @@ export type SessionTemplate = {
   dropin_price_cents: number | null;
   /** Instructional-only spots; null = no limit. */
   instructional_capacity: number | null;
+  /** "YYYY-MM-DD": no sessions are created for days before this. */
+  starts_on: string;
 };
 
 export type Session = {

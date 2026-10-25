@@ -9,7 +9,7 @@ import { AUDIENCES, audienceOf } from "@/lib/audiences";
 import { requireAdmin } from "@/lib/auth";
 import { env } from "@/lib/env";
 import { flash } from "@/lib/flash";
-import { formatDateTime, zonedLocalToUtc } from "@/lib/format";
+import { formatDateTime, formatDay, zonedDayKey, zonedLocalToUtc } from "@/lib/format";
 import { dispatchEvents, parseEvents } from "@/lib/registrations";
 import { isEmptyPost, sanitizePostHtml } from "@/lib/rich-text";
 import { roundRobin } from "@/lib/schedule";
@@ -558,6 +558,7 @@ const TemplateForm = z.object({
   instructional_price: optionalDollars,
   dropin_price: optionalDollars,
   instructional_capacity: optionalCount,
+  starts_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Pick a date"),
 });
 
 const TEMPLATE_FIELD_LABELS: Record<string, string> = {
@@ -576,6 +577,7 @@ const TEMPLATE_FIELD_LABELS: Record<string, string> = {
   instructional_price: "Instructional-only price",
   dropin_price: "Drop-in only price",
   instructional_capacity: "Instructional spots",
+  starts_on: "Starts on",
 };
 
 export async function saveTemplate(templateId: string | null, formData: FormData) {
@@ -601,6 +603,17 @@ export async function saveTemplate(templateId: string | null, formData: FormData
     ...rest
   } = parsed.data;
   const o = offsetsOf({ instructional_start, instructional_end, dropin_start, dropin_end }, formPath);
+
+  // The start can't be in the past, except an existing schedule keeping the start it already has.
+  const supabase = await createClient();
+  const today = zonedDayKey(new Date().toISOString());
+  if (rest.starts_on < today) {
+    const { data: current } = templateId
+      ? await supabase.from("session_templates").select("starts_on").eq("id", templateId).maybeSingle<{ starts_on: string }>()
+      : { data: null };
+    if (current?.starts_on !== rest.starts_on) fail(formPath, "Starts on: pick today or a later date");
+  }
+
   const row = {
     ...rest,
     start_time: instructional_start,
@@ -615,7 +628,6 @@ export async function saveTemplate(templateId: string | null, formData: FormData
     instructional_capacity: instructional_price == null ? null : instructional_capacity,
   };
 
-  const supabase = await createClient();
   const { error } = templateId
     ? await supabase.from("session_templates").update(row).eq("id", templateId)
     : await supabase.from("session_templates").insert(row);
@@ -628,7 +640,9 @@ export async function saveTemplate(templateId: string | null, formData: FormData
     "success",
     templateId
       ? "Weekly session saved. Changes apply to sessions created from now on."
-      : "Weekly session created. The next one is posted.",
+      : rest.starts_on > today
+        ? `Weekly session created. Sessions start from ${formatDay(rest.starts_on)}.`
+        : "Weekly session created. The next one is posted.",
   );
   redirect("/admin/templates");
 }

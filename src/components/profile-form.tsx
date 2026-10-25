@@ -15,9 +15,10 @@ import {
   WAIVER_VERSION,
 } from "@/lib/agreements";
 import { SkillLadder } from "@/components/skill-rank";
+import { AvatarPicker } from "@/components/avatar-picker";
 import { EtransferNameExample } from "@/components/etransfer-name-example";
 import { CONTACT_EMAIL } from "@/app/contact/limits";
-import { defaultDisplayName, HEARD_LABELS, splitFullName } from "@/lib/profile";
+import { defaultDisplayName, HEARD_LABELS, IDENTITY_CHANGES_PER_DAY, splitFullName } from "@/lib/profile";
 import type { Profile } from "@/lib/types";
 
 /** Everything the old Google Form asked, answered once. Used by onboarding and the Account page. */
@@ -60,6 +61,18 @@ export function ProfileForm({
       <p className="text-sm text-ink-soft">
         <RequiredMark /> Required
       </p>
+
+      <Group title="Picture">
+        {profile.onboarded_at && (
+          <p className="-mt-2 text-sm text-ink-soft">
+            You can change your display name and avatar {IDENTITY_CHANGES_PER_DAY} times a day.
+          </p>
+        )}
+        <AvatarPicker
+          defaultStyle={v?.avatar_style ?? profile.avatar_style}
+          defaultSeed={v?.avatar_seed ?? profile.avatar_seed}
+        />
+      </Group>
 
       <Group title="You">
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">

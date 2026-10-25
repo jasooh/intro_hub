@@ -86,6 +86,13 @@ export function zonedDayKey(iso: string, timeZone = env.timezone()) {
   return utcToZonedLocal(iso, timeZone).slice(0, 10);
 }
 
+/** A plain "YYYY-MM-DD" date as "Sat, Nov 7" (no time zone shift). */
+export function formatDay(day: string) {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "UTC", weekday: "short", month: "short", day: "numeric" }).format(
+    new Date(`${day}T12:00:00Z`),
+  );
+}
+
 const DAY_MS = 86_400_000;
 
 /**

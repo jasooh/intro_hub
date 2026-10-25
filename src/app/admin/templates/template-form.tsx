@@ -22,13 +22,18 @@ export function clockAfter(start: string, minutes: number | null) {
 export function TemplateForm({
   action,
   template,
+  today,
   submitLabel,
 }: {
   action: (formData: FormData) => Promise<void>;
   template?: SessionTemplate;
+  /** "YYYY-MM-DD" in the club's time zone: the earliest start a host can pick. */
+  today: string;
   submitLabel: string;
 }) {
   const t = template;
+  // An existing schedule may keep a start that has already passed.
+  const minStart = t && t.starts_on < today ? t.starts_on : today;
   return (
     <form action={action} className="space-y-10">
       <Group title="Session">
@@ -55,6 +60,23 @@ export function TemplateForm({
               defaultValue={String(t?.weekday ?? 6)}
               options={WEEKDAYS.map((d, i) => ({ value: String(i), label: d }))}
               className="sm:max-w-56"
+            />
+          </Field>
+          <Field
+            label="Starts on"
+            hint={
+              t
+                ? "No sessions are created before this date. Sessions already created stay."
+                : "No sessions are created before this date."
+            }
+          >
+            <input
+              type="date"
+              name="starts_on"
+              defaultValue={t?.starts_on ?? today}
+              min={minStart}
+              required
+              className={`${inputClass} sm:max-w-56`}
             />
           </Field>
           <SessionTimes defaultValue={t ? templateClocks(t) : DEFAULT_CLOCKS} />

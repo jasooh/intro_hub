@@ -2,13 +2,7 @@
 
 import { useState } from "react";
 import { inputClass } from "@/components/ui";
-import { blockOffsets, clockPlus, formatMinutes, type BlockClocks } from "@/lib/session-times";
-
-/** "8:00 p.m." from HH:MM, without a date or time zone. */
-function clockLabel(hhmm: string) {
-  const [h, m] = hhmm.split(":").map(Number);
-  return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "a.m." : "p.m."}`;
-}
+import { blockOffsets, clockLabel, clockPlus, formatMinutes, type BlockClocks } from "@/lib/session-times";
 
 const ROWS = [
   { label: "Instructional", start: "instructional_start", end: "instructional_end" },

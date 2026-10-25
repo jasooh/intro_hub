@@ -6,6 +6,7 @@ Sign-up site for **Intro 2 Volleyball**, a beginner-friendly drop-in at Aaniin C
 
 ## What it does
 - **Players** sign in with Google, fill in a one-time profile (name, phone, skill, waiver, media release…), then sign up for a session in one tap. Their account area (`/me`) has Profile and My sign-ups (`/me/signups`: Upcoming/Past/Cancelled tabs, option filter, search) behind a small tab bar.
+- **Avatars:** no Google photos. Each profile has a DiceBear `avatar_style` + random `avatar_seed` (players pick a style and shuffle in the profile form, `AvatarPicker`); a trigger builds `avatar_url` = `/api/avatar/<style>/<seed>`, an SVG route using `@dicebear/core`. Styles live in `src/lib/avatars.ts` and must match the SQL check.
 - **Options per sign-up:** *Instructional + Drop-in* (full price, uses a spot) or *Instructional only* (cheaper, **doesn't use a spot**, never waitlisted). Players can switch before paying.
 - **Payment:** Interac e-Transfer with a ref code (`VB-XXXX`). A Gmail Apps Script (`scripts/gmail-ingest.gs`) posts notifications to `/api/payments/ingest`; `src/lib/matcher.ts` matches by ref code or name + exact amount owed.
 - **Team requests:** drop-in players can ask to be teamed with up to 5 other signed-up drop-in players (`MAX_TEAMMATES`) (at sign-up or later from the session page; `set_team_requests()`, table `team_requests`). One-way is enough; `balanceTeams` places requested groups first and never splits them, then balances everyone else around them and hosts see a handshake mark.

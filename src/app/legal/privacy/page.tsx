@@ -24,7 +24,8 @@ export default function PrivacyPage() {
       <Sheet label="What we collect" className="reveal" style={reveal(1)}>
         <Points>
           <li>
-            <b>From Google when you sign in:</b> your name, email address and profile picture.
+            <b>From Google when you sign in:</b> your name and email address. Google also sends your profile picture,
+            but we don&apos;t show it anywhere: your picture here is a cartoon avatar you pick.
           </li>
           <li>
             <b>From your profile:</b> your name, phone number, emergency contact (name, relationship and phone), skill level, whether you&apos;ve
@@ -54,7 +55,7 @@ export default function PrivacyPage() {
       <Sheet label="Who sees it" className="reveal" style={reveal(3)}>
         <Points>
           <li>
-            <b>Other players</b> see only your display name and picture on session lists and team sheets.
+            <b>Other players</b> see only your display name and the avatar you picked on session lists and team sheets.
           </li>
           <li>
             <b>The hosts</b> see your profile, sign-ups and payments so they can run sessions.

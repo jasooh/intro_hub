@@ -48,6 +48,12 @@ export function clockPlus(start: string, minutes: number) {
 }
 
 /** "3 h 45 min", "45 min", "2 h". */
+/** "8:00 p.m." from HH:MM, without a date or time zone (the app's usual clock style). */
+export function clockLabel(hhmm: string) {
+  const [h, m] = hhmm.split(":").map(Number);
+  return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "a.m." : "p.m."}`;
+}
+
 export function formatMinutes(minutes: number) {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;

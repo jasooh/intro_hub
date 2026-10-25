@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { saveTemplate } from "@/app/admin/actions";
 import { BackLink, PageSpinner, PageTitle, reveal } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
+import { zonedDayKey } from "@/lib/format";
 import { TemplateForm } from "../template-form";
 
 export const metadata: Metadata = {
@@ -19,6 +20,7 @@ export default function NewTemplatePage() {
 
 async function NewTemplate() {
   await requireAdmin();
+  const today = zonedDayKey(new Date().toISOString());
   return (
     <div className="space-y-10">
       <div>
@@ -28,7 +30,7 @@ async function NewTemplate() {
         </PageTitle>
       </div>
       <div className="reveal" style={reveal(1)}>
-        <TemplateForm action={saveTemplate.bind(null, null)} submitLabel="Create weekly session" />
+        <TemplateForm action={saveTemplate.bind(null, null)} today={today} submitLabel="Create weekly session" />
       </div>
     </div>
   );

@@ -291,7 +291,7 @@ export function Avatar({ name, src, size = 32 }: { name: string; src: string | n
     .slice(0, 2)
     .toUpperCase();
   return src ? (
-    // Google avatar URLs; next/image would need remotePatterns config for little benefit.
+    // DiceBear SVGs from our own /api/avatar route; next/image adds nothing for small SVGs.
     // eslint-disable-next-line @next/next/no-img-element
     <img
       src={src}

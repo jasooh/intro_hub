@@ -69,6 +69,18 @@ export async function deleteRow(table: string, id: string) {
   redirect(`/dev-tools/data?table=${table}`);
 }
 
+/** Removes a session and everything under it (sign-ups, teams, matches) from the database. */
+export async function deleteSessionForever(sessionId: string) {
+  await requireDevTools();
+  expireAllPublic();
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("devtools_delete_row", { p_table: "sessions", p_id: sessionId });
+  if (error) fail(`/admin/sessions/${sessionId}`, error.message);
+  revalidatePath("/", "layout");
+  await flash("success", "Session deleted from the database");
+  redirect("/admin");
+}
+
 export async function forceStatus(registrationId: string, formData: FormData) {
   await requireDevTools();
   expireAllPublic();

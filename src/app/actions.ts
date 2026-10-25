@@ -11,10 +11,12 @@ import { allowed, SLOW_DOWN } from "@/lib/rate-limit";
 import { expireCounts } from "@/lib/public-cache";
 import { cleanName, cleanNameList, cleanText, normalizePhone } from "@/lib/input";
 import { MAX_TEAMMATES } from "@/lib/teams";
-import { OPTION_LABELS, profileComplete } from "@/lib/profile";
+import { formatDateTime } from "@/lib/format";
+import { IDENTITY_CHANGES_PER_DAY, OPTION_LABELS, profileComplete } from "@/lib/profile";
 import type { SignupOption } from "@/lib/types";
 import { dispatchEvents, parseEvents } from "@/lib/registrations";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
+import { AVATAR_SEED_RE, AVATAR_STYLE_KEYS } from "@/lib/avatars";
 
 const ERRORS: Record<string, string> = {
   not_authenticated: "Please sign in first.",
@@ -224,6 +226,8 @@ const ProfileForm = z
     email_session_open: z.literal("on").optional(),
     email_reminders: z.literal("on").optional(),
     etransfer_names: z.string().max(300).default(""),
+    avatar_style: z.enum(AVATAR_STYLE_KEYS, { message: "Please pick an avatar style" }).optional(),
+    avatar_seed: z.string().regex(AVATAR_SEED_RE, "Please shuffle your avatar again").optional(),
     next: z.string().default("/"),
     return_to: z.string().default("/onboarding"),
   })
@@ -282,8 +286,16 @@ export async function saveProfile(_prev: ProfileFormState, formData: FormData): 
       email_session_open: f.email_session_open === "on",
       email_reminders: f.email_reminders === "on",
       onboarded_at: profile.onboarded_at ?? now,
+      ...(f.avatar_style && { avatar_style: f.avatar_style }),
+      ...(f.avatar_seed && { avatar_seed: f.avatar_seed }),
     })
     .eq("id", profile.id);
+  if (error?.message === "identity_change_limit") {
+    const again = error.details ? ` You can change them again after ${formatDateTime(error.details)}.` : "";
+    return failed(
+      `You've changed your display name or avatar ${IDENTITY_CHANGES_PER_DAY} times today.${again} Put them back to save your other changes.`,
+    );
+  }
   if (error) return failed(error.message);
 
   revalidatePath("/", "layout");

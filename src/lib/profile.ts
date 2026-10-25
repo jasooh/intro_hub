@@ -54,3 +54,6 @@ export function splitFullName(fullName: string | null): { first: string; last: s
   if (parts.length === 1) return { first: parts[0], last: "" };
   return { first: parts.slice(0, -1).join(" "), last: parts[parts.length - 1] };
 }
+
+/** How many times a day a player may change their display name and avatar (public._limit_identity_changes). */
+export const IDENTITY_CHANGES_PER_DAY = 3;

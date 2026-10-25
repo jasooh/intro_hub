@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { blockOffsets, clockPlus, formatMinutes } from "@/lib/session-times";
+import { blockOffsets, clockLabel, clockPlus, formatMinutes } from "@/lib/session-times";
 
 const ok = (c: Parameters<typeof blockOffsets>[0]) => {
   const r = blockOffsets(c);
@@ -48,5 +48,14 @@ describe("helpers", () => {
     expect(formatMinutes(225)).toBe("3 h 45 min");
     expect(formatMinutes(45)).toBe("45 min");
     expect(formatMinutes(120)).toBe("2 h");
+  });
+});
+
+describe("clockLabel", () => {
+  it("shows 12-hour times like the rest of the app", () => {
+    expect(clockLabel("20:00")).toBe("8:00 p.m.");
+    expect(clockLabel("00:15")).toBe("12:15 a.m.");
+    expect(clockLabel("12:05:00")).toBe("12:05 p.m.");
+    expect(clockLabel("09:30")).toBe("9:30 a.m.");
   });
 });
