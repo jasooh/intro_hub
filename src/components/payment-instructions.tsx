@@ -1,4 +1,5 @@
 import { CopyButton } from "@/components/copy-button";
+import { HoldTimer } from "@/components/countdown";
 import { env } from "@/lib/env";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import type { Registration } from "@/lib/types";
@@ -9,6 +10,15 @@ export function PaymentInstructions({ registration, deposit = false }: { registr
   const due = Math.max(registration.amount_cents - paid, 0);
   return (
     <div className="space-y-4">
+      {registration.hold_expires_at && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <HoldTimer to={registration.hold_expires_at} />
+          <span className="text-sm text-ink-soft">
+            Your spot is held until <b className="text-ink">{formatDateTime(registration.hold_expires_at)}</b>, then it goes to
+            the next person.
+          </span>
+        </div>
+      )}
       {paid > 0 && (
         <p className="border-l-4 border-warn pl-3">
           We got <b>{formatMoney(paid)}</b> of <b>{formatMoney(registration.amount_cents)}</b>. Send the remaining{" "}
@@ -42,12 +52,9 @@ export function PaymentInstructions({ registration, deposit = false }: { registr
           This is a <b className="text-ink">refundable deposit</b>: the session is free, and you&apos;ll get it back after it.
         </p>
       )}
-      {registration.hold_expires_at && (
-        <p className="text-sm text-ink-soft">
-          Your spot is held until <b className="text-ink">{formatDateTime(registration.hold_expires_at)}</b>. It&apos;s
-          confirmed automatically when the payment arrives (usually within a few minutes).
-        </p>
-      )}
+      <p className="text-sm text-ink-soft">
+        It&apos;s confirmed automatically when the payment arrives (usually within a few minutes).
+      </p>
     </div>
   );
 }
