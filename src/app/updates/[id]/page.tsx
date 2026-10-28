@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PostAuthor } from "@/components/post-author";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -48,6 +49,7 @@ async function PostView({ params }: { params: PageProps<"/updates/[id]">["params
             {post.title.replace(/[.!?]$/, "")}
             <span className="text-line">.</span>
           </h1>
+          <PostAuthor author={post.author} size={32} />
         </div>
       </div>
 

@@ -16,7 +16,9 @@ import { IDENTITY_CHANGES_PER_DAY, OPTION_LABELS, profileComplete } from "@/lib/
 import type { SignupOption } from "@/lib/types";
 import { dispatchEvents, parseEvents } from "@/lib/registrations";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
-import { AVATAR_SEED_RE, AVATAR_STYLE_KEYS } from "@/lib/avatars";
+import { AVATAR_SEED_RE, PHOTO_STYLE, PROFILE_AVATAR_STYLES, randomSeed } from "@/lib/avatars";
+import { AVATAR_MAX_BYTES, AvatarImageError, toAvatarWebp } from "@/lib/avatar-image";
+import { removePhotos, savePhoto } from "@/lib/avatar-storage";
 
 const ERRORS: Record<string, string> = {
   not_authenticated: "Please sign in first.",
@@ -226,7 +228,7 @@ const ProfileForm = z
     email_session_open: z.literal("on").optional(),
     email_reminders: z.literal("on").optional(),
     etransfer_names: z.string().max(300).default(""),
-    avatar_style: z.enum(AVATAR_STYLE_KEYS, { message: "Please pick an avatar style" }).optional(),
+    avatar_style: z.enum(PROFILE_AVATAR_STYLES, { message: "Please pick an avatar style" }).optional(),
     avatar_seed: z.string().regex(AVATAR_SEED_RE, "Please shuffle your avatar again").optional(),
     next: z.string().default("/"),
     return_to: z.string().default("/onboarding"),
@@ -298,6 +300,12 @@ export async function saveProfile(_prev: ProfileFormState, formData: FormData): 
   }
   if (error) return failed(error.message);
 
+  // Uploaded pictures the saved profile no longer uses.
+  if (f.avatar_style) {
+    const keep = f.avatar_style === PHOTO_STYLE && f.avatar_seed ? [f.avatar_seed] : [];
+    after(() => removePhotos(profile.id, keep).catch((err) => console.error("Avatar clean-up failed", err)));
+  }
+
   revalidatePath("/", "layout");
   await flash("success", "Profile saved");
   redirect(localPath(f.next, "/"));
@@ -316,10 +324,46 @@ export async function deleteMyAccount() {
   }
   const { error } = await createAdminClient().auth.admin.deleteUser(profile.id);
   if (error) redirect(`/me?error=${encodeURIComponent(error.message)}`);
+  after(() => removePhotos(profile.id).catch((err) => console.error("Avatar clean-up failed", err)));
   // The sign-in is gone; clear this browser's session cookies too.
   const supabase = await createClient();
   await supabase.auth.signOut().catch(() => {});
   revalidatePath("/", "layout");
   await flash("success", "Your account has been deleted");
   redirect("/");
+}
+
+export type AvatarUploadResult = { seed: string } | { error: string };
+
+/**
+ * Stores a new profile picture (resized, location data removed) and returns its
+ * seed. It's used once the player saves their profile with the "photo" style,
+ * so Save and the daily change limit work as for the other avatars.
+ */
+export async function uploadAvatar(formData: FormData): Promise<AvatarUploadResult> {
+  const profile = await requireProfile("/me");
+  if (!(await allowed("avatar-upload", profile.id, 10, 3600))) {
+    return { error: "That's a lot of pictures in an hour. Try again a bit later." };
+  }
+  const file = formData.get("photo");
+  if (!(file instanceof File) || file.size === 0) return { error: "Pick a picture first." };
+  if (file.size > AVATAR_MAX_BYTES) return { error: "That picture is too big. Try a smaller one." };
+
+  let webp: Buffer;
+  try {
+    webp = await toAvatarWebp(Buffer.from(await file.arrayBuffer()));
+  } catch (err) {
+    return { error: err instanceof AvatarImageError ? err.message : "Couldn't read that picture." };
+  }
+  const seed = randomSeed();
+  try {
+    await savePhoto(profile.id, seed, webp);
+  } catch (err) {
+    console.error("Avatar upload failed", err);
+    return { error: "Couldn't upload that picture. Please try again." };
+  }
+  // Keep the picture their saved profile uses (until they save the new one) and the new one.
+  const keep = profile.avatar_style === PHOTO_STYLE ? [profile.avatar_seed, seed] : [seed];
+  after(() => removePhotos(profile.id, keep).catch((err) => console.error("Avatar clean-up failed", err)));
+  return { seed };
 }

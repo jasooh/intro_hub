@@ -69,6 +69,7 @@ export function ProfileForm({
           </p>
         )}
         <AvatarPicker
+          profileId={profile.id}
           defaultStyle={v?.avatar_style ?? profile.avatar_style}
           defaultSeed={v?.avatar_seed ?? profile.avatar_seed}
         />

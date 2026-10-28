@@ -1,5 +1,13 @@
 import Link from "next/link";
-import { blockPlayer, deleteAccount, setPlayerRating, setRole, unblockPlayer, updateEtransferNames } from "@/app/admin/actions";
+import {
+  blockPlayer,
+  deleteAccount,
+  resetAvatar,
+  setPlayerRating,
+  setRole,
+  unblockPlayer,
+  updateEtransferNames,
+} from "@/app/admin/actions";
 import { SkillRating } from "@/components/skill-rating";
 import { PlayerDetails } from "@/components/player-details";
 import { SubmitButton } from "@/components/submit-button";
@@ -53,6 +61,22 @@ export function PlayerRow({
           Save
         </SubmitButton>
       </form>
+      {p.avatar_style === "photo" && (
+        <form action={resetAvatar.bind(null, p.id)} className="flex flex-wrap items-center gap-3">
+          <span className="text-sm text-ink-soft">They uploaded their own picture.</span>
+          <SubmitButton
+            size="sm"
+            variant="secondary"
+            confirm={{
+              title: `Reset ${name}'s picture?`,
+              description: "Their uploaded photo is deleted and replaced with a generated avatar. They can upload another.",
+              action: "Reset picture",
+            }}
+          >
+            Reset picture
+          </SubmitButton>
+        </form>
+      )}
       {!isMe && p.role !== "admin" && (
         block ? (
           <div className="space-y-2 border-l-4 border-bad pl-3">

@@ -47,7 +47,7 @@ Open the file listed for the current version; older copies in earlier migrations
 | `_reprice` | `20261028000000_bring_a_friend_and_deposits.sql` | 1 |
 | `_reset_hold_nudge` | `20261031000000_host_tools.sql` | 1 |
 | `_reverse_payment` | `20261107000000_payment_cancellations.sql` | 1 |
-| `_set_avatar_url` | `20261125000000_dicebear_avatars.sql` | 1 |
+| `_set_avatar_url` | `20261127000000_photo_avatars.sql` | 2 |
 | `_signup_price` | `20261101000000_signup_options.sql` | 2 |
 | `_spots_used` | `20261101000000_signup_options.sql` | 2 |
 | `_sync_holds_to_session` | `20261019000000_holds_follow_session.sql` | 1 |
@@ -86,6 +86,7 @@ Open the file listed for the current version; older copies in earlier migrations
 | `devtools_table_columns` | `20261023000000_dev_tools.sql` | 1 |
 | `devtools_update_row` | `20261023000000_dev_tools.sql` | 1 |
 | `gen_ref_code` | `20261012000000_init.sql` | 1 |
+| `get_post_authors` | `20261127000000_photo_avatars.sql` | 1 |
 | `get_session_attendees` | `20261101000000_signup_options.sql` | 4 |
 | `get_session_counts` | `20261101000000_signup_options.sql` | 3 |
 | `handle_new_user` | `20261012000000_init.sql` | 1 |

@@ -299,7 +299,7 @@ export function Avatar({ name, src, size = 32 }: { name: string; src: string | n
       width={size}
       height={size}
       referrerPolicy="no-referrer"
-      className="shrink-0 rounded-full bg-maple-deep ring-2 ring-ink"
+      className="shrink-0 rounded-full bg-maple-deep object-cover ring-2 ring-ink"
       style={{ width: size, height: size }}
     />
   ) : (

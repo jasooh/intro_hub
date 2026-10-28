@@ -161,3 +161,52 @@ describe("client privileges", () => {
     await asUser(db, null, `select * from public.get_session_counts(array[$1]::uuid[])`, [sid]);
   });
 });
+
+describe("photo avatars", () => {
+  it("build a URL under the player's own id, even with someone else's seed", async () => {
+    const [a, b] = [await createUser(db, "A"), await createUser(db, "B")];
+    await db.query(`update public.profiles set avatar_style = 'photo', avatar_seed = 'abc123' where id = $1`, [a]);
+    await db.query(`update public.profiles set avatar_style = 'photo', avatar_seed = 'abc123' where id = $1`, [b]);
+    const urls = await db.query<{ id: string; avatar_url: string }>(`select id, avatar_url from public.profiles where id in ($1, $2)`, [a, b]);
+    const byId = new Map(urls.rows.map((r) => [r.id, r.avatar_url]));
+    expect(byId.get(a)).toBe(`/api/avatar/photo/${a}/abc123`);
+    expect(byId.get(b)).toBe(`/api/avatar/photo/${b}/abc123`);
+    await db.query(`update public.profiles set avatar_style = 'thumbs' where id = $1`, [a]);
+    expect((await db.query<{ u: string }>(`select avatar_url as u from public.profiles where id = $1`, [a])).rows[0].u).toBe(
+      "/api/avatar/thumbs/abc123",
+    );
+  });
+
+  it("count toward the daily identity-change limit", async () => {
+    const a = await createUser(db, "A");
+    await db.query(`update public.profiles set onboarded_at = now() where id = $1`, [a]);
+    for (const seed of ["s1", "s2", "s3"]) {
+      await asUser(db, a, `update public.profiles set avatar_style = 'photo', avatar_seed = $2 where id = $1`, [a, seed]);
+    }
+    await expect(
+      asUser(db, a, `update public.profiles set avatar_seed = 's4' where id = $1`, [a]),
+    ).rejects.toThrow(/identity_change_limit/);
+  });
+});
+
+describe("post authors", () => {
+  it("show the poster's display name and avatar for published posts only", async () => {
+    const host = await createUser(db, "Host", { admin: true });
+    await db.query(`update public.profiles set display_name = 'Coach K' where id = $1`, [host]);
+    const ins = await db.query<{ id: string; published: boolean }>(
+      `insert into public.posts (title, body_html, published_at, author_id) values
+         ('Live', '<p>x</p>', now(), $1), ('Draft', '<p>y</p>', null, $1) returning id, published_at is not null as published`,
+      [host],
+    );
+    const ids = ins.rows.map((r) => r.id);
+    const res = await asUser<{ post_id: string; name: string; avatar_url: string }>(
+      db,
+      null,
+      `select * from public.get_post_authors($1::uuid[])`,
+      [ids],
+    );
+    expect(res.rows).toHaveLength(1);
+    expect(res.rows[0]).toMatchObject({ post_id: ins.rows.find((r) => r.published)!.id, name: "Coach K" });
+    expect(res.rows[0].avatar_url).toMatch(/^\/api\/avatar\//);
+  });
+});

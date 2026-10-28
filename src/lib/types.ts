@@ -259,3 +259,8 @@ export type RegistrationEvent = {
   revision?: number;
   before?: { when: string; location: string };
 };
+
+/** Who posted an update, as shown publicly (just a display name and avatar). */
+export type PostAuthor = { name: string; avatar_url: string | null };
+/** A published post on the public pages, with its poster. */
+export type PublicPost = Post & { author: PostAuthor | null };

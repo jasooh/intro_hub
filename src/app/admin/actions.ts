@@ -19,6 +19,7 @@ import { balanceTeams } from "@/lib/teams";
 import type { RegistrationEvent, SkillLevel } from "@/lib/types";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { expireCounts, expirePosts, expireSession } from "@/lib/public-cache";
+import { removePhotos } from "@/lib/avatar-storage";
 
 function fail(path: string, message: string): never {
   redirect(`${path}?error=${encodeURIComponent(message)}`);
@@ -524,6 +525,19 @@ export async function mergeGuest(guestId: string, sessionId: string, formData: F
   revalidatePath("/admin", "layout");
 }
 
+/** Swap a player's uploaded picture for a generated avatar (e.g. if it's inappropriate) and delete the upload. */
+export async function resetAvatar(profileId: string) {
+  await requireAdmin();
+  const { error } = await createAdminClient()
+    .from("profiles")
+    .update({ avatar_style: "thumbs" })
+    .eq("id", profileId);
+  if (error) fail("/admin/players", error.message);
+  after(() => removePhotos(profileId).catch((err) => console.error("Avatar clean-up failed", err)));
+  revalidatePath("/", "layout");
+  await flash("success", "Picture reset to a generated avatar");
+}
+
 export async function deleteAccount(profileId: string) {
   const me = await requireAdmin();
   if (profileId === me.id) fail("/admin/players", "You can't delete your own account.");
@@ -534,6 +548,7 @@ export async function deleteAccount(profileId: string) {
 
   const { error } = await admin.auth.admin.deleteUser(profileId);
   if (error) fail("/admin/players", error.message);
+  after(() => removePhotos(profileId).catch((err) => console.error("Avatar clean-up failed", err)));
   // Freed spots are filled from the waitlist by the every-minute job.
   revalidatePath("/", "layout");
   await flash("success", "Account deleted");

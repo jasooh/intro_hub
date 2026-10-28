@@ -1,7 +1,7 @@
 import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 import { createPublicClient } from "@/lib/supabase/public";
-import type { Post, Session, SessionCounts } from "@/lib/types";
+import type { Post, PostAuthor, PublicPost, Session, SessionCounts } from "@/lib/types";
 
 // Cached reads for the public pages (home, /sessions, /s/[id], /updates). Page
 // views are served from the cache instead of hitting the database each time;
@@ -56,8 +56,18 @@ export async function getPublicCounts(sessionIds: string[]): Promise<Map<string,
   return new Map(list.map((c) => [c.session_id, c]));
 }
 
+/** Adds each post's poster (name + avatar) via get_post_authors (profiles are private). */
+async function withAuthors(posts: Post[]): Promise<PublicPost[]> {
+  if (posts.length === 0) return [];
+  const { data } = await createPublicClient().rpc("get_post_authors", { p_post_ids: posts.map((p) => p.id) });
+  const byPost = new Map(
+    ((data ?? []) as (PostAuthor & { post_id: string })[]).map((a) => [a.post_id, { name: a.name, avatar_url: a.avatar_url }]),
+  );
+  return posts.map((p) => ({ ...p, author: byPost.get(p.id) ?? null }));
+}
+
 /** Published host posts, newest first. */
-export async function getPublicPosts(limit = 50): Promise<Post[]> {
+export async function getPublicPosts(limit = 50): Promise<PublicPost[]> {
   "use cache";
   cacheLife({ stale: 60, revalidate: 300, expire: 86400 });
   cacheTag(CACHE_TAGS.posts);
@@ -67,10 +77,10 @@ export async function getPublicPosts(limit = 50): Promise<Post[]> {
     .not("published_at", "is", null)
     .order("published_at", { ascending: false })
     .limit(limit);
-  return (data ?? []) as Post[];
+  return withAuthors((data ?? []) as Post[]);
 }
 
-export async function getPublicPost(id: string): Promise<Post | null> {
+export async function getPublicPost(id: string): Promise<PublicPost | null> {
   "use cache";
   cacheLife({ stale: 60, revalidate: 300, expire: 86400 });
   cacheTag(CACHE_TAGS.posts);
@@ -81,11 +91,11 @@ export async function getPublicPost(id: string): Promise<Post | null> {
     .eq("id", id)
     .not("published_at", "is", null)
     .maybeSingle<Post>();
-  return data;
+  return data ? (await withAuthors([data]))[0] : null;
 }
 
 /** The one post featured on the home page, if any. */
-export async function getPublicFeaturedPost(): Promise<Post | null> {
+export async function getPublicFeaturedPost(): Promise<PublicPost | null> {
   "use cache";
   cacheLife({ stale: 60, revalidate: 300, expire: 86400 });
   cacheTag(CACHE_TAGS.posts);
@@ -95,5 +105,5 @@ export async function getPublicFeaturedPost(): Promise<Post | null> {
     .eq("featured", true)
     .not("published_at", "is", null)
     .maybeSingle<Post>();
-  return data;
+  return data ? (await withAuthors([data]))[0] : null;
 }

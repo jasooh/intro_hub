@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PostAuthor } from "@/components/post-author";
 import Link from "next/link";
 import { Suspense } from "react";
 import { DateBlock } from "@/components/session-card";
@@ -45,6 +46,7 @@ async function Posts() {
               <h2 className="font-display text-2xl leading-tight font-extrabold uppercase [overflow-wrap:anywhere] decoration-line decoration-2 underline-offset-4 group-hover:underline sm:text-3xl">
                 {p.title}
               </h2>
+              <PostAuthor author={p.author} size={24} />
               {postExcerpt(p.body_html, 280) && (
                 <p className="line-clamp-3 text-ink-soft">{postExcerpt(p.body_html, 280)}</p>
               )}

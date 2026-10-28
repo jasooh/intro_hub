@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { dateParts } from "@/lib/format";
 import { postExcerpt } from "@/lib/rich-text";
-import type { Post } from "@/lib/types";
+import { PostAuthor } from "@/components/post-author";
+import type { PublicPost } from "@/lib/types";
 
 /**
  * The host's featured post on the home page. No section divider: it sits on
@@ -9,7 +10,7 @@ import type { Post } from "@/lib/types";
  * reads as the most important thing on the page. Shows a short preview; the
  * full post is on its own page.
  */
-export function FeaturedPost({ post }: { post: Post }) {
+export function FeaturedPost({ post }: { post: PublicPost }) {
   const { weekday, day, month } = dateParts(post.published_at ?? post.created_at);
   return (
     <article
@@ -30,6 +31,7 @@ export function FeaturedPost({ post }: { post: Post }) {
           {post.title.replace(/[.!?]$/, "")}
           <span className="text-line">.</span>
         </h2>
+        <PostAuthor author={post.author} />
         {postExcerpt(post.body_html, 400) && (
           <p className="line-clamp-4 max-w-2xl text-lg leading-relaxed text-ink">{postExcerpt(post.body_html, 400)}</p>
         )}

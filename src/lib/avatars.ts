@@ -35,3 +35,14 @@ export function randomSeed() {
   const bytes = crypto.getRandomValues(new Uint8Array(6));
   return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }
+
+/** Uploaded pictures: a fifth avatar style alongside the DiceBear ones. */
+export const PHOTO_STYLE = "photo";
+
+/** Every style a profile can have (DiceBear styles + photo); matches the SQL check. */
+export const PROFILE_AVATAR_STYLES = [...AVATAR_STYLE_KEYS, PHOTO_STYLE] as const;
+
+/** Where an uploaded picture is served from (must match public._set_avatar_url()). */
+export function photoPath(profileId: string, seed: string) {
+  return `/api/avatar/photo/${profileId}/${seed}`;
+}

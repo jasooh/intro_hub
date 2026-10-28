@@ -17,6 +17,8 @@ const nextConfig: NextConfig = {
   partialPrefetching: true,
   experimental: {
     agentUpgrade: "security",
+    // Profile picture uploads (the browser shrinks them first; this is the fallback ceiling).
+    serverActions: { bodySizeLimit: "3.2mb" },
   },
   turbopack: {
     rules: {
