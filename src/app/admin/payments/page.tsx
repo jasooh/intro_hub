@@ -3,7 +3,9 @@ import { Suspense } from "react";
 import { ListFilters } from "@/components/list-filters";
 import { EmptyState, PageSpinner, PageTitle, reveal, Sheet } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
-import { METHOD_LABELS, type PaymentMethod, paymentMatches, paymentMethod, paymentStatus, type PaymentStatus } from "@/lib/payments";
+import { dismissAlreadyMarkedPaid } from "@/app/admin/actions";
+import { SubmitButton } from "@/components/submit-button";
+import { alreadyMarkedPaid, METHOD_LABELS, type PaymentMethod, paymentMatches, paymentMethod, paymentStatus, type PaymentStatus } from "@/lib/payments";
 import { paymentWindowStart } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
 import type { PaymentCancellation } from "@/lib/types";
@@ -102,6 +104,8 @@ async function Payments({ searchParams }: { searchParams: PageProps<"/admin/paym
   const methodCount = (m: PaymentMethod | "any") => inView.filter((r) => m === "any" || r.method === m).length;
   const shown = inView.filter((r) => method === "any" || r.method === method);
   const showChips = view === "matched" || view === "all";
+  // E-Transfers for sign-ups a host already marked paid (e.g. after the Gmail script was down).
+  const markedPaid = alreadyMarkedPaid((payments ?? []) as Row[]).length;
 
   return (
     <div className="space-y-12">
@@ -135,6 +139,28 @@ async function Payments({ searchParams }: { searchParams: PageProps<"/admin/paym
           q={q}
           placeholder="Search sender, player, ref code, amount"
         >
+          {view === "attention" && markedPaid > 0 && (
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-l-4 border-mat py-1 pl-4">
+              <p className="min-w-0 flex-1 basis-64 text-ink-soft">
+                <b className="text-ink">{markedPaid}</b> of these {markedPaid === 1 ? "is an e-Transfer" : "are e-Transfers"}{" "}
+                for sign-ups a host already marked paid by hand, so {markedPaid === 1 ? "it's" : "they're"} not new money.
+              </p>
+              <form action={dismissAlreadyMarkedPaid}>
+                <SubmitButton
+                  size="sm"
+                  variant="secondary"
+                  confirm={{
+                    title: `Dismiss ${markedPaid} payment${markedPaid === 1 ? "" : "s"}?`,
+                    description:
+                      "These sign-ups were already marked paid by a host, so these e-Transfers are that same money. They move to Dismissed with a note, and you can restore any of them. Sign-ups that already have an e-Transfer linked stay here in case it's a double payment.",
+                    action: "Dismiss",
+                  }}
+                >
+                  Clear already marked paid
+                </SubmitButton>
+              </form>
+            </div>
+          )}
           {shown.length === 0 ? (
             <EmptyState>
               {q ? <>No payments match &ldquo;{q}&rdquo;.</> : view === "attention" ? "All caught up!" : "No payments here."}

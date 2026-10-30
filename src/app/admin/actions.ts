@@ -9,6 +9,7 @@ import { AUDIENCES, audienceOf } from "@/lib/audiences";
 import { requireAdmin } from "@/lib/auth";
 import { env } from "@/lib/env";
 import { flash } from "@/lib/flash";
+import { alreadyMarkedPaid, HOST_MARKED_NOTE } from "@/lib/payments";
 import { formatDateTime, formatDay, zonedDayKey, zonedLocalToUtc } from "@/lib/format";
 import { dispatchEvents, parseEvents } from "@/lib/registrations";
 import { isEmptyPost, sanitizePostHtml } from "@/lib/rich-text";
@@ -412,6 +413,35 @@ export async function setPaymentDismissed(paymentId: string, dismissed: boolean)
   if (error) fail("/admin/payments", error.message);
   revalidatePath("/admin/payments");
   await flash("success", dismissed ? "Payment dismissed" : "Payment restored");
+}
+
+/**
+ * Dismisses unmatched e-Transfers for sign-ups a host already marked paid by hand
+ * (the Gmail script catching up after being down). Possible double payments stay.
+ */
+export async function dismissAlreadyMarkedPaid() {
+  await requireAdmin();
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("payments")
+    .select("id, registration_id, matched_by, gmail_message_id, dismissed, reversed_at, memo, note, registration:registrations(ref_code, status)")
+    .order("received_at", { ascending: false })
+    .limit(1000);
+  if (error) fail("/admin/payments", error.message);
+  const ids = alreadyMarkedPaid((data ?? []) as unknown as Parameters<typeof alreadyMarkedPaid>[0]);
+  if (ids.length) {
+    const { error: updateError } = await supabase
+      .from("payments")
+      .update({ dismissed: true, note: HOST_MARKED_NOTE })
+      .in("id", ids);
+    if (updateError) fail("/admin/payments", updateError.message);
+  }
+  revalidatePath("/admin/payments");
+  revalidatePath("/admin");
+  await flash(
+    "success",
+    ids.length ? `Dismissed ${ids.length} payment${ids.length === 1 ? "" : "s"} already marked paid` : "Nothing to clear",
+  );
 }
 
 /** A host picks which payment a cancelled e-Transfer took back. */
