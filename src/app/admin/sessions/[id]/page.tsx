@@ -141,11 +141,20 @@ async function AdminSession({
     teamRequests.filter((t) => t.from === regId).map((t) => nameById.get(t.to) ?? "someone");
   const going = rows
     .filter((r) => r.status === "confirmed" || r.status === "pending_payment")
-    .sort((a, b) => (a.status === b.status ? 0 : a.status === "confirmed" ? -1 : 1));
+    // Players who left a note go first so hosts see them, then paid before unpaid.
+    .sort(
+      (a, b) =>
+        Number(Boolean(b.note?.trim())) - Number(Boolean(a.note?.trim())) ||
+        (a.status === b.status ? 0 : a.status === "confirmed" ? -1 : 1),
+    );
   const waiting = rows
     .filter((r) => r.status === "waitlisted")
     .sort((a, b) => (a.queued_at ?? "").localeCompare(b.queued_at ?? ""));
-  const inactive = rows.filter((r) => r.status === "expired" || r.status === "cancelled");
+  const activeIds = new Set(rows.filter((r) => r.status !== "expired" && r.status !== "cancelled").map((r) => r.profile_id));
+  // Someone who cancelled or expired and then signed up again only shows in the live lists.
+  const inactive = rows.filter(
+    (r) => (r.status === "expired" || r.status === "cancelled") && !(r.profile_id && activeIds.has(r.profile_id)),
+  );
   const collected = rows
     .flatMap((r) => r.payments)
     .filter((p) => p.matched_by !== "admin")
@@ -164,7 +173,6 @@ async function AdminSession({
     if (a) audienceCounts[a] += 1;
   }
   const messages = (messageRows ?? []) as SentMessage[];
-  const activeIds = new Set(rows.filter((r) => r.status !== "expired" && r.status !== "cancelled").map((r) => r.profile_id));
   const addable: AddablePlayer[] = (playerRows ?? [])
     .filter((p) => !activeIds.has(p.id))
     .map((p) => ({ id: p.id, name: p.display_name ?? p.full_name ?? p.email, email: p.email }));

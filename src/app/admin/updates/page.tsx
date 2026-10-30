@@ -69,11 +69,11 @@ async function AdminUpdates({ searchParams }: { searchParams: PageProps<"/admin/
           ) : (
             <ul className="divide-y divide-ink/25">
               {shown.map((p) => (
-                <li key={p.id} className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3 py-4">
-                  <div className="min-w-0 flex-1 space-y-1">
+                <li key={p.id} className="grid grid-cols-1 items-start gap-x-6 gap-y-3 py-4 sm:grid-cols-[minmax(0,1fr)_auto]">
+                  <div className="min-w-0 space-y-1">
                     <Link
                       href={`/admin/updates/${p.id}`}
-                      className="font-display text-2xl leading-tight font-extrabold uppercase decoration-line decoration-2 underline-offset-4 hover:underline"
+                      className="font-display text-2xl leading-tight font-extrabold uppercase [overflow-wrap:anywhere] decoration-line decoration-2 underline-offset-4 hover:underline"
                     >
                       {p.title}
                     </Link>
@@ -94,7 +94,7 @@ async function AdminUpdates({ searchParams }: { searchParams: PageProps<"/admin/
                       )}
                     </div>
                   </div>
-                  <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3 sm:justify-end">
                     {p.published_at && (
                       <form action={setPostFeatured.bind(null, p.id, !p.featured)}>
                         <SubmitButton size="sm" variant="ghost">

@@ -45,9 +45,15 @@ export function ScheduleBoard({ session, teams, matches }: { session: Session; t
             startIso={start}
             minutes={session.schedule_game_minutes}
             renderGame={(m, courtLabel) => (
-              <form action={editMatch.bind(null, m.id, session.id)} className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              // Fixed columns so the pickers, "vs" and Save line up from game to game.
+              <form
+                action={editMatch.bind(null, m.id, session.id)}
+                className={`grid max-w-lg grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 ${
+                  courtLabel ? "sm:max-w-xl sm:grid-cols-[4.5rem_minmax(0,1fr)_auto_minmax(0,1fr)_auto]" : ""
+                }`}
+              >
                 {courtLabel && (
-                  <span className="w-full font-display text-sm font-bold tracking-[0.15em] text-ink-soft uppercase sm:w-auto">
+                  <span className="col-span-full font-display text-sm font-bold tracking-[0.15em] whitespace-nowrap text-ink-soft uppercase sm:col-span-1">
                     {courtLabel}
                   </span>
                 )}
@@ -139,7 +145,7 @@ function TeamPick({ name, teams, value, label }: { name: string; teams: Team[]; 
       defaultValue={value}
       label={label}
       look="compact"
-      className="max-w-40"
+      className="w-full min-w-0"
       options={teams.map((t) => ({ value: t.id, label: t.name }))}
     />
   );

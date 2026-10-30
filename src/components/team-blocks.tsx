@@ -90,24 +90,29 @@ export function TeamBlocks({
             {t.members.length === 0 ? (
               <p className="px-3 py-3 text-ink-soft">No players yet</p>
             ) : (
-              <ol className={`gap-x-5 px-3 ${host ? "@[34rem]:columns-2" : "@[20rem]:columns-2"}`}>
+              <ol className={`gap-x-5 px-3 ${host ? "" : "@[20rem]:columns-2"}`}>
                 {t.members.map((m, i) => (
                   <li
                     key={m.id}
-                    className={`flex min-h-10 break-inside-avoid flex-wrap items-center gap-x-2 gap-y-1 border-b border-ink/15 py-1.5 ${
+                    // Grid, not flex-wrap: number, avatar and name keep fixed columns, and the
+                    // controls sit at the end of the row (or all drop to a second line on narrow blocks).
+                    className={`grid min-h-10 break-inside-avoid grid-cols-[1.5rem_auto_minmax(0,1fr)] items-center gap-x-2 gap-y-1 border-b border-ink/15 py-1.5 @[24rem]:grid-cols-[1.5rem_auto_minmax(0,1fr)_auto] ${
                       m.isMe ? "-mx-1.5 bg-line/15 px-1.5" : ""
                     }`}
                   >
-                    <span className="w-6 shrink-0 font-score text-sm font-black text-ink-soft">{pad2(i + 1)}</span>
+                    <span className="font-score text-sm font-black text-ink-soft">{pad2(i + 1)}</span>
                     <Avatar name={m.name} src={m.avatarUrl} size={22} />
-                    <span className="flex min-w-[7.5rem] flex-1 items-baseline gap-1">
-                      <span className={`truncate ${m.isMe ? "font-bold" : ""}`}>{m.name}</span>
+                    <span className="flex min-w-0 items-baseline gap-1">
+                      <span className={`truncate ${m.isMe ? "font-bold" : ""}`} title={m.name}>
+                        {m.name}
+                      </span>
                       {m.isMe && <span className="shrink-0 text-line">(you)</span>}
                     </span>
                     {(host || m.control) && (
-                      <span className="ml-auto flex shrink-0 items-center gap-2">
+                      <span className="col-span-full flex items-center gap-2 justify-self-end @[24rem]:col-span-1">
                         {host && m.skillControl}
-                        {host && m.tag && <GroupTag letter={m.tag} />}
+                        {/* Host view always keeps the letter's slot so the Move pickers line up. */}
+                        {host && (m.tag ? <GroupTag letter={m.tag} /> : <span aria-hidden className="size-6 shrink-0" />)}
                         {m.control}
                       </span>
                     )}

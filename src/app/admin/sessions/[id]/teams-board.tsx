@@ -213,8 +213,8 @@ function TeamMember({
     <li className="flex items-center gap-3 py-2">
       <Avatar name={nameOf(reg)} src={reg.profile.avatar_url} size={24} />
       <span className="min-w-0 flex-1 truncate">{nameOf(reg)}</span>
-      {tag && <GroupTag letter={tag} />}
       {skill}
+      {tag ? <GroupTag letter={tag} /> : <span aria-hidden className="size-6 shrink-0" />}
       <TeamSelect action={moveToTeam.bind(null, reg.id, sessionId)} teams={teams} current={reg.team_id} />
     </li>
   );
