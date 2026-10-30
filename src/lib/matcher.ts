@@ -24,7 +24,13 @@ export type Candidate = {
 
 export type MatchResult =
   | { kind: "match"; registrationId: string; by: "ref" | "name_amount" }
-  | { kind: "unmatched"; reason: string };
+  | {
+      kind: "unmatched";
+      reason: string;
+      /** The ref code's sign-up, when it was found but isn't waiting for payment (e.g. already confirmed). */
+      registrationId?: string;
+      status?: RegistrationStatus;
+    };
 
 // Same alphabet as public.gen_ref_code(), tolerant of "VB 7K3Q", "vb7k3q", etc.
 const REF_PATTERN = /\bVB[\s-]?([A-HJKMNP-Z2-9]{4})\b/i;
@@ -54,7 +60,12 @@ export function matchPayment(payment: IncomingPayment, candidates: Candidate[]):
     const byRef = candidates.find((c) => c.refCode === ref);
     if (!byRef) return { kind: "unmatched", reason: `Ref code ${ref} not found among open sign-ups` };
     if (byRef.status !== "pending_payment") {
-      return { kind: "unmatched", reason: `Ref code ${ref} belongs to a ${byRef.status.replace("_", " ")} registration` };
+      return {
+        kind: "unmatched",
+        reason: `Ref code ${ref} belongs to a ${byRef.status.replace("_", " ")} registration`,
+        registrationId: byRef.registrationId,
+        status: byRef.status,
+      };
     }
     // A short payment still belongs to this sign-up: the database adds it up
     // and keeps the spot held until the rest arrives.

@@ -55,6 +55,15 @@ describe("matchPayment", () => {
     expect(result).toMatchObject({ kind: "unmatched", reason: expect.stringContaining("waitlisted") });
   });
 
+  it("says which sign-up a ref code belongs to when it isn't waiting for payment", () => {
+    const paid: Candidate[] = [{ registrationId: "c1", refCode: "VB-YA5D", status: "confirmed", owedCents: 1000, names: [] }];
+    expect(matchPayment({ senderName: null, amountCents: 1000, memo: "VB-YA5D" }, paid)).toMatchObject({
+      kind: "unmatched",
+      registrationId: "c1",
+      status: "confirmed",
+    });
+  });
+
   it("matches by sender name + amount, ignoring case and accents", () => {
     expect(matchPayment({ senderName: "JOSE ALVAREZ", amountCents: 1000, memo: null }, candidates)).toEqual({
       kind: "match",

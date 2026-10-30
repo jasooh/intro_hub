@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { env } from "@/lib/env";
-import { matchPayment, type Candidate } from "@/lib/matcher";
+import { matchPayment, type Candidate, type MatchResult } from "@/lib/matcher";
 import { dispatchEvents, parseEvents } from "@/lib/registrations";
 import { createAdminClient } from "@/lib/supabase/server";
 import type { RegistrationEvent, RegistrationStatus } from "@/lib/types";
@@ -154,7 +154,13 @@ export async function POST(request: Request) {
     );
 
     if (result.kind === "unmatched") {
-      await admin.from("payments").update({ note: result.reason }).eq("id", payment.id);
+      const update = (await isHostMarkedPaid(admin, result))
+        ? {
+            note: "A host already marked this sign-up paid by hand, so this is that e-Transfer. Dismissed automatically.",
+            dismissed: true,
+          }
+        : { note: result.reason };
+      await admin.from("payments").update(update).eq("id", payment.id);
       continue;
     }
 
@@ -181,4 +187,23 @@ export async function POST(request: Request) {
 
   await dispatchEvents(events);
   return NextResponse.json({ ok: true, new: inserted.length, matched, cancelled: reversed });
+}
+
+/**
+ * A ref code for a confirmed sign-up that was only ever "Mark paid" by a host
+ * (no e-Transfer linked yet) is the money that mark stood for, so it needs no
+ * attention. If an e-Transfer is already linked, this one may be a double
+ * payment, so it stays in the inbox.
+ */
+async function isHostMarkedPaid(
+  admin: ReturnType<typeof createAdminClient>,
+  result: Extract<MatchResult, { kind: "unmatched" }>,
+) {
+  if (result.status !== "confirmed" || !result.registrationId) return false;
+  const { data } = await admin
+    .from("payments")
+    .select("gmail_message_id, matched_by")
+    .eq("registration_id", result.registrationId)
+    .is("reversed_at", null);
+  return Boolean(data?.length) && data!.every((p) => p.matched_by === "admin" && !p.gmail_message_id);
 }

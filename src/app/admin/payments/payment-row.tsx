@@ -58,6 +58,7 @@ export function PaymentRow({ p, method, options }: { p: Row; method: PaymentMeth
             </p>
           )}
           {method === "unmatched" && p.note && <p className="text-sm font-semibold text-warn">{p.note}</p>}
+          {method === "dismissed" && p.note && <p className="text-sm text-ink-soft">{p.note}</p>}
           {method === "reversed" && p.reversed_at && (
             <p className="text-sm font-semibold text-bad">
               Cancelled before it was deposited ({formatDateTime(p.reversed_at)}). It no longer counts as paid.
