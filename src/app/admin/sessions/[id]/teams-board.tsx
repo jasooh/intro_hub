@@ -7,6 +7,7 @@ import { TeamSelect } from "@/components/team-select";
 import { Avatar, inputClass, Mark, reveal, Sheet } from "@/components/ui";
 import { defaultTeamCount, requestGroups, skillLevel, type TeamRequest } from "@/lib/teams";
 import type { Match, Profile, Registration, Session, Team } from "@/lib/types";
+import { groupLetter, RequestSummary, type RequestPlayer } from "./request-summary";
 import { ScheduleBoard } from "./schedule-board";
 
 export type TeamRow = Pick<Registration, "id" | "team_id" | "profile_id"> & {
@@ -56,6 +57,12 @@ export function TeamsBoard({
     requests,
   );
   const letterOf = new Map(groups.flatMap((g, i) => g.map((id) => [id, groupLetter(i)] as const)));
+  const requestPlayers: RequestPlayer[] = players.map((p) => ({
+    id: p.id,
+    name: nameOf(p),
+    avatarUrl: p.profile.avatar_url,
+    teamId: p.team_id && teams.some((t) => t.id === p.team_id) ? p.team_id : null,
+  }));
   const published = Boolean(session.teams_published_at);
   const unassigned = players.filter((p) => !p.team_id || !teams.some((t) => t.id === p.team_id));
 
@@ -90,7 +97,7 @@ export function TeamsBoard({
         </form>
         {groups.length > 0 && (
           <div className="mt-6">
-            <RequestSummary groups={groups} players={players} teams={teams} requests={requests} />
+            <RequestSummary groups={groups} players={requestPlayers} teams={teams} requests={requests} />
           </div>
         )}
       </Sheet>
@@ -115,7 +122,7 @@ export function TeamsBoard({
       }
     >
       <div className="space-y-6">
-        {groups.length > 0 && <RequestSummary groups={groups} players={players} teams={teams} requests={requests} />}
+        {groups.length > 0 && <RequestSummary groups={groups} players={requestPlayers} teams={teams} requests={requests} />}
 
         <TeamBlocks
           host
@@ -217,79 +224,6 @@ function TeamMember({
       {tag ? <GroupTag letter={tag} /> : <span aria-hidden className="size-6 shrink-0" />}
       <TeamSelect action={moveToTeam.bind(null, reg.id, sessionId)} teams={teams} current={reg.team_id} />
     </li>
-  );
-}
-
-const groupLetter = (i: number) => (i < 26 ? String.fromCharCode(65 + i) : `G${i + 1}`);
-
-/**
- * Spells out each request group (who asked for whom) and whether it's
- * currently together on one team or split, e.g. after a manual move.
- */
-function RequestSummary({
-  groups,
-  players,
-  teams,
-  requests,
-}: {
-  groups: string[][];
-  players: TeamRow[];
-  teams: Team[];
-  requests: TeamRequest[];
-}) {
-  const byId = new Map(players.map((p) => [p.id, p]));
-  const teamName = (teamId: string | null) => teams.find((t) => t.id === teamId)?.name ?? null;
-
-  return (
-    <section aria-label="Team requests" className="space-y-2">
-      <p className="font-display text-sm font-bold tracking-[0.15em] uppercase">Requests</p>
-      <ul className="divide-y divide-ink/15 border-y border-ink/15">
-        {groups.map((g, i) => {
-          const inGroup = new Set(g);
-          const edges = requests.filter((r) => inGroup.has(r.from) && inGroup.has(r.to));
-          const mutual = (a: string, b: string) => edges.some((r) => r.from === b && r.to === a);
-          // "Jane → Sam, Priya", with "Dev ↔ Mia" when two people asked for each other.
-          const lines: string[] = [];
-          const shown = new Set<string>();
-          for (const from of g) {
-            const targets = edges.filter((r) => r.from === from).map((r) => r.to);
-            const oneWay = targets.filter((to) => !mutual(from, to));
-            for (const to of targets.filter((to) => mutual(from, to))) {
-              const key = [from, to].sort().join("|");
-              if (!shown.has(key)) {
-                shown.add(key);
-                lines.push(`${nameOf(byId.get(from)!)} ↔ ${nameOf(byId.get(to)!)}`);
-              }
-            }
-            if (oneWay.length) lines.push(`${nameOf(byId.get(from)!)} → ${oneWay.map((to) => nameOf(byId.get(to)!)).join(", ")}`);
-          }
-
-          const placed = g.map((id) => byId.get(id)!.team_id).map(teamName);
-          const onTeams = [...new Set(placed.filter((n): n is string => Boolean(n)))];
-          const status =
-            teams.length === 0 ? null : placed.some((n) => !n) ? (
-              <span className="text-warn">● not everyone is on a team</span>
-            ) : onTeams.length === 1 ? (
-              <span className="text-ok">✓ together on {onTeams[0]}</span>
-            ) : (
-              <span className="text-bad">
-                ⚠ split:{" "}
-                {onTeams
-                  .map((t) => `${t} (${g.filter((id) => teamName(byId.get(id)!.team_id) === t).map((id) => nameOf(byId.get(id)!)).join(", ")})`)
-                  .join(" / ")}
-              </span>
-            );
-
-          return (
-            <li key={g.join("|")} className="flex flex-wrap items-start gap-x-3 gap-y-1 py-2">
-              <GroupTag letter={groupLetter(i)} />
-              <span className="min-w-0 flex-1">{lines.join(" · ")}</span>
-              {status && <span className="font-display text-sm font-bold tracking-wide uppercase">{status}</span>}
-            </li>
-          );
-        })}
-      </ul>
-    </section>
   );
 }
 
