@@ -502,7 +502,13 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
           </form>
         </div>
         {hasChoice && reg.status === "confirmed" && (
-          <p className="text-sm text-ink-soft">Want to change your option after paying? Contact the host.</p>
+          <p className="text-sm text-ink-soft">
+            Want to change your option after paying?{" "}
+            <Link href="/me/messages/new" className="font-bold text-mat underline decoration-2 underline-offset-4">
+              Contact the host
+            </Link>
+            .
+          </p>
         )}
       </div>
     </Sheet>
