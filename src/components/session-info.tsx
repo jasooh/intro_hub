@@ -103,6 +103,23 @@ export function FirstTimeSheet({ className, style }: { className?: string; style
   );
 }
 
+/** A small nudge under the sign-up block: questions go to the hosts through the inbox. Signed-out visitors sign in first. */
+export function QuestionsNote({ signedIn, className, style }: { signedIn: boolean; className?: string; style?: React.CSSProperties }) {
+  const href = "/me/messages/new";
+  return (
+    <p className={`max-w-xl border-l-4 border-mat py-1 pl-3 text-sm text-ink-soft ${className ?? ""}`} style={style}>
+      <b className="font-display text-sm font-bold tracking-[0.15em] text-ink uppercase">Questions?</b>{" "}
+      Leave a message for the hosts and they&apos;ll reply in your inbox.{" "}
+      <Link
+        href={signedIn ? href : `/login?next=${encodeURIComponent(href)}`}
+        className="font-bold text-mat underline decoration-2 underline-offset-4"
+      >
+        {signedIn ? "Message the hosts" : "Sign in to message the hosts"}
+      </Link>
+    </p>
+  );
+}
+
 /** The host's notes on a session, labelled so they don't read like a status message. */
 export function HostNotes({ notes, className, style }: { notes: string; className?: string; style?: React.CSSProperties }) {
   return (

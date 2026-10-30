@@ -6,7 +6,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { cancelRegistration, changeOption, registerForSession, setBroughtBy, setTeammates } from "@/app/actions";
 import { AddToCalendar } from "@/components/add-to-calendar";
-import { FirstTimeSheet, HostNotes, HowItWorks } from "@/components/session-info";
+import { FirstTimeSheet, HostNotes, HowItWorks, QuestionsNote } from "@/components/session-info";
 import { BringAFriendField } from "@/components/bring-a-friend-field";
 import { LiveRefresh } from "@/components/live-refresh";
 import { PaymentInstructions } from "@/components/payment-instructions";
@@ -219,6 +219,10 @@ async function SessionView({
           </Sheet>
         )}
       </div>
+
+      {!cancelled && profile?.role !== "admin" && (
+        <QuestionsNote signedIn={profile != null} className="reveal" style={reveal(5)} />
+      )}
 
       {showIntro && <FirstTimeSheet className="reveal" style={reveal(5)} />}
 
