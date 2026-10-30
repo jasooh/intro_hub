@@ -5,7 +5,7 @@ import { env } from "@/lib/env";
 // one kind of email, so it works without signing in but can't be guessed or
 // pointed at someone else. The key is derived from CRON_SECRET (no extra setting).
 
-export const UNSUBSCRIBE_KINDS = ["updates", "session_open", "reminders", "host"] as const;
+export const UNSUBSCRIBE_KINDS = ["updates", "session_open", "reminders", "messages", "host"] as const;
 export type UnsubscribeKind = (typeof UNSUBSCRIBE_KINDS)[number];
 
 /** The profile switch each kind turns off. */
@@ -13,6 +13,7 @@ export const UNSUBSCRIBE_COLUMNS = {
   updates: "email_updates",
   session_open: "email_session_open",
   reminders: "email_reminders",
+  messages: "email_messages",
   host: "host_emails",
 } as const satisfies Record<UnsubscribeKind, string>;
 
@@ -21,6 +22,7 @@ export const UNSUBSCRIBE_LABELS: Record<UnsubscribeKind, string> = {
   updates: "updates from the hosts",
   session_open: "“sign-ups are open” emails",
   reminders: "day-before reminders",
+  messages: "email about new messages from the hosts",
   host: "host emails (summaries and alerts)",
 };
 

@@ -22,6 +22,7 @@ export function AccountMenu({
   email,
   avatarUrl,
   host,
+  unread = 0,
   showDevTools,
 }: {
   name: string;
@@ -29,11 +30,13 @@ export function AccountMenu({
   avatarUrl: string | null;
   /** Hosts only. */
   host: HostMenu | null;
+  /** Unread inbox messages for a player (hosts see theirs in the host pages instead). */
+  unread?: number;
   showDevTools: boolean;
 }) {
   const [signingOut, startSignOut] = useTransition();
   const pathname = usePathname();
-  const waiting = host ? needsAttention(host.badges) : 0;
+  const waiting = (host ? needsAttention(host.badges) : 0) + unread;
   const wide = Boolean(host);
   const isActive = (href: string) =>
     href === "/admin"
@@ -46,7 +49,7 @@ export function AccountMenu({
     // Not modal: no scroll lock, so opening it never shifts the page (or the sticky header).
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger
-        aria-label={waiting ? `Account menu (${waiting} thing${waiting === 1 ? "" : "s"} need a host)` : "Account menu"}
+        aria-label={waiting ? `Account menu (${waiting} thing${waiting === 1 ? "" : "s"} waiting)` : "Account menu"}
         className="relative -m-1.5 rounded-full p-1.5 outline-none focus-visible:ring-2 focus-visible:ring-line focus-visible:ring-offset-2 focus-visible:ring-offset-maple"
       >
         <Avatar name={name} src={avatarUrl} size={32} />
@@ -84,6 +87,9 @@ export function AccountMenu({
             </PanelLink>
             <PanelLink href="/me/signups" active={isActive("/me/signups")}>
               My sign-ups
+            </PanelLink>
+            <PanelLink href="/me/messages" active={isActive("/me/messages")} count={unread}>
+              Messages
             </PanelLink>
           </Group>
 

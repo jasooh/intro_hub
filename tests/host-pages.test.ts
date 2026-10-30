@@ -9,7 +9,7 @@ describe("host pages", () => {
   });
 
   it("only count to-dos for the avatar dot (owed money is a reminder)", () => {
-    expect(needsAttention({ payments: 0, owed: 7, refunds: 0, feedback: 0 })).toBe(0);
-    expect(needsAttention({ payments: 2, owed: 7, refunds: 1, feedback: 1 })).toBe(4);
+    expect(needsAttention({ payments: 0, owed: 7, refunds: 0, feedback: 0, messages: 0 })).toBe(0);
+    expect(needsAttention({ payments: 2, owed: 7, refunds: 1, feedback: 1, messages: 3 })).toBe(7);
   });
 });

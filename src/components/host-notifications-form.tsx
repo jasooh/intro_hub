@@ -22,7 +22,7 @@ export function HostNotificationsForm({ profile }: { profile: Profile }) {
         defaultOn={profile.host_emails ?? true}
         label="Email me about sign-ups"
         hint="Summaries, session-day rosters and alerts about problems."
-        total={4}
+        total={5}
       >
         <fieldset className="space-y-3">
           <legend className="mb-1 font-display text-sm font-bold tracking-[0.15em] uppercase">Summary of changes</legend>
@@ -57,6 +57,12 @@ export function HostNotificationsForm({ profile }: { profile: Profile }) {
             defaultChecked={profile.host_alert_unmatched}
             title={<b>Right away for e-Transfer problems</b>}
             hint="When a payment arrives that couldn't be matched to a sign-up, or a sender cancels one."
+          />
+          <EmailChoice
+            name="host_alert_messages"
+            defaultChecked={profile.host_alert_messages ?? true}
+            title={<b>Right away for player messages</b>}
+            hint="When a player writes to the hosts in the inbox."
           />
         </fieldset>
       </EmailSwitch>

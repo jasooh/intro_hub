@@ -50,6 +50,8 @@ export type Profile = {
   email_session_open: boolean;
   /** Under that switch: the day-before reminder for sessions they're in. */
   email_reminders: boolean;
+  /** Under that switch: an email when the hosts message them (the inbox). */
+  email_messages: boolean;
   media_consent_at: string | null;
   waiver_accepted_at: string | null;
   waiver_version: string | null;
@@ -62,7 +64,32 @@ export type Profile = {
   host_session_day: boolean;
   host_alert_late_cancel: boolean;
   host_alert_unmatched: boolean;
+  /** Instant email when a player writes in the inbox. */
+  host_alert_messages: boolean;
   host_digest_sent_at: string | null;
+};
+
+/** A conversation between one player and the hosts (shared host inbox). */
+export type MessageThread = {
+  id: string;
+  profile_id: string;
+  subject: string;
+  session_id: string | null;
+  started_by: string | null;
+  created_at: string;
+  last_message_at: string;
+  last_from_host: boolean;
+  player_read_at: string | null;
+  host_read_at: string | null;
+};
+
+export type ThreadMessage = {
+  id: string;
+  thread_id: string;
+  author_id: string | null;
+  from_host: boolean;
+  body: string;
+  created_at: string;
 };
 
 export type SessionTemplate = {

@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+import { createClient } from "@/lib/supabase/server";
 import { MeNav } from "./me-nav";
 
 export default function MeLayout({ children }: LayoutProps<"/me">) {
@@ -5,9 +7,18 @@ export default function MeLayout({ children }: LayoutProps<"/me">) {
     <div className="space-y-10">
       <div className="space-y-1">
         <p className="font-display text-sm font-bold tracking-[0.3em] t-[#f2e3c6]/60 uppercase">Your account</p>
-        <MeNav />
+        <Suspense fallback={<MeNav />}>
+          <NavWithUnread />
+        </Suspense>
       </div>
       {children}
     </div>
   );
+}
+
+/** The tabs, with the unread-messages count on Messages. */
+async function NavWithUnread() {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("unread_message_count");
+  return <MeNav unread={typeof data === "number" ? data : 0} />;
 }

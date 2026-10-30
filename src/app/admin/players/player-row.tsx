@@ -11,7 +11,7 @@ import {
 import { SkillRating } from "@/components/skill-rating";
 import { PlayerDetails } from "@/components/player-details";
 import { SubmitButton } from "@/components/submit-button";
-import { Avatar, inputClass, Mark } from "@/components/ui";
+import { Avatar, buttonClass, inputClass, Mark } from "@/components/ui";
 import { formatMoney } from "@/lib/format";
 import type { Profile } from "@/lib/types";
 
@@ -47,6 +47,11 @@ export function PlayerRow({
 
   const actions = (
     <div className="space-y-4">
+      {!isMe && !p.guest && (
+        <Link href={`/admin/messages/new?to=${p.id}`} className={buttonClass("secondary", "sm")}>
+          Message {name}
+        </Link>
+      )}
       <form action={updateEtransferNames.bind(null, p.id)} className="flex items-end gap-3">
         <label className="block flex-1 space-y-1">
           <span className="font-display text-sm font-bold tracking-[0.15em] uppercase">e-Transfer names</span>

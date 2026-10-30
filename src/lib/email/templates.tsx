@@ -585,6 +585,59 @@ export function buildSessionMessageEmail({
 }
 
 // ---------------------------------------------------------------------------
+// Inbox messages (host <-> player threads)
+// ---------------------------------------------------------------------------
+
+/** A new message in a thread. `toHost` flips the greeting and footer. */
+export function buildMessageEmail({
+  subject,
+  body,
+  recipientName,
+  senderName,
+  threadUrl,
+  settingsUrl,
+  unsubscribeUrl,
+  toHost,
+}: {
+  subject: string;
+  /** Plain text, shown with its line breaks. */
+  body: string;
+  recipientName: string;
+  senderName: string;
+  threadUrl: string;
+  settingsUrl: string;
+  unsubscribeUrl?: string;
+  toHost?: boolean;
+}): Built {
+  return {
+    subject: toHost ? `${senderName}: ${subject}` : `${subject} · Intro 2 Volleyball`,
+    element: (
+      <Layout
+        preview={body.slice(0, 90)}
+        eyebrow={toHost ? "Message from a player" : "Message from the hosts"}
+        footerNote={
+          toHost ? (
+            <HostFooter settingsUrl={settingsUrl} unsubscribeUrl={unsubscribeUrl} />
+          ) : (
+            <OptOut unsubscribeUrl={unsubscribeUrl} settingsUrl={settingsUrl} />
+          )
+        }
+      >
+        <Title>{subject.replace(/[.!?]$/, "")}</Title>
+        <Text style={s.text}>Hi {recipientName},</Text>
+        <Text style={s.text}>{senderName} wrote:</Text>
+        <Text style={{ ...s.text, whiteSpace: "pre-wrap", borderLeft: `3px solid ${c.line}`, paddingLeft: 12 }}>
+          {body}
+        </Text>
+        <Button href={threadUrl} style={s.button}>
+          Reply on Intro Hub
+        </Button>
+      </Layout>
+    ),
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Sign-ups are open (sent to everyone who gets announcements)
 // ---------------------------------------------------------------------------
 

@@ -24,6 +24,7 @@ Open the file listed for the current version; older copies in earlier migrations
 | `_bump_overflow` | `20261104000000_capacity_overflow.sql` | 1 |
 | `_bump_schedule_revision` | `20261118000000_audit_fixes.sql` | 1 |
 | `_claim_regular` | `20261101000000_signup_options.sql` | 1 |
+| `_clean_message` | `20261128000000_messages.sql` | 1 |
 | `_compute_session_stats` | `20261113000000_stats.sql` | 1 |
 | `_devtools_guard` | `20261023000000_dev_tools.sql` | 1 |
 | `_devtools_log` | `20261023000000_dev_tools.sql` | 1 |
@@ -90,13 +91,18 @@ Open the file listed for the current version; older copies in earlier migrations
 | `get_session_attendees` | `20261101000000_signup_options.sql` | 4 |
 | `get_session_counts` | `20261101000000_signup_options.sql` | 3 |
 | `handle_new_user` | `20261012000000_init.sql` | 1 |
+| `host_start_threads` | `20261128000000_messages.sql` | 1 |
 | `ingest_apply_payment` | `20261012000000_init.sql` | 1 |
 | `ingest_reverse_payment` | `20261108000000_cancellation_ref_code.sql` | 2 |
 | `is_admin` | `20261012000000_init.sql` | 1 |
 | `is_devtools_user` | `20261023000000_dev_tools.sql` | 1 |
+| `mark_thread_read` | `20261128000000_messages.sql` | 1 |
+| `player_start_thread` | `20261128000000_messages.sql` | 1 |
+| `post_message` | `20261128000000_messages.sql` | 1 |
 | `rate_limit_hit` | `20261122000000_rate_limits.sql` | 1 |
 | `register_for_session` | `20261101000000_signup_options.sql` | 6 |
 | `run_tick` | `20261113000000_stats.sql` | 7 |
 | `set_brought_by` | `20261101000000_signup_options.sql` | 2 |
 | `set_team_requests` | `20261022000000_team_requests.sql` | 1 |
 | `touch_registration` | `20261012000000_init.sql` | 1 |
+| `unread_message_count` | `20261128000000_messages.sql` | 1 |

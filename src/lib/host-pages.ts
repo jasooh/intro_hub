@@ -1,6 +1,6 @@
 // Host pages by what they're for: the admin tab bar and the avatar panel both use this.
 
-export type HostBadge = "payments" | "owed" | "refunds" | "feedback";
+export type HostBadge = "payments" | "owed" | "refunds" | "feedback" | "messages";
 export type HostPage = { href: string; label: string; badge?: HostBadge };
 export type HostGroup = { label: string; links: readonly HostPage[] };
 
@@ -24,6 +24,7 @@ export const HOST_GROUPS: readonly HostGroup[] = [
     label: "Players",
     links: [
       { href: "/admin/players", label: "Players" },
+      { href: "/admin/messages", label: "Messages", badge: "messages" },
       { href: "/admin/feedback", label: "Feedback", badge: "feedback" },
       { href: "/admin/songs", label: "Songs" },
     ],
@@ -40,4 +41,4 @@ export const HOST_GROUPS: readonly HostGroup[] = [
 export type HostBadges = Record<HostBadge, number>;
 
 /** Things a host has to act on (owed money is a reminder, not a to-do): drives the dot on the avatar. */
-export const needsAttention = (b: HostBadges) => b.payments + b.refunds + b.feedback;
+export const needsAttention = (b: HostBadges) => b.payments + b.refunds + b.feedback + b.messages;

@@ -430,6 +430,15 @@ async function AdminSession({
           </span>
         </summary>
         {!cancelled && <RosterEmailForm action={emailRoster.bind(null, id)} counts={audienceCounts} />}
+        {!cancelled && (
+          <p className="text-sm text-ink-soft">
+            Want replies?{" "}
+            <Link href={`/admin/messages/new?session=${id}`} className="font-bold text-mat underline">
+              Message these players in their inbox
+            </Link>{" "}
+            instead: each gets a private conversation they can answer.
+          </p>
+        )}
         {messages.length > 0 && (
           <div className="space-y-2">
             <p className="font-display text-sm font-bold tracking-[0.15em] uppercase">Sent</p>

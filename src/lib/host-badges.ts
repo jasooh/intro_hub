@@ -11,7 +11,7 @@ export type HostMenuData = { badges: HostBadges; nextSession: { id: string; labe
 export async function getHostMenuData(): Promise<HostMenuData> {
   const supabase = await createClient();
   const head = { count: "exact", head: true } as const;
-  const [payments, cancellations, refunds, feedback, owing, upcoming] = await Promise.all([
+  const [payments, cancellations, refunds, feedback, messages, owing, upcoming] = await Promise.all([
     supabase.from("payments").select("id", head).is("registration_id", null).eq("dismissed", false).is("reversed_at", null),
     supabase.from("payment_cancellations").select("id", head).is("payment_id", null).is("dismissed_at", null),
     supabase
@@ -21,6 +21,7 @@ export async function getHostMenuData(): Promise<HostMenuData> {
       .is("refunded_at", null)
       .is("refund_waived_at", null),
     supabase.from("feedback").select("id", head).is("handled_at", null),
+    supabase.rpc("unread_message_count"),
     getOwedSignups(),
     getUpcomingSessions(1, { includeCancelled: false }),
   ]);
@@ -31,6 +32,7 @@ export async function getHostMenuData(): Promise<HostMenuData> {
       owed: owedTotals(owing).size,
       refunds: refunds.count ?? 0,
       feedback: feedback.count ?? 0,
+      messages: typeof messages.data === "number" ? messages.data : 0,
     },
     nextSession: next ? { id: next.id, label: `${next.title} · ${formatDateTime(next.starts_at)}` } : null,
   };

@@ -61,6 +61,7 @@ const HostNotificationsForm = z.object({
   host_session_day: z.literal("on").optional(),
   host_alert_late_cancel: z.literal("on").optional(),
   host_alert_unmatched: z.literal("on").optional(),
+  host_alert_messages: z.literal("on").optional(),
 });
 
 export async function saveHostNotifications(formData: FormData) {
@@ -78,6 +79,7 @@ export async function saveHostNotifications(formData: FormData) {
       host_session_day: f.host_session_day === "on",
       host_alert_late_cancel: f.host_alert_late_cancel === "on",
       host_alert_unmatched: f.host_alert_unmatched === "on",
+      host_alert_messages: f.host_alert_messages === "on",
     })
     .eq("id", me.id);
   if (error) fail("/me", error.message);

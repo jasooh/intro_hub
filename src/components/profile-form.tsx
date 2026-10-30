@@ -283,7 +283,7 @@ export function ProfileForm({
           defaultOn={ticked("announcement_emails", profile.announcement_emails ?? true)}
           label="Email me about the club"
           hint="You'll always get emails about your own sign-ups and payments."
-          total={3}
+          total={4}
         >
           <EmailChoice
             name="email_updates"
@@ -302,6 +302,12 @@ export function ProfileForm({
             defaultChecked={ticked("email_reminders", profile.email_reminders ?? true)}
             title="Day-before reminders"
             hint="For sessions you're signed up for."
+          />
+          <EmailChoice
+            name="email_messages"
+            defaultChecked={ticked("email_messages", profile.email_messages ?? true)}
+            title="Messages from the hosts"
+            hint="An email when the hosts write to you in your inbox."
           />
         </EmailSwitch>
       </Group>

@@ -73,6 +73,7 @@ export default function PrivacyPage() {
       <Sheet label="How long we keep it" className="reveal" style={reveal(4)}>
         <Points>
           <li>Your profile and sign-ups stay until you delete your account.</li>
+          <li>Messages between you and the hosts stay in your inbox until you delete your account, then they are removed. Only you and the hosts can read them.</li>
           <li>Logs are cleared automatically: error logs after 30 days, email send records after 90, activity notes for hosts after 180, and email history after about a year.</li>
           <li>Payment records stay for the club&apos;s bookkeeping, unlinked from you once your account is deleted.</li>
         </Points>
