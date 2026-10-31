@@ -40,8 +40,9 @@ function gmailQuery(testSender) {
 
 // Only incoming money. Outgoing "your transfer to X was deposited" emails are ignored.
 // Subjects seen: "X sent you money.", "X sent you $1.00. Claim your deposit!",
-// "A money transfer from X has been automatically deposited.", and French.
-var INCOMING_SUBJECT = /sent you (?:money|\$)|transfer from .+ (?:has been|was) (?:automatically )?deposited|vous a envoy/i;
+// "A money transfer from X has been automatically deposited.",
+// "You've received $15.00 from X and it has been automatically deposited." (Oct 2026), and French.
+var INCOMING_SUBJECT = /sent you (?:money|\$)|transfer from .+ (?:has been|was) (?:automatically )?deposited|received \$[\d,.]+ from .+ deposited|vous a envoy/i;
 
 // The sender took the money back before it was deposited, or it went unclaimed.
 // The real email (Oct 2026) says only: "Your transfer of $14.00 has been

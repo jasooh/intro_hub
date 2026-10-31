@@ -65,6 +65,31 @@ Reference Number: CAabc123`;
     ).toMatchObject({ kind: "received", senderName: "José Álvarez", amountCents: 101250, memo: "volleyball sat" });
   });
 
+  it("parses the real 'You've received $X from NAME' autodeposit email (Oct 2026)", () => {
+    const body = `Hi JANE HOST,
+
+Funds Deposited!
+$15.00
+
+Your funds have been automatically deposited into your account at RBC Royal Bank.
+
+Transfer Details
+
+Message:
+VB-7K3Q
+
+Date: Oct 28, 2026
+Reference Number: CAtest1234
+Sent From: JANE DOE
+Amount: $15.00 (CAD)`;
+    expect(
+      parseInteracEmail(
+        "Interac e-Transfer: You've received $15.00 from JANE DOE and it has been automatically deposited.",
+        body,
+      ),
+    ).toMatchObject({ kind: "received", senderName: "JANE DOE", amountCents: 1500, memo: "VB-7K3Q", reference: "CAtest1234" });
+  });
+
   it("parses the 'sent you $X. Claim your deposit!' format", () => {
     const body = `Hi Intro 2 Volleyball,
 
