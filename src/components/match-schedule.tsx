@@ -52,9 +52,12 @@ export function MatchSchedule({
                 const courtLabel = multiCourt ? `Court ${g.court}` : null;
                 if (renderGame) return <div key={g.id}>{renderGame(g, courtLabel)}</div>;
                 return (
-                  <div key={g.id} className="space-y-1">
+                  <div key={g.id} className="max-w-lg space-y-1">
+                    {/* Centred over the "vs" so it lines up with the matchup, which is centred too. */}
                     {courtLabel && (
-                      <p className="font-display text-xs font-bold tracking-[0.2em] text-ink-soft uppercase">{courtLabel}</p>
+                      <p className="text-center font-display text-xs font-bold tracking-[0.2em] text-ink-soft uppercase">
+                        {courtLabel}
+                      </p>
                     )}
                     <p className="grid max-w-lg grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-3">
                       <TeamPlate name={nameOf.get(g.team_a_id)} mine={g.team_a_id === highlightTeamId} align="end" />
