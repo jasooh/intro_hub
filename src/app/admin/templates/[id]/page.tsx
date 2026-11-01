@@ -6,6 +6,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { BackLink, PageSpinner, PageTitle, reveal } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { zonedDayKey } from "@/lib/format";
+import { getHostChoices } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
 import type { SessionTemplate } from "@/lib/types";
 import { TemplateForm, WEEKDAYS } from "../template-form";
@@ -33,6 +34,7 @@ async function EditTemplate({
   const { data: template } = await supabase.from("session_templates").select("*").eq("id", id).maybeSingle<SessionTemplate>();
   if (!template) notFound();
   const today = zonedDayKey(new Date().toISOString());
+  const hostChoices = { ...(await getHostChoices()), selected: template.host_ids };
 
   return (
     <div className="space-y-10">
@@ -51,6 +53,7 @@ async function EditTemplate({
           template={template}
           today={today}
           submitLabel="Save changes"
+          hostChoices={hostChoices}
         />
       </div>
       <section className="flex flex-wrap items-center justify-between gap-4 border-t-2 border-bad pt-4">

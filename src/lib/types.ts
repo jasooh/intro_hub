@@ -119,6 +119,8 @@ export type SessionTemplate = {
   instructional_capacity: number | null;
   /** "YYYY-MM-DD": no sessions are created for days before this. */
   starts_on: string;
+  /** Hosts new sessions start with (host profile ids). */
+  host_ids: string[];
 };
 
 export type Session = {

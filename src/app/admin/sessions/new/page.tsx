@@ -20,8 +20,9 @@ export default function NewSessionPage() {
 }
 
 async function NewSession() {
-  await requireAdmin();
-  const hostChoices = await getHostChoices();
+  const me = await requireAdmin();
+  // A one-off session starts hosted by whoever creates it (they can untick or add others).
+  const hostChoices = { ...(await getHostChoices()), selected: [me.id] };
   return (
     <div className="space-y-10">
       <div>

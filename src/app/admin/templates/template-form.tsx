@@ -1,3 +1,4 @@
+import { HostPicker, type HostChoices } from "@/components/host-picker";
 import { LocationInput } from "@/components/location-input";
 import { SubmitButton } from "@/components/submit-button";
 import { Field, FormGroup as Group, inputClass } from "@/components/ui";
@@ -24,12 +25,14 @@ export function TemplateForm({
   template,
   today,
   submitLabel,
+  hostChoices,
 }: {
   action: (formData: FormData) => Promise<void>;
   template?: SessionTemplate;
   /** "YYYY-MM-DD" in the club's time zone: the earliest start a host can pick. */
   today: string;
   submitLabel: string;
+  hostChoices: HostChoices;
 }) {
   const t = template;
   // An existing schedule may keep a start that has already passed.
@@ -51,6 +54,11 @@ export function TemplateForm({
           </Field>
         </div>
       </Group>
+
+      <HostPicker
+        choices={hostChoices}
+        hint="Every new session from this schedule starts with these hosts. Change one session from its own page."
+      />
 
       <Group title="When" hint="Instructional first, then drop-in.">
         <div className="space-y-5">

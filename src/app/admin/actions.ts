@@ -672,6 +672,7 @@ export async function saveTemplate(templateId: string | null, formData: FormData
     ...rest
   } = parsed.data;
   const o = offsetsOf({ instructional_start, instructional_end, dropin_start, dropin_end }, formPath);
+  const hostIds = formData.getAll("host_id").filter((v): v is string => typeof v === "string" && /^[0-9a-f-]{36}$/i.test(v));
 
   // The start can't be in the past, except an existing schedule keeping the start it already has.
   const supabase = await createClient();
@@ -695,6 +696,7 @@ export async function saveTemplate(templateId: string | null, formData: FormData
     dropin_offset_minutes: o.dropinStart,
     dropin_price_cents: dropin_price,
     instructional_capacity: instructional_price == null ? null : instructional_capacity,
+    host_ids: hostIds,
   };
 
   const { error } = templateId

@@ -4,6 +4,7 @@ import { saveTemplate } from "@/app/admin/actions";
 import { BackLink, PageSpinner, PageTitle, reveal } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { zonedDayKey } from "@/lib/format";
+import { getHostChoices } from "@/lib/queries";
 import { TemplateForm } from "../template-form";
 
 export const metadata: Metadata = {
@@ -19,7 +20,8 @@ export default function NewTemplatePage() {
 }
 
 async function NewTemplate() {
-  await requireAdmin();
+  const me = await requireAdmin();
+  const hostChoices = { ...(await getHostChoices()), selected: [me.id] };
   const today = zonedDayKey(new Date().toISOString());
   return (
     <div className="space-y-10">
@@ -30,7 +32,7 @@ async function NewTemplate() {
         </PageTitle>
       </div>
       <div className="reveal" style={reveal(1)}>
-        <TemplateForm action={saveTemplate.bind(null, null)} today={today} submitLabel="Create weekly session" />
+        <TemplateForm action={saveTemplate.bind(null, null)} today={today} submitLabel="Create weekly session" hostChoices={hostChoices} />
       </div>
     </div>
   );
