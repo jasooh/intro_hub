@@ -1,7 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { stillOwing, type OwedSignup } from "@/lib/owed";
-import { signupView } from "@/lib/signups";
+import { isActive, signupView } from "@/lib/signups";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import type { Attendee, Post, Profile, Registration, Session, SessionCounts } from "@/lib/types";
@@ -64,7 +64,17 @@ export async function getMySignups(profileId: string) {
     .order("created_at", { ascending: false })
     .limit(500);
   const now = Date.now();
-  return ((data ?? []) as (Registration & { session: Session })[])
+  // Every cancel + re-join leaves a dead row behind. Show one entry per session: the live sign-up if
+  // there is one, else the latest (rows are newest first).
+  const seen = new Map<string, boolean>();
+  const rows = ((data ?? []) as (Registration & { session: Session })[]).filter((r) => {
+    const live = isActive(r.status);
+    const hasLive = seen.get(r.session_id);
+    if (hasLive !== undefined && (!live || hasLive)) return false;
+    seen.set(r.session_id, live);
+    return true;
+  });
+  return rows
     .map((r) => ({ ...r, view: signupView(r, now), ended: new Date(r.session.ends_at).getTime() <= now }))
     .sort((a, b) => {
       // Upcoming soonest first; everything else most recent first.
