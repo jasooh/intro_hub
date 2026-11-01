@@ -93,7 +93,7 @@ async function MySignups({ searchParams }: { searchParams: PageProps<"/me/signup
           ) : (
             <ul className="divide-y divide-ink/25">
               {shown.map((r) => (
-                <SignupRow key={r.id} reg={r} actionable={r.view === "upcoming"} returnTo="/me/signups" />
+                <SignupRow key={r.id} reg={r} actionable={r.view === "upcoming"} ended={r.ended} returnTo="/me/signups" />
               ))}
             </ul>
           )}

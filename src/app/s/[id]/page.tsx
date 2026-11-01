@@ -238,7 +238,7 @@ async function SessionView({
 }
 
 async function MySpot({ session, profile, counts }: { session: Session; profile: Profile; counts?: SessionCounts }) {
-  const { reg, started, notOpenYet, beforeCutoff } = await getMySpot(session, profile.id);
+  const { reg, started, ended, notOpenYet, beforeCutoff } = await getMySpot(session, profile.id);
   const path = `/s/${session.id}`;
   // Teammate picks: other drop-in players who are signed up (incl. the waitlist).
   const everyone = await getAttendees(session.id);
@@ -386,12 +386,31 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
     >
       <div className="space-y-5">
         {reg.status === "pending_payment" && <PaymentInstructions registration={reg} deposit={deposit != null} />}
-        {reg.status === "confirmed" && (
+        {reg.status === "confirmed" && !ended && (
           <p className="font-display text-3xl font-black uppercase">
             You&apos;re in<span className="text-line">.</span>{" "}
             {reg.option === "instructional" ? "See you at the class" : "See you on court"}
             <span className="text-line">.</span>
           </p>
+        )}
+        {ended && (
+          <div className="space-y-2">
+            <p className="font-display text-3xl font-black uppercase">
+              {reg.status === "confirmed" ? "Thank you for coming" : "This session is over"}
+              <span className="text-line">.</span>
+            </p>
+            <p className="max-w-xl text-lg">
+              Got feedback? Leave it on the{" "}
+              <Link href="/contact" className="font-bold text-mat underline decoration-2 underline-offset-4">
+                feedback page
+              </Link>{" "}
+              (you can send it anonymously), or{" "}
+              <Link href="/me/messages/new" className="font-bold text-mat underline decoration-2 underline-offset-4">
+                contact the host
+              </Link>
+              .
+            </p>
+          </div>
         )}
         {reg.status === "confirmed" && !started && (
           <AddToCalendar session={session} option={reg.option} />
@@ -450,6 +469,7 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
           </form>
         )}
 
+        {!ended && (
         <div className="flex flex-wrap items-center gap-4">
           {switchable &&
             others.map((other) => {
@@ -503,7 +523,8 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
             )}
           </form>
         </div>
-        {hasChoice && reg.status === "confirmed" && (
+        )}
+        {hasChoice && reg.status === "confirmed" && !ended && (
           <p className="text-sm text-ink-soft">
             Want to change your option after paying?{" "}
             <Link href="/me/messages/new" className="font-bold text-mat underline decoration-2 underline-offset-4">

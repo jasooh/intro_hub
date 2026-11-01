@@ -19,11 +19,14 @@ export function SignupRow({
   actionable,
   returnTo,
   preview = false,
+  ended = false,
 }: {
   reg: Registration & { session: Session };
   actionable: boolean;
   returnTo: string;
   preview?: boolean;
+  /** The session is over: no cancel button, just a thank you. */
+  ended?: boolean;
 }) {
   const sessionCancelled = reg.session.status === "cancelled";
   return (
@@ -72,7 +75,21 @@ export function SignupRow({
         </p>
       )}
 
-      {actionable && !preview && isActive(reg.status) && (
+      {actionable && ended && reg.status === "confirmed" && (
+        <p className="text-sm text-ink-soft">
+          Thank you for coming! Feedback? Use the{" "}
+          <Link href="/contact" className="font-bold text-mat underline decoration-2 underline-offset-4">
+            feedback page
+          </Link>{" "}
+          (anonymous if you like) or{" "}
+          <Link href="/me/messages/new" className="font-bold text-mat underline decoration-2 underline-offset-4">
+            contact the host
+          </Link>
+          .
+        </p>
+      )}
+
+      {actionable && !preview && !ended && isActive(reg.status) && (
         <form action={cancelRegistration.bind(null, reg.id, returnTo)}>
           <SubmitButton
             variant="danger"

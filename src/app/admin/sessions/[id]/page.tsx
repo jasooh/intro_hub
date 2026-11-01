@@ -239,19 +239,7 @@ async function AdminSession({
           <Scoreboard size="sm" className="w-full" value={pad2(holdingCount)} label="Awaiting pay" />
           <Scoreboard size="sm" className="w-full" value={pad2(waiting.length)} label="Waitlist" />
           {(instructionalCount > 0 || session.instructional_price_cents != null) && (
-            <Scoreboard size="sm" className="w-full" value={pad2(lessonCount)} label="At the lesson" />
-          )}
-          {(instructionalCount > 0 || session.instructional_price_cents != null) && (
-            <Scoreboard
-              size="sm"
-              className="w-full"
-              value={
-                session.instructional_capacity != null
-                  ? `${pad2(instructionalCount)}/${pad2(session.instructional_capacity)}`
-                  : pad2(instructionalCount)
-              }
-              label="Instr. only"
-            />
+            <Scoreboard size="sm" className="w-full" value={pad2(lessonCount)} label="Instructional" />
           )}
           <Scoreboard size="sm" className="w-full" value={formatMoney(collected)} label="e-Transfers in" />
         </ScoreboardRow>

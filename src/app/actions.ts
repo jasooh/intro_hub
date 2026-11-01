@@ -25,6 +25,7 @@ const ERRORS: Record<string, string> = {
   session_unavailable: "This session isn't available any more.",
   signups_not_open: "Sign-ups haven't opened yet.",
   session_started: "This session has already started.",
+  session_over: "This session is over, so it can't be cancelled. Please contact the host if something's wrong.",
   forbidden: "You can't do that.",
   profile_incomplete: "Please finish your profile first.",
   blocked: "You can't sign up right now. Please contact the hosts.",

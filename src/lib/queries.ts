@@ -47,6 +47,7 @@ export async function getMySpot(session: Session, profileId: string) {
   return {
     reg: data,
     started: now >= new Date(session.starts_at).getTime(),
+    ended: now >= new Date(session.ends_at).getTime(),
     notOpenYet: now < new Date(session.opens_at).getTime(),
     beforeCutoff: now < new Date(session.cancel_cutoff).getTime(),
   };
@@ -64,7 +65,7 @@ export async function getMySignups(profileId: string) {
     .limit(500);
   const now = Date.now();
   return ((data ?? []) as (Registration & { session: Session })[])
-    .map((r) => ({ ...r, view: signupView(r, now) }))
+    .map((r) => ({ ...r, view: signupView(r, now), ended: new Date(r.session.ends_at).getTime() <= now }))
     .sort((a, b) => {
       // Upcoming soonest first; everything else most recent first.
       const ta = new Date(a.session.starts_at).getTime();
