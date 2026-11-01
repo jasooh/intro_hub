@@ -5,7 +5,7 @@ import type { SessionHost } from "@/lib/types";
 export function HostedBy({ hosts }: { hosts: SessionHost[] }) {
   if (hosts.length === 0) return null;
   return (
-    <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink-soft">
+    <p className="my-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-ink-soft">
       <span className="flex -space-x-2">
         {hosts.map((h, i) => (
           <Avatar key={`${h.name}-${i}`} name={h.name} src={h.avatar_url} size={28} />
