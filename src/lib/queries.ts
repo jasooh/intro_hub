@@ -183,23 +183,55 @@ export async function getOwedSignups(): Promise<OwedSignup[]> {
 export async function getPlayerHistory() {
   await connection();
   const supabase = await createClient();
-  const { data } = await supabase.from("registrations").select("profile_id, status, session:sessions(starts_at)").limit(10000);
+  const [{ data }, { data: hostRows }] = await Promise.all([
+    supabase.from("registrations").select("profile_id, session_id, status, session:sessions(starts_at)").limit(10000),
+    supabase.from("session_hosts").select("profile_id, session_id, session:sessions(starts_at, status)").limit(10000),
+  ]);
   const now = Date.now();
   const history = new Map<string, { played: number; upcoming: number; last: string | null }>();
-  type Row = { profile_id: string; status: Registration["status"]; session: { starts_at: string } | null };
+  const played = new Set<string>(); // `${profile}:${session}`, so playing and hosting the same session counts once
+  const countPlayed = (h: { played: number; last: string | null }, startsAt: string) => {
+    h.played += 1;
+    if (!h.last || startsAt > h.last) h.last = startsAt;
+  };
+  type Row = { profile_id: string; session_id: string; status: Registration["status"]; session: { starts_at: string } | null };
   for (const r of (data ?? []) as unknown as Row[]) {
     if (!r.session) continue;
     const h = history.get(r.profile_id) ?? { played: 0, upcoming: 0, last: null };
     const started = new Date(r.session.starts_at).getTime() <= now;
     if (started && r.status === "confirmed") {
-      h.played += 1;
-      if (!h.last || r.session.starts_at > h.last) h.last = r.session.starts_at;
+      played.add(`${r.profile_id}:${r.session_id}`);
+      countPlayed(h, r.session.starts_at);
     } else if (!started && ["pending_payment", "confirmed", "waitlisted"].includes(r.status)) {
       h.upcoming += 1;
     }
     history.set(r.profile_id, h);
   }
+  // Hosting a session that ran counts as a session played.
+  type HostRow = { profile_id: string; session_id: string; session: { starts_at: string; status: string } | null };
+  for (const r of (hostRows ?? []) as unknown as HostRow[]) {
+    if (!r.session || r.session.status !== "scheduled" || new Date(r.session.starts_at).getTime() > now) continue;
+    if (played.has(`${r.profile_id}:${r.session_id}`)) continue;
+    const h = history.get(r.profile_id) ?? { played: 0, upcoming: 0, last: null };
+    countPlayed(h, r.session.starts_at);
+    history.set(r.profile_id, h);
+  }
   return history;
+}
+
+/** Hosts who can be picked as a session's host, and who is picked now (host pages only). */
+export async function getHostChoices(sessionId?: string) {
+  const supabase = await createClient();
+  const [{ data: admins }, { data: picked }] = await Promise.all([
+    supabase.from("profiles").select("id, display_name, full_name, email").eq("role", "admin").order("display_name"),
+    sessionId
+      ? supabase.from("session_hosts").select("profile_id").eq("session_id", sessionId)
+      : Promise.resolve({ data: [] as { profile_id: string }[] }),
+  ]);
+  return {
+    options: (admins ?? []).map((a) => ({ id: a.id as string, name: (a.display_name ?? a.full_name ?? a.email) as string })),
+    selected: (picked ?? []).map((p) => p.profile_id as string),
+  };
 }
 
 /**

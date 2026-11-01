@@ -1,7 +1,7 @@
 import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 import { createPublicClient } from "@/lib/supabase/public";
-import type { Post, PostAuthor, PublicPost, Session, SessionCounts } from "@/lib/types";
+import type { Post, PostAuthor, PublicPost, Session, SessionCounts, SessionHost } from "@/lib/types";
 
 // Cached reads for the public pages (home, /sessions, /s/[id], /updates). Page
 // views are served from the cache instead of hitting the database each time;
@@ -39,6 +39,16 @@ export async function getPublicSession(id: string): Promise<Session | null> {
   if (!isUuid(id)) return null;
   const { data } = await createPublicClient().from("sessions").select("*").eq("id", id).maybeSingle<Session>();
   return data;
+}
+
+/** Who hosts a session: display name and avatar only. */
+export async function getPublicSessionHosts(id: string): Promise<SessionHost[]> {
+  "use cache";
+  cacheLife({ stale: 30, revalidate: 60, expire: 3600 });
+  cacheTag(CACHE_TAGS.sessions, CACHE_TAGS.session(id));
+  if (!isUuid(id)) return [];
+  const { data } = await createPublicClient().rpc("get_session_hosts", { p_session_id: id });
+  return (data ?? []) as SessionHost[];
 }
 
 /** Spot counts change often (and by the every-minute job), so they're kept only briefly. */

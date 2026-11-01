@@ -289,5 +289,7 @@ export type RegistrationEvent = {
 
 /** Who posted an update, as shown publicly (just a display name and avatar). */
 export type PostAuthor = { name: string; avatar_url: string | null };
+/** A session's host as shown publicly (same shape as a post author). */
+export type SessionHost = PostAuthor;
 /** A published post on the public pages, with its poster. */
 export type PublicPost = Post & { author: PostAuthor | null };

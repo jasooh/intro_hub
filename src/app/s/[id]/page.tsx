@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { OptionMark } from "@/components/option-mark";
 import Link from "next/link";
+import { HostedBy } from "@/components/hosted-by";
 import { MapLink } from "@/components/map-link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -36,7 +37,7 @@ import { Countdown } from "@/components/countdown";
 import { getMaintenance } from "@/lib/maintenance";
 import { OPTION_LABELS } from "@/lib/profile";
 import { getAttendees, getMySpot, getTeamRequests, isFirstTimer, spotsLeft } from "@/lib/queries";
-import { getPublicCounts, getPublicSession } from "@/lib/public-data";
+import { getPublicCounts, getPublicSession, getPublicSessionHosts } from "@/lib/public-data";
 import { MAX_TEAMMATES } from "@/lib/teams";
 import { createClient } from "@/lib/supabase/server";
 import type { Attendee, Match, Profile, Session, SessionCounts, SignupOption, Team } from "@/lib/types";
@@ -70,7 +71,7 @@ async function SessionView({
   const session = await getPublicSession(id);
   if (!session) notFound();
 
-  const [profile, counts] = await Promise.all([getProfile(), getPublicCounts([id])]);
+  const [profile, counts, hosts] = await Promise.all([getProfile(), getPublicCounts([id]), getPublicSessionHosts(id)]);
   const sessionCounts = counts.get(id);
   const confirmed = sessionCounts?.confirmed ?? 0;
   const holding = sessionCounts?.holding ?? 0;
@@ -126,6 +127,7 @@ async function SessionView({
               <p className="text-ink-soft">
                 <MapLink location={session.location} />
               </p>
+              <HostedBy hosts={hosts} />
               <p className="flex flex-wrap items-baseline gap-x-3">
                 {session.deposit_cents != null ? (
                   <>

@@ -36,6 +36,7 @@ import {
 import { deleteSessionForever } from "@/app/dev-tools/actions";
 import { canUseDevTools, requireAdmin } from "@/lib/auth";
 import { formatDateTime, formatMoney, formatTime, pad2 } from "@/lib/format";
+import { getHostChoices } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
 import { DateBlock } from "@/components/session-card";
 import { PlayerDetails } from "@/components/player-details";
@@ -83,6 +84,7 @@ async function AdminSession({
     { data: matchRows },
     { data: messageRows },
     { data: playerRows },
+    hostChoices,
   ] = await Promise.all([
     supabase.from("sessions").select("*").eq("id", id).maybeSingle<Session>(),
     supabase
@@ -98,6 +100,7 @@ async function AdminSession({
       .eq("session_id", id)
       .order("created_at", { ascending: false }),
     supabase.from("profiles").select("id, display_name, full_name, email").eq("guest", false).order("display_name").limit(2000),
+    getHostChoices(id),
   ]);
   if (!session) notFound();
   const teams = (teamRows ?? []) as Team[];
@@ -475,7 +478,7 @@ async function AdminSession({
           </span>
           <span className="pb-1 text-sm text-ink-soft">Time, prices, deposit, sign-up rules</span>
         </summary>
-        <SessionForm action={updateSession.bind(null, id)} session={session} submitLabel="Save changes" />
+        <SessionForm action={updateSession.bind(null, id)} session={session} submitLabel="Save changes" hostChoices={hostChoices} />
       </details>
 
       {session.status === "scheduled" && (

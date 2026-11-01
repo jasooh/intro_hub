@@ -12,10 +12,12 @@ export function SessionForm({
   action,
   session,
   submitLabel,
+  hostChoices,
 }: {
   action: (formData: FormData) => Promise<void>;
   session?: Session;
   submitLabel: string;
+  hostChoices: { options: { id: string; name: string }[]; selected: string[] };
 }) {
   const clocks: BlockClocks = session ? sessionClocks(session) : DEFAULT_CLOCKS;
   const cutoffHours = session
@@ -39,6 +41,25 @@ export function SessionForm({
           </Field>
         </div>
       </Group>
+
+      {hostChoices.options.length > 0 && (
+        <Group title="Hosted by" hint="Shown on the session page with their photo. Counts as a session played for them.">
+          <div className="flex flex-wrap gap-x-6 gap-y-3">
+            {hostChoices.options.map((h) => (
+              <label key={h.id} className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  name="host_id"
+                  value={h.id}
+                  defaultChecked={hostChoices.selected.includes(h.id)}
+                  className="size-5 shrink-0 accent-[var(--line)]"
+                />
+                <span className="[overflow-wrap:anywhere]">{h.name}</span>
+              </label>
+            ))}
+          </div>
+        </Group>
+      )}
 
       <Group title="When" hint="Instructional first, then drop-in. The session's start and end come from these.">
         <div className="space-y-5">

@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { createSession } from "@/app/admin/actions";
 import { BackLink, PageSpinner, PageTitle, reveal } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
+import { getHostChoices } from "@/lib/queries";
 import { SessionForm } from "../session-form";
 
 export const metadata: Metadata = {
@@ -20,6 +21,7 @@ export default function NewSessionPage() {
 
 async function NewSession() {
   await requireAdmin();
+  const hostChoices = await getHostChoices();
   return (
     <div className="space-y-10">
       <div>
@@ -39,7 +41,7 @@ async function NewSession() {
         </PageTitle>
       </div>
       <div className="reveal" style={reveal(1)}>
-        <SessionForm action={createSession} submitLabel="Create session" />
+        <SessionForm action={createSession} submitLabel="Create session" hostChoices={hostChoices} />
       </div>
     </div>
   );

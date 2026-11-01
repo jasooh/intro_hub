@@ -161,6 +161,13 @@ function sessionRow(formData: FormData, path: string) {
   };
 }
 
+/** The "Hosted by" boxes on the session form: replace the session's hosts. */
+async function saveHosts(supabase: Awaited<ReturnType<typeof createClient>>, sessionId: string, formData: FormData, path: string) {
+  const ids = formData.getAll("host_id").filter((v): v is string => typeof v === "string");
+  const { error } = await supabase.rpc("admin_set_session_hosts", { p_session_id: sessionId, p_profile_ids: ids });
+  if (error) fail(path, error.message);
+}
+
 export async function createSession(formData: FormData) {
   await requireAdmin();
   expireSession();
@@ -168,6 +175,7 @@ export async function createSession(formData: FormData) {
   const supabase = await createClient();
   const { data, error } = await supabase.from("sessions").insert(row).select("id").single();
   if (error) fail("/admin/sessions/new", error.message);
+  await saveHosts(supabase, data.id, formData, "/admin/sessions/new");
   revalidatePath("/", "layout");
   await flash("success", "Session created");
   redirect(`/admin/sessions/${data.id}`);
@@ -183,6 +191,7 @@ export async function updateSession(sessionId: string, formData: FormData) {
   const { data: before } = await supabase.from("sessions").select(timeAndPlace).eq("id", sessionId).maybeSingle();
   const { data: updated, error } = await supabase.from("sessions").update(row).eq("id", sessionId).select(timeAndPlace).single();
   if (error) fail(path, error.message);
+  await saveHosts(supabase, sessionId, formData, path);
 
   // Date, time or place changed (the DB bumps schedule_revision): tell everyone signed up or waiting.
   let notified = 0;
