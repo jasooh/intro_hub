@@ -165,6 +165,8 @@ async function AdminSession({
   const confirmedCount = dropIn.filter((r) => r.status === "confirmed").length;
   const holdingCount = dropIn.length - confirmedCount;
   const instructionalCount = going.length - dropIn.length;
+  // Everyone at the lesson: Instructional + Drop-in and Instructional only (not Drop-in only).
+  const lessonCount = going.filter((r) => r.option !== "dropin").length;
   const cancelled = session.status === "cancelled";
   const unpaidCount = going.filter((r) => r.status === "pending_payment").length;
   const audienceCounts = Object.fromEntries(AUDIENCES.map((a) => [a, 0])) as Record<Audience, number>;
@@ -233,6 +235,9 @@ async function AdminSession({
           <Scoreboard size="sm" className="w-full" value={`${pad2(confirmedCount)}/${pad2(session.capacity)}`} label="Confirmed" />
           <Scoreboard size="sm" className="w-full" value={pad2(holdingCount)} label="Awaiting pay" />
           <Scoreboard size="sm" className="w-full" value={pad2(waiting.length)} label="Waitlist" />
+          {(instructionalCount > 0 || session.instructional_price_cents != null) && (
+            <Scoreboard size="sm" className="w-full" value={pad2(lessonCount)} label="At the lesson" />
+          )}
           {(instructionalCount > 0 || session.instructional_price_cents != null) && (
             <Scoreboard
               size="sm"
