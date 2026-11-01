@@ -104,5 +104,11 @@ export function StatsShell({ children }: { children: ReactNode }) {
 
 /** Shows the section for the current tab; the sections themselves are rendered on the server. */
 export function StatsPanelSwitch({ panels }: { panels: Record<StatTab, ReactNode> }) {
-  return <>{panels[useContext(TabContext)]}</>;
+  const tab = useContext(TabContext);
+  // Keyed by tab so the fade-up replays on every switch.
+  return (
+    <div key={tab} className="reveal">
+      {panels[tab]}
+    </div>
+  );
 }
