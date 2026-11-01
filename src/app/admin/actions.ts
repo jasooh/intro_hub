@@ -855,6 +855,16 @@ export async function setPlayerRating(profileId: string, path: string, formData:
   revalidatePath("/admin", "layout");
 }
 
+/** A host has seen this player before: they stop counting as new (no First time mark, no friend rate). */
+export async function markReturningPlayer(profileId: string, path: string) {
+  await requireAdmin();
+  const supabase = await createClient();
+  const { error } = await supabase.from("profiles").update({ attended_before: true }).eq("id", profileId);
+  if (error) fail(path, error.message);
+  await flash("success", "Marked as a returning player");
+  revalidatePath("/admin", "layout");
+}
+
 export async function renameTeam(teamId: string, sessionId: string, formData: FormData) {
   await requireAdmin();
   const name = z.string().trim().min(1).max(40).safeParse(formData.get("name"));

@@ -12,6 +12,7 @@ import {
   moveWaitlist,
   nudgeUnpaid,
   removeFriendDiscount,
+  markReturningPlayer,
   mergeGuest,
   removeRegistration,
   setPlayerRating,
@@ -40,6 +41,7 @@ import { formatDateTime, formatMoney, formatTime, pad2 } from "@/lib/format";
 import { getFirstTimerIds, getHostChoices } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
 import { DateBlock } from "@/components/session-card";
+import { MarkReturning } from "@/components/mark-returning";
 import { PlayerDetails } from "@/components/player-details";
 import type { Match, Payment, Profile, Registration, Session, SignupOption, Team } from "@/lib/types";
 import { offeredOptions, optionPrice, usesSpot } from "@/lib/options";
@@ -599,6 +601,7 @@ function PlayerRow({
                 <LinkGuestForm action={mergeGuest.bind(null, reg.profile_id, sessionId)} accounts={extras.linkTargets} name={name(reg)} />
               ) : undefined
             }
+            returning={<MarkReturning action={markReturningPlayer.bind(null, reg.profile_id, `/admin/sessions/${sessionId}`)} name={name(reg)} />}
             rating={
               <SkillRating
                 action={setPlayerRating.bind(null, reg.profile_id, `/admin/sessions/${sessionId}`)}

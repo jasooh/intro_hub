@@ -6,8 +6,10 @@ import {
   setPlayerRating,
   setRole,
   unblockPlayer,
+  markReturningPlayer,
   updateEtransferNames,
 } from "@/app/admin/actions";
+import { MarkReturning } from "@/components/mark-returning";
 import { SkillRating } from "@/components/skill-rating";
 import { PlayerDetails } from "@/components/player-details";
 import { SubmitButton } from "@/components/submit-button";
@@ -169,6 +171,7 @@ export function PlayerRow({
           <PlayerDetails
             data={{ profile: p, history: stats, firstTime: p.attended_before === false && stats.played === 0 }}
             actions={actions}
+            returning={<MarkReturning action={markReturningPlayer.bind(null, p.id, "/admin/players")} name={name} />}
             rating={<SkillRating action={setPlayerRating.bind(null, p.id, "/admin/players")} rating={rating} skill={p.skill_level} />}
           >
             {name}

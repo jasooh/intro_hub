@@ -49,12 +49,15 @@ export function PlayerDetails({
   data,
   actions,
   rating,
+  returning,
   children,
 }: {
   data: PlayerDetailsData;
   actions?: ReactNode;
   /** Host's 1–5 skill rating picker (hosts only; players never see it). */
   rating?: ReactNode;
+  /** Host button that clears the First time mark (shown only while they still count as new). */
+  returning?: ReactNode;
   children: ReactNode;
 }) {
   const p = data.profile;
@@ -188,7 +191,9 @@ export function PlayerDetails({
                 <span className="mt-1 block text-sm text-ink-soft">Used for team balancing. Players never see it.</span>
               </Row>
             )}
-            <Row label="Attended before">{p.attended_before == null ? null : data.firstTime ? "No, first time" : p.attended_before ? "Yes" : "No when they joined, has played since"}</Row>
+            <Row label="Attended before">{p.attended_before == null ? null : data.firstTime ? "No, first time" : p.attended_before ? "Yes" : "No when they joined, has played since"}
+              {data.firstTime && returning}
+            </Row>
             <Row label="No-shows">{p.no_show_count == null ? null : String(p.no_show_count)}</Row>
             <Row label="Wants to learn">{p.learning_goals}</Row>
             <Row label="Hype song">{p.hype_song}</Row>
