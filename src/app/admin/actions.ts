@@ -9,6 +9,7 @@ import { AUDIENCES, audienceOf } from "@/lib/audiences";
 import { requireAdmin } from "@/lib/auth";
 import { env } from "@/lib/env";
 import { flash } from "@/lib/flash";
+import { cleanNameList } from "@/lib/input";
 import { alreadyMarkedPaid, HOST_MARKED_NOTE } from "@/lib/payments";
 import { formatDateTime, formatDay, zonedDayKey, zonedLocalToUtc } from "@/lib/format";
 import { dispatchEvents, parseEvents } from "@/lib/registrations";
@@ -531,11 +532,7 @@ export async function setRole(profileId: string, role: "player" | "admin") {
 
 export async function updateEtransferNames(profileId: string, formData: FormData) {
   await requireAdmin();
-  const names = String(formData.get("etransfer_names") ?? "")
-    .split(",")
-    .map((n) => n.trim())
-    .filter(Boolean)
-    .slice(0, 5);
+  const names = cleanNameList(String(formData.get("etransfer_names") ?? ""), 5);
   const supabase = await createClient();
   const { error } = await supabase.from("profiles").update({ etransfer_names: names }).eq("id", profileId);
   if (error) fail("/admin/players", error.message);

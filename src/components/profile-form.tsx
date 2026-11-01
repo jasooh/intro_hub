@@ -182,7 +182,7 @@ export function ProfileForm({
       <Group title="Payments">
         <Field
           label="Name on your e-Transfers"
-          hint="The name your bank shows when you send money (e.g. JANE DOE). Separate several with commas (up to 5). This helps match your payment if you forget the code."
+          hint="The name your bank shows when you send money (e.g. JANE DOE). Paying from more than one account, or does someone else pay for you? Add each name, separated by commas (up to 5), e.g. JANE DOE, JOHN DOE. This helps match your payment if you forget the code."
         >
           <input
             name="etransfer_names"

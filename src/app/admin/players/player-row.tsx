@@ -54,13 +54,19 @@ export function PlayerRow({
       )}
       <form action={updateEtransferNames.bind(null, p.id)} className="flex items-end gap-3">
         <label className="block flex-1 space-y-1">
-          <span className="font-display text-sm font-bold tracking-[0.15em] uppercase">e-Transfer names</span>
+          <span className="font-display text-sm font-bold tracking-[0.15em] uppercase">
+            e-Transfer names <span className="font-normal tracking-normal normal-case text-ink-soft">(up to 5)</span>
+          </span>
           <input
             name="etransfer_names"
             defaultValue={p.etransfer_names.join(", ")}
-            placeholder="Names their e-Transfers come from, comma separated"
+            placeholder="JANE DOE, JOHN DOE"
             className={`${inputClass} text-base`}
           />
+          <span className="block text-sm text-ink-soft">
+            Every name their bank might show, separated by commas. A payment from any one of them is matched to this
+            player.
+          </span>
         </label>
         <SubmitButton size="sm" variant="secondary" requireChange>
           Save
@@ -161,7 +167,7 @@ export function PlayerRow({
       <div className="min-w-0 flex-1 space-y-0.5">
         <p className="truncate">
           <PlayerDetails
-            data={{ profile: p, history: stats }}
+            data={{ profile: p, history: stats, firstTime: p.attended_before === false && stats.played === 0 }}
             actions={actions}
             rating={<SkillRating action={setPlayerRating.bind(null, p.id, "/admin/players")} rating={rating} skill={p.skill_level} />}
           >
