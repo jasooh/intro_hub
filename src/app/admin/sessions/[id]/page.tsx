@@ -37,7 +37,7 @@ import {
 import { deleteSessionForever } from "@/app/dev-tools/actions";
 import { canUseDevTools, requireAdmin } from "@/lib/auth";
 import { formatDateTime, formatMoney, formatTime, pad2 } from "@/lib/format";
-import { getHostChoices } from "@/lib/queries";
+import { getFirstTimerIds, getHostChoices } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
 import { DateBlock } from "@/components/session-card";
 import { PlayerDetails } from "@/components/player-details";
@@ -52,7 +52,7 @@ import { TeamsBoard, type TeamRow } from "./teams-board";
 
 type SentMessage = { id: string; subject: string; audiences: Audience[]; recipient_count: number; created_at: string };
 
-type RowExtras = { blocked: Set<string>; linkTargets: AddablePlayer[] };
+type RowExtras = { blocked: Set<string>; linkTargets: AddablePlayer[]; firstTimers: Set<string> };
 
 type Row = Registration & { profile: Profile; payments: Pick<Payment, "matched_by" | "sender_name" | "amount_cents">[] };
 
@@ -184,6 +184,7 @@ async function AdminSession({
   const rowExtras: RowExtras = {
     blocked: new Set((blockRows ?? []).map((b) => b.profile_id as string)),
     linkTargets: addable,
+    firstTimers: await getFirstTimerIds(supabase, rows.map((r) => r.profile)),
   };
   const offered = offeredOptions(session);
   const addFull = {
@@ -592,7 +593,7 @@ function PlayerRow({
       <div className="min-w-0 flex-1">
         <p className="truncate">
           <PlayerDetails
-            data={{ profile: reg.profile, registration: reg, paid, teamName: teamName ?? null, teammates }}
+            data={{ profile: reg.profile, registration: reg, paid, teamName: teamName ?? null, teammates, firstTime: extras.firstTimers.has(reg.profile_id) }}
             actions={
               reg.profile.guest && extras.linkTargets.length > 0 ? (
                 <LinkGuestForm action={mergeGuest.bind(null, reg.profile_id, sessionId)} accounts={extras.linkTargets} name={name(reg)} />
@@ -653,7 +654,7 @@ function PlayerRow({
               {reg.profile.no_show_count} no-show{reg.profile.no_show_count === 1 ? "" : "s"}
             </Mark>
           )}
-          {reg.profile.attended_before === false && (
+          {extras.firstTimers.has(reg.profile_id) && (
             <Mark tone="line" glyph="★">
               First time
             </Mark>

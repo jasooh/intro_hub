@@ -9,6 +9,7 @@ import {
   type SessionDayPlayer,
 } from "@/lib/email/templates";
 import { sendEmail } from "@/lib/email/send";
+import { getFirstTimerIds } from "@/lib/queries";
 import { unsubscribeHeaders, unsubscribeUrl } from "@/lib/unsubscribe";
 import { env } from "@/lib/env";
 import { formatDateTime, formatMoney, formatTime } from "@/lib/format";
@@ -354,7 +355,7 @@ async function sendDigests(admin: Admin, hosts: Host[], now: Date) {
 // ---------------------------------------------------------------------------
 // Session day
 // ---------------------------------------------------------------------------
-type RosterRow = Pick<Registration, "status" | "option" | "amount_cents" | "paid_cents" | "note" | "queued_at" | "friend_discount"> & {
+type RosterRow = Pick<Registration, "profile_id" | "status" | "option" | "amount_cents" | "paid_cents" | "note" | "queued_at" | "friend_discount"> & {
   profile: PlayerName & Pick<Profile, "attended_before" | "guest"> | null;
 };
 
@@ -383,17 +384,21 @@ async function sendSessionDays(admin: Admin, hosts: Host[], now: Date) {
 
     const { data: regs } = await admin
       .from("registrations")
-      .select("status, option, amount_cents, paid_cents, note, queued_at, friend_discount, profile:profiles(display_name, full_name, email, attended_before, guest)")
+      .select("profile_id, status, option, amount_cents, paid_cents, note, queued_at, friend_discount, profile:profiles(display_name, full_name, email, attended_before, guest)")
       .eq("session_id", s.id)
       .in("status", ["pending_payment", "confirmed", "waitlisted"])
       .order("created_at");
     const rows = (regs ?? []) as unknown as RosterRow[];
+    const firstTimers = await getFirstTimerIds(
+      admin,
+      rows.flatMap((r) => (r.profile_id && r.profile ? [{ id: r.profile_id, attended_before: r.profile.attended_before }] : [])),
+    );
     const detail = (r: RosterRow) => {
       const bits: string[] = [];
       const owed = Math.max(r.amount_cents - r.paid_cents, 0);
       if (r.status === "pending_payment" && owed) bits.push(`owes ${formatMoney(owed)}`);
       if (r.option === "dropin") bits.push("drop-in only");
-      if (r.profile?.attended_before === false) bits.push("first time");
+      if (r.profile_id && firstTimers.has(r.profile_id)) bits.push("first time");
       if (r.profile?.guest) bits.push("guest");
       if (r.friend_discount) bits.push("Bring a Friend");
       if (r.note) bits.push(`note: "${r.note}"`);

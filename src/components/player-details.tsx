@@ -38,6 +38,8 @@ export type PlayerDetailsData = {
   teamName?: string | null;
   /** Players they asked to be teamed with. */
   teammates?: string[];
+  /** Said they were new and haven't played a finished session yet (same test as the Bring a Friend rate). */
+  firstTime?: boolean;
   /** Present when opened from the Players page. lastPlayed is pre-formatted. */
   history?: { played: number; upcoming: number; lastPlayed: string | null; memberSince: string; owedCents?: number };
 };
@@ -77,7 +79,7 @@ export function PlayerDetails({
 
         <div className="flex flex-wrap gap-x-4 gap-y-1">
           {r && <OptionMark option={r.option} />}
-          {p.attended_before === false && (
+          {data.firstTime && (
             <Mark tone="line" glyph="★">
               First time
             </Mark>
@@ -186,7 +188,7 @@ export function PlayerDetails({
                 <span className="mt-1 block text-sm text-ink-soft">Used for team balancing. Players never see it.</span>
               </Row>
             )}
-            <Row label="Attended before">{p.attended_before == null ? null : p.attended_before ? "Yes" : "No, first time"}</Row>
+            <Row label="Attended before">{p.attended_before == null ? null : data.firstTime ? "No, first time" : p.attended_before ? "Yes" : "No when they joined, has played since"}</Row>
             <Row label="No-shows">{p.no_show_count == null ? null : String(p.no_show_count)}</Row>
             <Row label="Wants to learn">{p.learning_goals}</Row>
             <Row label="Hype song">{p.hype_song}</Row>

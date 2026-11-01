@@ -1,4 +1,5 @@
 import "server-only";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { cache } from "react";
 import { stillOwing, type OwedSignup } from "@/lib/owed";
 import { isActive, signupView } from "@/lib/signups";
@@ -260,4 +261,25 @@ export async function isFirstTimer(profile: Pick<Profile, "id" | "attended_befor
     .eq("status", "confirmed")
     .lt("session.ends_at", new Date().toISOString());
   return (count ?? 0) === 0;
+}
+
+/**
+ * Of these profiles, the ones still new here: they said "No, I'm new" and have never had a
+ * confirmed spot at a session that has ended (the same test as public._is_first_timer, so hosts
+ * see the same people the Bring a Friend rate does).
+ */
+export async function getFirstTimerIds(
+  supabase: SupabaseClient,
+  profiles: { id: string; attended_before: boolean | null }[],
+) {
+  const claimed = [...new Set(profiles.filter((p) => p.attended_before === false).map((p) => p.id))];
+  if (claimed.length === 0) return new Set<string>();
+  const { data } = await supabase
+    .from("registrations")
+    .select("profile_id, session:sessions!inner(ends_at)")
+    .in("profile_id", claimed)
+    .eq("status", "confirmed")
+    .lt("session.ends_at", new Date().toISOString());
+  const played = new Set((data ?? []).map((r) => r.profile_id as string));
+  return new Set(claimed.filter((id) => !played.has(id)));
 }

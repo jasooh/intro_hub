@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getProfile } from "@/lib/auth";
+import { getFirstTimerIds } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
 import { HEARD_LABELS, OPTION_LABELS } from "@/lib/profile";
 import { skillName } from "@/lib/skill";
@@ -28,6 +29,7 @@ export async function GET(_request: Request, ctx: RouteContext<"/admin/sessions/
   if (!session) return NextResponse.json({ error: "not found" }, { status: 404 });
 
   const rows = (regs ?? []) as (Registration & { profile: Profile; payments: Payment[] })[];
+  const firstTimers = await getFirstTimerIds(supabase, rows.map((r) => r.profile));
   const header = [
     "display_name", "first_name", "last_name", "email", "phone", "emergency_name", "emergency_relationship", "emergency_phone", "option", "owes", "status", "ref_code",
     "skill_level", "attended_before", "media_consent", "note", "learning_goals", "hype_song", "heard_about",
@@ -56,7 +58,7 @@ export async function GET(_request: Request, ctx: RouteContext<"/admin/sessions/
       r.status,
       r.ref_code,
       skillName(r.profile.skill_level) ?? "",
-      r.profile.attended_before == null ? "" : r.profile.attended_before ? "yes" : "no",
+      r.profile.attended_before == null ? "" : firstTimers.has(r.profile_id) ? "no" : "yes",
       r.profile.media_consent == null ? "" : r.profile.media_consent ? "agree" : "DISAGREE",
       r.note,
       r.profile.learning_goals,
