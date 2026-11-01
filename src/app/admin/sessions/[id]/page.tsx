@@ -159,10 +159,7 @@ async function AdminSession({
   const inactive = rows.filter(
     (r) => (r.status === "expired" || r.status === "cancelled") && !(r.profile_id && activeIds.has(r.profile_id)),
   );
-  const collected = rows
-    .flatMap((r) => r.payments)
-    .filter((p) => p.matched_by !== "admin")
-    .reduce((sum, p) => sum + p.amount_cents, 0);
+  const collected = rows.flatMap((r) => r.payments).reduce((sum, p) => sum + p.amount_cents, 0);
   const dropIn = going.filter((r) => usesSpot(r.option));
   const waitingSpots = waiting.filter((r) => usesSpot(r.option));
   const waitingInstructional = waiting.filter((r) => !usesSpot(r.option));
@@ -243,7 +240,7 @@ async function AdminSession({
           {(instructionalCount > 0 || session.instructional_price_cents != null) && (
             <Scoreboard size="sm" className="w-full" value={pad2(lessonCount)} label="Instructional" />
           )}
-          <Scoreboard size="sm" className="w-full" value={formatMoney(collected)} label="e-Transfers in" />
+          <Scoreboard size="sm" className="w-full" value={formatMoney(collected)} label="Collected" />
         </ScoreboardRow>
         <SpotDots capacity={session.capacity} confirmed={confirmedCount} holding={holdingCount} />
         {(dropIn.length > session.capacity ||
