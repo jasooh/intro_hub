@@ -7,6 +7,7 @@ import {
   addPlayer,
   cancelSession,
   emailRoster,
+  markNoShow,
   markPaid,
   moveWaitlist,
   nudgeUnpaid,
@@ -171,6 +172,7 @@ async function AdminSession({
   // Everyone at the lesson: Instructional + Drop-in and Instructional only (not Drop-in only).
   const lessonCount = going.filter((r) => r.option !== "dropin").length;
   const cancelled = session.status === "cancelled";
+  const started = new Date(session.starts_at) <= new Date();
   const unpaidCount = going.filter((r) => r.status === "pending_payment").length;
   const audienceCounts = Object.fromEntries(AUDIENCES.map((a) => [a, 0])) as Record<Audience, number>;
   for (const r of rows) {
@@ -287,6 +289,28 @@ async function AdminSession({
               {r.status === "pending_payment" && (
                 <form action={markPaid.bind(null, r.id, id)}>
                   <SubmitButton size="sm">Mark paid</SubmitButton>
+                </form>
+              )}
+              {started && !cancelled && (
+                <form action={markNoShow.bind(null, r.id, id, !r.no_show_at)}>
+                  {r.no_show_at ? (
+                    <SubmitButton size="sm" variant="ghost">
+                      Undo no-show
+                    </SubmitButton>
+                  ) : (
+                    <SubmitButton
+                      size="sm"
+                      variant="secondary"
+                      confirm={{
+                        title: `Mark ${name(r)} as a no-show?`,
+                        description:
+                          "Adds one to their no-show count (only hosts see it). They'll get a polite pop-up asking them to cancel early next time. You can undo it.",
+                        action: "Mark no-show",
+                      }}
+                    >
+                      No-show
+                    </SubmitButton>
+                  )}
                 </form>
               )}
               <form action={removeRegistration.bind(null, r.id, id)}>
@@ -620,6 +644,16 @@ function PlayerRow({
           {extras.blocked.has(reg.profile_id) && (
             <Mark tone="bad" glyph="⊘">
               Blocked
+            </Mark>
+          )}
+          {reg.no_show_at && (
+            <Mark tone="bad" glyph="✕">
+              No-show
+            </Mark>
+          )}
+          {reg.profile.no_show_count > 0 && (
+            <Mark tone="muted" glyph="○">
+              {reg.profile.no_show_count} no-show{reg.profile.no_show_count === 1 ? "" : "s"}
             </Mark>
           )}
           {reg.profile.attended_before === false && (

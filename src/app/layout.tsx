@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { FlashToaster } from "@/components/flash-toaster";
 import { MaintenanceBanner } from "@/components/maintenance-banner";
+import { NoShowNotice } from "@/components/no-show-notice";
 import { Splash } from "@/components/splash";
 import { SplashGate } from "@/components/splash-gate";
 import { WireBall } from "@/components/wire-ball";
@@ -77,6 +78,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         </header>
         <Suspense>
           <MaintenanceBanner />
+        </Suspense>
+        <Suspense>
+          <NoShowNotice />
         </Suspense>
         <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-8 sm:py-10">{children}</main>
         <SiteFooter />

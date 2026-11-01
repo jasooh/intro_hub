@@ -29,7 +29,8 @@ export type PlayerDetailsData = {
     | "heard_about_other"
     | "media_consent"
     | "waiver_accepted_at"
-  >;
+  > &
+    Partial<Pick<Profile, "no_show_count">>;
   /** Present when opened from a session roster. */
   registration?: Pick<Registration, "option" | "amount_cents" | "ref_code" | "note" | "status">;
   /** Pre-formatted on the server (timezone-aware). */
@@ -186,6 +187,7 @@ export function PlayerDetails({
               </Row>
             )}
             <Row label="Attended before">{p.attended_before == null ? null : p.attended_before ? "Yes" : "No, first time"}</Row>
+            <Row label="No-shows">{p.no_show_count == null ? null : String(p.no_show_count)}</Row>
             <Row label="Wants to learn">{p.learning_goals}</Row>
             <Row label="Hype song">{p.hype_song}</Row>
             <Row label="Heard via">{heard}</Row>

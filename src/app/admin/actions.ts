@@ -38,6 +38,8 @@ const RPC_ERRORS: Record<string, string> = {
   merge_conflict: "They're both signed up for the same session. Remove one of those sign-ups first, then link them.",
   not_a_guest: "Only guests a host added can be linked to an account.",
   not_an_account: "Pick a player who signed in with Google.",
+  not_started: "You can mark no-shows once the session has started.",
+  not_on_roster: "Only players holding a spot can be marked as a no-show.",
 };
 
 async function rpc(fn: string, args: Record<string, unknown>, path: string, success?: string) {
@@ -355,6 +357,17 @@ export async function nudgeUnpaid(sessionId: string) {
 export async function markPaid(registrationId: string, sessionId: string) {
   await requireAdmin();
   await rpc("admin_mark_paid", { p_registration_id: registrationId }, `/admin/sessions/${sessionId}`, "Marked as paid");
+}
+
+/** Mark (or undo) a player who held a spot but didn't come. Raises their no-show count. */
+export async function markNoShow(registrationId: string, sessionId: string, noShow: boolean) {
+  await requireAdmin();
+  await rpc(
+    "admin_mark_no_show",
+    { p_registration_id: registrationId, p_no_show: noShow },
+    `/admin/sessions/${sessionId}`,
+    noShow ? "Marked as a no-show" : "No-show undone",
+  );
 }
 
 /** Mark paid from the Owed page: same as markPaid, but stays on (and refreshes) /admin/owed. */

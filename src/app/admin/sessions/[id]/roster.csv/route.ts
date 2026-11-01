@@ -32,7 +32,7 @@ export async function GET(_request: Request, ctx: RouteContext<"/admin/sessions/
     "display_name", "first_name", "last_name", "email", "phone", "emergency_name", "emergency_relationship", "emergency_phone", "option", "owes", "status", "ref_code",
     "skill_level", "attended_before", "media_consent", "note", "learning_goals", "hype_song", "heard_about",
     "signed_up_at", "confirmed_at", "paid", "payer_name", "matched_by", "refund_owed", "refunded_at",
-    "bring_a_friend",
+    "bring_a_friend", "no_show",
   ];
   const nameOf = new Map(rows.map((r) => [r.id, r.profile.display_name ?? r.profile.full_name]));
   const lines = rows.map((r) => {
@@ -70,6 +70,7 @@ export async function GET(_request: Request, ctx: RouteContext<"/admin/sessions/
       r.refund_owed,
       r.refunded_at,
       friend,
+      r.no_show_at ? "yes" : "",
     ]
       .map(csvCell)
       .join(",");

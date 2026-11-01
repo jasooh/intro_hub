@@ -336,6 +336,15 @@ export async function deleteMyAccount() {
   redirect("/");
 }
 
+/** "Got it" on the no-show pop-up: the player has seen every no-show so far. */
+export async function acknowledgeNoShows() {
+  await requireProfile("/me");
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("acknowledge_no_shows");
+  if (error) console.error("Could not save no-show acknowledgement", error);
+  revalidatePath("/", "layout");
+}
+
 export type AvatarUploadResult = { seed: string } | { error: string };
 
 /**

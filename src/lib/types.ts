@@ -67,6 +67,10 @@ export type Profile = {
   /** Instant email when a player writes in the inbox. */
   host_alert_messages: boolean;
   host_digest_sent_at: string | null;
+  /** Times a host marked them as a no-show (hosts only see the number). */
+  no_show_count: number;
+  /** How many of those the player has already seen the pop-up for. */
+  no_show_seen: number;
 };
 
 /** A conversation between one player and the hosts (shared host inbox). */
@@ -199,6 +203,9 @@ export type Registration = {
   friend_discount: boolean;
   note: string | null;
   team_id: string | null;
+  /** A host marked them as not showing up. */
+  no_show_at: string | null;
+  no_show_by: string | null;
 };
 
 export type Payment = {

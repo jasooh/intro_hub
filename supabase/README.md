@@ -54,10 +54,12 @@ Open the file listed for the current version; older copies in earlier migrations
 | `_sync_holds_to_session` | `20261019000000_holds_follow_session.sql` | 1 |
 | `_sync_paid_cents` | `20261107000000_payment_cancellations.sql` | 2 |
 | `_use_rejoin_credit` | `20261030000000_rejoin_credit_any_amount.sql` | 3 |
+| `acknowledge_no_shows` | `20261130000001_no_shows.sql` | 1 |
 | `admin_add_player` | `20261101000000_signup_options.sql` | 1 |
 | `admin_assign_payment` | `20261027000000_assign_to_active_signup.sql` | 2 |
 | `admin_cancel_session` | `20261026000000_partial_payments.sql` | 4 |
 | `admin_dismiss_cancellation` | `20261107000000_payment_cancellations.sql` | 1 |
+| `admin_mark_no_show` | `20261130000001_no_shows.sql` | 1 |
 | `admin_mark_paid` | `20261101000000_signup_options.sql` | 4 |
 | `admin_merge_guest` | `20261118000000_audit_fixes.sql` | 1 |
 | `admin_move_waitlist` | `20261101000000_signup_options.sql` | 2 |
@@ -68,9 +70,10 @@ Open the file listed for the current version; older copies in earlier migrations
 | `admin_reprice_session` | `20261028000000_bring_a_friend_and_deposits.sql` | 1 |
 | `admin_reverse_payment` | `20261107000000_payment_cancellations.sql` | 1 |
 | `admin_set_role` | `20261012000000_init.sql` | 1 |
+| `admin_set_session_hosts` | `20261129000000_session_hosts.sql` | 1 |
 | `admin_stats` | `20261113000000_stats.sql` | 4 |
 | `bump_roster_version` | `20261012000000_init.sql` | 1 |
-| `cancel_registration` | `20261028000000_bring_a_friend_and_deposits.sql` | 4 |
+| `cancel_registration` | `20261130000000_no_cancel_after_session.sql` | 5 |
 | `change_registration_option` | `20261101000000_signup_options.sql` | 4 |
 | `clear_team_on_instructional` | `20261015000000_teams.sql` | 1 |
 | `create_sessions_from_templates` | `20261124000000_template_start_date.sql` | 4 |
@@ -90,6 +93,7 @@ Open the file listed for the current version; older copies in earlier migrations
 | `get_post_authors` | `20261127000000_photo_avatars.sql` | 1 |
 | `get_session_attendees` | `20261101000000_signup_options.sql` | 4 |
 | `get_session_counts` | `20261101000000_signup_options.sql` | 3 |
+| `get_session_hosts` | `20261129000000_session_hosts.sql` | 1 |
 | `handle_new_user` | `20261012000000_init.sql` | 1 |
 | `host_start_threads` | `20261128000000_messages.sql` | 1 |
 | `ingest_apply_payment` | `20261012000000_init.sql` | 1 |
