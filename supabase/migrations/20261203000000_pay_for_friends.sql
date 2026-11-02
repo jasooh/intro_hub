@@ -140,3 +140,163 @@ revoke execute on function public.decline_cover(uuid) from public, anon;
 grant execute on function public.decline_cover(uuid) to authenticated;
 revoke execute on function public.acknowledge_cover(uuid) from public, anon;
 grant execute on function public.acknowledge_cover(uuid) to authenticated;
+
+-- What one e-Transfer brought in: its own amount plus the shares split off it.
+create function public._received_cents(p_payment_id uuid) returns int
+language sql stable security definer set search_path = '' as $$
+  select coalesce(sum(amount_cents), 0)::int from public.payments where id = p_payment_id or split_from = p_payment_id;
+$$;
+revoke execute on function public._received_cents(uuid) from public, anon, authenticated;
+
+-- The ingest route (service role), for an e-Transfer carrying the code of a
+-- payer who covers friends. Pays the payer first, then friends in the order
+-- they signed up; each gets at most what it still owes. Anything left over
+-- stays with the payer (owed back once they're confirmed).
+create function public.ingest_apply_group_payment(
+  p_payment_id uuid,
+  p_payer_registration_id uuid,
+  p_matched_by text
+) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  p public.payments;
+  payer public.registrations;
+  f public.registrations;
+  v_remaining int;
+  v_share int;
+  v_split_id uuid;
+  v_events jsonb := '[]';
+begin
+  select * into payer from public.registrations where id = p_payer_registration_id;
+  if not found then
+    raise exception 'registration_not_found';
+  end if;
+  perform 1 from public.sessions where id = payer.session_id for update;
+  select * into payer from public.registrations where id = p_payer_registration_id for update;
+  if payer.status not in ('pending_payment', 'confirmed') then
+    return null; -- caller leaves the payment unmatched
+  end if;
+
+  select * into p from public.payments where id = p_payment_id for update;
+  v_remaining := p.amount_cents;
+  if payer.status = 'pending_payment' then
+    v_remaining := v_remaining - least(v_remaining, greatest(payer.amount_cents - payer.paid_cents, 0));
+  end if;
+
+  for f in
+    select * from public.registrations
+     where covered_by = payer.id and status = 'pending_payment'
+     order by created_at, id
+     for update
+  loop
+    exit when v_remaining <= 0;
+    v_share := least(v_remaining, greatest(f.amount_cents - f.paid_cents, 0));
+    continue when v_share = 0;
+    insert into public.payments (sender_name, amount_cents, memo, received_at, split_from, raw)
+    values (p.sender_name, v_share, p.memo, p.received_at, p.id, jsonb_build_object('split_from', p.id))
+    returning id into v_split_id;
+    v_events := v_events || coalesce(public._apply_payment(v_split_id, f.id, p_matched_by, true), '[]'::jsonb);
+    v_remaining := v_remaining - v_share;
+  end loop;
+
+  -- The payer keeps their own share plus anything nobody else needed.
+  update public.payments set amount_cents = p.amount_cents - (public._received_cents(p.id) - p.amount_cents)
+   where id = p.id;
+  return v_events || coalesce(public._apply_payment(p.id, payer.id, p_matched_by, false), '[]'::jsonb);
+end $$;
+revoke execute on function public.ingest_apply_group_payment(uuid, uuid, text) from public, anon, authenticated;
+grant execute on function public.ingest_apply_group_payment(uuid, uuid, text) to service_role;
+
+-- Taking back a group e-Transfer takes back every share split off it.
+alter function public._reverse_payment(uuid, uuid) rename to _reverse_single_payment;
+
+create function public._reverse_payment(p_cancellation_id uuid, p_payment_id uuid) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  v_events jsonb;
+  v_split uuid;
+begin
+  v_events := public._reverse_single_payment(p_cancellation_id, p_payment_id);
+  for v_split in
+    select id from public.payments where split_from = p_payment_id and reversed_at is null order by created_at, id
+  loop
+    v_events := v_events || public._reverse_single_payment(p_cancellation_id, v_split);
+  end loop;
+  -- The cancellation points at the e-Transfer itself, not its last share.
+  update public.payment_cancellations set payment_id = p_payment_id where id = p_cancellation_id;
+  return v_events;
+end $$;
+revoke execute on function public._reverse_payment(uuid, uuid) from public, anon, authenticated;
+revoke execute on function public._reverse_single_payment(uuid, uuid) from public, anon, authenticated;
+
+-- Matching a cancellation by amount compares the whole e-Transfer (with its shares).
+create or replace function public.ingest_reverse_payment(p_cancellation_id uuid, p_timezone text default 'America/Toronto') returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  c public.payment_cancellations;
+  v_ids uuid[];
+  v_code text;
+  v_note text;
+begin
+  select * into c from public.payment_cancellations where id = p_cancellation_id for update;
+  if not found or c.payment_id is not null then
+    return '[]'::jsonb;
+  end if;
+
+  -- 1. The same Interac reference number.
+  if c.reference is not null then
+    select array_agg(id) into v_ids from public.payments
+     where reversed_at is null and gmail_message_id is not null and raw ->> 'reference' = c.reference;
+  end if;
+  -- 2. The ref code in the message ("VB-7K3Q", "vb 7k3q"): payments on that sign-up,
+  --    or not linked yet but carrying the same code.
+  v_code := upper((regexp_match(coalesce(c.memo, ''), 'vb[\s-]?([a-hj-np-z2-9]{4})', 'i'))[1]);
+  if coalesce(cardinality(v_ids), 0) = 0 and v_code is not null then
+    select array_agg(p.id order by p.received_at desc) into v_ids
+      from public.payments p
+      left join public.registrations r on r.id = p.registration_id
+     where p.reversed_at is null and p.gmail_message_id is not null
+       and (r.ref_code = 'VB-' || v_code
+            or (p.registration_id is null
+                and upper((regexp_match(coalesce(p.memo, ''), 'vb[\s-]?([a-hj-np-z2-9]{4})', 'i'))[1]) = v_code));
+    if cardinality(v_ids) > 1 and c.amount_cents is not null then
+      select array_agg(id) into v_ids from public.payments
+       where id = any (v_ids) and public._received_cents(id) = c.amount_cents;
+      -- Still several (e.g. paid twice): the latest one of that amount.
+      v_ids := v_ids[1:1];
+    end if;
+  end if;
+  -- 3. That amount, received on the day it was sent, from the same sender (when the
+  --    email names one). Never a payment from someone else.
+  if coalesce(cardinality(v_ids), 0) = 0 and c.amount_cents is not null and c.sent_on is not null then
+    select array_agg(id order by received_at desc) into v_ids from public.payments
+     where reversed_at is null and gmail_message_id is not null
+       and public._received_cents(id) = c.amount_cents
+       and (received_at at time zone p_timezone)::date = c.sent_on
+       and (c.sender_name is null or lower(btrim(sender_name)) = lower(btrim(c.sender_name)));
+  end if;
+  -- 4. No date in the email: the same sender and amount in the last 45 days.
+  if coalesce(cardinality(v_ids), 0) = 0 and c.sent_on is null and c.sender_name is not null then
+    select array_agg(id) into v_ids from public.payments
+     where reversed_at is null and gmail_message_id is not null
+       and lower(btrim(sender_name)) = lower(btrim(c.sender_name))
+       and (c.amount_cents is null or public._received_cents(id) = c.amount_cents)
+       and received_at > c.received_at - interval '45 days' and received_at <= c.received_at;
+  end if;
+
+  if cardinality(v_ids) = 1 then
+    return public._reverse_payment(c.id, v_ids[1]);
+  end if;
+
+  v_note := case
+    when coalesce(cardinality(v_ids), 0) = 0 then 'No payment found for this code, amount and day.'
+    else cardinality(v_ids) || ' payments could be this one. Pick the right one.'
+  end;
+  update public.payment_cancellations set note = v_note where id = c.id;
+  insert into public.host_activity (kind, cancellation_id) values ('payment_reversed', c.id);
+  return '[]'::jsonb;
+end $$;
+
+revoke execute on function public.ingest_reverse_payment(uuid, text) from public, anon, authenticated;
+grant execute on function public.ingest_reverse_payment(uuid, text) to service_role;
+

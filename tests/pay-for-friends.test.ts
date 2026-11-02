@@ -137,3 +137,114 @@ describe("covering friends", () => {
     expect((await reg(regB)).covered_by).toBeNull();
   });
 });
+
+describe("group payments", () => {
+  /** A Gmail e-Transfer of `cents`, applied as a group payment for `payerReg`. */
+  async function payGroup(payerReg: string, cents: number, reference = "REF-1") {
+    const p = await db.query<{ id: string }>(
+      `insert into public.payments (gmail_message_id, sender_name, amount_cents, received_at, raw)
+       values (gen_random_uuid()::text, 'ALEX TEST', $1, now(), jsonb_build_object('reference', $2::text)) returning id`,
+      [cents, reference],
+    );
+    const res = await asService<{ events: Event[] }>(
+      db,
+      `select public.ingest_apply_group_payment($1, $2, 'ref') as events`,
+      [p.rows[0].id, payerReg],
+    );
+    return { paymentId: p.rows[0].id, events: res.rows[0].events };
+  }
+  const splits = async (paymentId: string) =>
+    (
+      await db.query<{ registration_id: string; amount_cents: number }>(
+        `select registration_id, amount_cents from public.payments where split_from = $1 order by amount_cents`,
+        [paymentId],
+      )
+    ).rows;
+  const amountOf = async (paymentId: string) =>
+    (await db.query<{ amount_cents: number }>(`select amount_cents from public.payments where id = $1`, [paymentId])).rows[0]
+      .amount_cents;
+  async function cancelTransfer(cents: number, reference: string | null, sender: string | null = null) {
+    const c = await db.query<{ id: string }>(
+      `insert into public.payment_cancellations (gmail_message_id, sender_name, amount_cents, reference, sent_on, received_at)
+       values (gen_random_uuid()::text, $3, $1, $2, (now() at time zone 'America/Toronto')::date, now()) returning id`,
+      [cents, reference, sender],
+    );
+    await asService(db, `select public.ingest_reverse_payment($1, 'America/Toronto')`, [c.rows[0].id]);
+  }
+
+  it("confirms everyone it covers", async () => {
+    const { a, regA, regB } = await group();
+    await cover(a, regA, [regB]);
+    const { paymentId, events } = await payGroup(regA, 2000);
+    expect(await reg(regA)).toMatchObject({ status: "confirmed", paid_cents: 1000 });
+    expect(await reg(regB)).toMatchObject({ status: "confirmed", paid_cents: 1000, covered_by: regA });
+    expect(await splits(paymentId)).toEqual([{ registration_id: regB, amount_cents: 1000 }]);
+    expect(await amountOf(paymentId)).toBe(1000);
+    expect(events.filter((e) => e.event === "confirmed").map((e) => e.registration_id).sort()).toEqual([regA, regB].sort());
+  });
+
+  it("fills the payer first on a short payment", async () => {
+    const { a, regA, regB, regC } = await group();
+    await cover(a, regA, [regB, regC]);
+    const { events } = await payGroup(regA, 1500);
+    expect((await reg(regA)).status).toBe("confirmed");
+    expect(await reg(regB)).toMatchObject({ status: "pending_payment", paid_cents: 500 });
+    expect(await reg(regC)).toMatchObject({ status: "pending_payment", paid_cents: 0 });
+    expect(events).toContainEqual(expect.objectContaining({ event: "partial_payment", registration_id: regB }));
+  });
+
+  it("covers only the payer when that's all that was sent", async () => {
+    const { a, regA, regB } = await group();
+    await cover(a, regA, [regB]);
+    const { paymentId } = await payGroup(regA, 1000);
+    expect((await reg(regA)).status).toBe("confirmed");
+    expect((await reg(regB)).status).toBe("pending_payment");
+    expect(await splits(paymentId)).toEqual([]);
+  });
+
+  it("works when the payer has already paid", async () => {
+    const { a, regA, regB } = await group();
+    await payGroup(regA, 1000);
+    await cover(a, regA, [regB]);
+    await payGroup(regA, 1000, "REF-2");
+    expect(await reg(regA)).toMatchObject({ status: "confirmed", paid_cents: 1000, refund_owed: false });
+    expect((await reg(regB)).status).toBe("confirmed");
+  });
+
+  it("skips a friend who paid, cancelled or expired, and owes the rest back", async () => {
+    const { a, regA, regB, regC } = await group();
+    await cover(a, regA, [regB, regC]);
+    await payGroup(regB, 1000, "REF-B"); // B paid for themselves
+    await db.query(`update public.registrations set status = 'expired' where id = $1`, [regC]);
+    await payGroup(regA, 3000);
+    expect(await reg(regA)).toMatchObject({ status: "confirmed", paid_cents: 3000, refund_owed: true });
+    expect((await reg(regB)).paid_cents).toBe(1000);
+  });
+
+  it("a cancelled group transfer takes back every share", async () => {
+    const { a, regA, regB } = await group();
+    await cover(a, regA, [regB]);
+    const { paymentId } = await payGroup(regA, 2000);
+    await cancelTransfer(2000, "REF-1");
+    const rows = (
+      await db.query<{ reversed: boolean }>(
+        `select reversed_at is not null as reversed from public.payments where id = $1 or split_from = $1`,
+        [paymentId],
+      )
+    ).rows;
+    expect(rows).toEqual([{ reversed: true }, { reversed: true }]);
+    expect((await reg(regA)).status).toBe("pending_payment");
+    expect((await reg(regB)).status).toBe("pending_payment");
+  });
+
+  it("a cancellation without a reference matches the full amount", async () => {
+    const { a, regA, regB } = await group();
+    await cover(a, regA, [regB]);
+    const { paymentId } = await payGroup(regA, 2000);
+    await cancelTransfer(2000, null, "ALEX TEST");
+    expect((await reg(regA)).paid_cents).toBe(0);
+    expect((await reg(regB)).paid_cents).toBe(0);
+    const c = await db.query<{ payment_id: string }>(`select payment_id from public.payment_cancellations`);
+    expect(c.rows[0].payment_id).toBe(paymentId);
+  });
+});
