@@ -75,8 +75,19 @@ export async function getMySignups(profileId: string) {
     seen.set(r.session_id, live);
     return true;
   });
+  // Pay for friends: the name of whoever is paying for a sign-up.
+  const coveredNames = new Map<string, string>();
+  for (const r of rows.filter((x) => x.covered_by)) {
+    const payer = (await getAttendees(r.session_id)).find((a) => a.registration_id === r.covered_by);
+    if (payer) coveredNames.set(r.id, payer.display_name);
+  }
   return rows
-    .map((r) => ({ ...r, view: signupView(r, now), ended: new Date(r.session.ends_at).getTime() <= now }))
+    .map((r) => ({
+      ...r,
+      covered_by_name: coveredNames.get(r.id) ?? null,
+      view: signupView(r, now),
+      ended: new Date(r.session.ends_at).getTime() <= now,
+    }))
     .sort((a, b) => {
       // Upcoming soonest first; everything else most recent first.
       const ta = new Date(a.session.starts_at).getTime();
@@ -91,6 +102,21 @@ export const getAttendees = cache(async (sessionId: string) => {
   const { data } = await supabase.rpc("get_session_attendees", { p_session_id: sessionId });
   return (data ?? []) as Attendee[];
 });
+
+export type PayableSignup = {
+  registration_id: string;
+  display_name: string;
+  avatar_url: string | null;
+  owed_cents: number;
+  covered_by: string | null;
+};
+
+/** Other unpaid sign-ups in a session the signed-in player could pay for (pay for friends). */
+export async function getPayableSignups(sessionId: string) {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("payable_signups", { p_session_id: sessionId });
+  return (data ?? []) as PayableSignup[];
+}
 
 /** Registration ids this sign-up asked to be teamed with (own rows only, via RLS). */
 export async function getTeamRequests(registrationId: string) {

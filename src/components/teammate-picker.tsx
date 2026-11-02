@@ -16,11 +16,15 @@ export function TeammatePicker({
   defaultSelected = [],
   name = "teammates",
   max = MAX_TEAMMATES,
+  addLabel = "Add a teammate",
+  emptyText = "No one else is signed up for drop-in yet. You can add teammates later.",
 }: {
   options: TeammateOption[];
   defaultSelected?: string[];
   name?: string;
   max?: number;
+  addLabel?: string;
+  emptyText?: string;
 }) {
   const [selected, setSelected] = useState(defaultSelected.filter((id) => options.some((o) => o.id === id)));
   const nameOf = (id: string) => options.find((o) => o.id === id)?.name ?? "";
@@ -38,7 +42,7 @@ export function TeammatePicker({
   }, [selected]);
 
   if (options.length === 0) {
-    return <p className="text-sm text-ink-soft">No one else is signed up for drop-in yet. You can add teammates later.</p>;
+    return <p className="text-sm text-ink-soft">{emptyText}</p>;
   }
 
   return (
@@ -65,8 +69,8 @@ export function TeammatePicker({
       )}
       {selected.length < max && remaining.length > 0 && (
         <PlayerSearch
-          label="Add a teammate"
-          placeholder="+ Add a teammate: search by name"
+          label={addLabel}
+          placeholder={`+ ${addLabel}: search by name`}
           options={remaining}
           onPick={(o) => setSelected([...selected, o.id])}
         />

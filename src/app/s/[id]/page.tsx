@@ -5,12 +5,13 @@ import { HostedBy } from "@/components/hosted-by";
 import { MapLink } from "@/components/map-link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { cancelRegistration, changeOption, registerForSession, setBroughtBy, setTeammates } from "@/app/actions";
+import { cancelRegistration, changeOption, declineCover, registerForSession, setBroughtBy, setTeammates } from "@/app/actions";
 import { AddToCalendar } from "@/components/add-to-calendar";
 import { FirstTimeSheet, HostNotes, HowItWorks, QuestionsNote } from "@/components/session-info";
 import { BringAFriendField } from "@/components/bring-a-friend-field";
 import { LiveRefresh } from "@/components/live-refresh";
 import { PaymentInstructions } from "@/components/payment-instructions";
+import { FriendPayPicker } from "@/components/friend-pay-picker";
 import { DateBlock, opensLater, startsLater } from "@/components/session-card";
 import { AttendeeRow, OptionRadio } from "@/components/signup-parts";
 import { TeammatePicker, type TeammateOption } from "@/components/teammate-picker";
@@ -36,7 +37,7 @@ import { offeredOptions, optionFull, optionPrice, usesSpot } from "@/lib/options
 import { Countdown } from "@/components/countdown";
 import { getMaintenance } from "@/lib/maintenance";
 import { OPTION_LABELS } from "@/lib/profile";
-import { getAttendees, getMySpot, getTeamRequests, isFirstTimer, spotsLeft } from "@/lib/queries";
+import { getAttendees, getMySpot, getPayableSignups, getTeamRequests, isFirstTimer, spotsLeft } from "@/lib/queries";
 import { getPublicCounts, getPublicSession, getPublicSessionHosts } from "@/lib/public-data";
 import { MAX_TEAMMATES } from "@/lib/teams";
 import { createClient } from "@/lib/supabase/server";
@@ -368,6 +369,12 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
   const others = offered.filter((o) => o !== reg.option);
   const active = ["pending_payment", "confirmed", "waitlisted"].includes(reg.status);
   const broughtByName = reg.brought_by ? buddyOptions.find((o) => o.id === reg.brought_by)?.name : null;
+  // Pay for friends: who this player pays for, and who pays for them.
+  const canCover = !started && !reg.covered_by && (reg.status === "pending_payment" || reg.status === "confirmed");
+  const payable = canCover ? await getPayableSignups(session.id) : [];
+  const covering = payable.filter((p) => p.covered_by === reg.id);
+  const coveredBy = reg.covered_by ? (everyone.find((a) => a.registration_id === reg.covered_by)?.display_name ?? null) : null;
+  const coveringFriends = covering.map((p) => ({ name: p.display_name, dueCents: p.owed_cents }));
 
   return (
     <Sheet
@@ -385,7 +392,25 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
       }
     >
       <div className="space-y-5">
-        {reg.status === "pending_payment" && <PaymentInstructions registration={reg} deposit={deposit != null} />}
+        {(reg.status === "pending_payment" || (reg.status === "confirmed" && !started && covering.length > 0)) && (
+          <PaymentInstructions registration={reg} deposit={deposit != null} covering={coveringFriends} coveredBy={coveredBy} />
+        )}
+        {coveredBy && reg.status === "pending_payment" && (
+          <form action={declineCover.bind(null, reg.id, session.id)}>
+            <SubmitButton size="sm" variant="ghost">
+              I&apos;ll pay myself
+            </SubmitButton>
+          </form>
+        )}
+        {canCover && (
+          <FriendPayPicker
+            registrationId={reg.id}
+            sessionId={session.id}
+            options={payable.map((p) => ({ id: p.registration_id, name: p.display_name }))}
+            selected={covering.map((p) => p.registration_id)}
+            summary={reg.status === "confirmed" ? "Pay for a friend" : "Paying for friends too?"}
+          />
+        )}
         {reg.status === "confirmed" && !ended && (
           <p className="font-display text-3xl font-black uppercase">
             You&apos;re in<span className="text-line">.</span>{" "}

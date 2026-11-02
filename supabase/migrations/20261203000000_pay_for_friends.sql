@@ -87,19 +87,22 @@ end $$;
 -- Other unpaid sign-ups in a session, for the payer's picker. Only for someone
 -- signed up for that session (players can't read each other's sign-ups).
 create function public.payable_signups(p_session_id uuid)
-returns table (registration_id uuid, display_name text, avatar_url text, owed_cents int)
+returns table (registration_id uuid, display_name text, avatar_url text, owed_cents int, covered_by uuid)
 language sql stable security definer set search_path = '' as $$
-  select x.id, coalesce(p.display_name, p.full_name), p.avatar_url, greatest(x.amount_cents - x.paid_cents, 0)
+  with me as (
+    select id from public.registrations
+     where session_id = p_session_id and profile_id = auth.uid() and status in ('pending_payment', 'confirmed')
+  )
+  select x.id, coalesce(p.display_name, p.full_name), p.avatar_url, greatest(x.amount_cents - x.paid_cents, 0), x.covered_by
     from public.registrations x
     join public.profiles p on p.id = x.profile_id
    where x.session_id = p_session_id
      and x.status = 'pending_payment'
      and x.profile_id is distinct from auth.uid()
-     and exists (
-       select 1 from public.registrations me
-        where me.session_id = p_session_id and me.profile_id = auth.uid()
-          and me.status in ('pending_payment', 'confirmed')
-     )
+     and exists (select 1 from me)
+     -- Only sign-ups this player could pick: not covered by someone else, not paying for others.
+     and (x.covered_by is null or x.covered_by in (select id from me))
+     and not exists (select 1 from public.registrations y where y.covered_by = x.id)
    order by lower(coalesce(p.display_name, p.full_name));
 $$;
 

@@ -21,7 +21,7 @@ export function SignupRow({
   preview = false,
   ended = false,
 }: {
-  reg: Registration & { session: Session };
+  reg: Registration & { session: Session; covered_by_name?: string | null };
   actionable: boolean;
   returnTo: string;
   preview?: boolean;
@@ -52,6 +52,13 @@ export function SignupRow({
               ) : (
                 <StatusMark status={reg.status} />
               )}
+              {reg.covered_by_name && (
+                <Mark tone="ok" glyph="✓">
+                  <span className="[overflow-wrap:anywhere]">
+                    {reg.status === "confirmed" ? "Paid by" : "Covered by"} {reg.covered_by_name}
+                  </span>
+                </Mark>
+              )}
             </span>
           </div>
           <p className="font-semibold">{formatTime(reg.session.starts_at)}</p>
@@ -63,7 +70,7 @@ export function SignupRow({
         </div>
       </div>
 
-      {actionable && reg.status === "pending_payment" && <PaymentInstructions registration={reg} deposit={reg.session.deposit_cents != null} />}
+      {actionable && reg.status === "pending_payment" && <PaymentInstructions registration={reg} deposit={reg.session.deposit_cents != null} coveredBy={reg.covered_by_name ?? null} />}
 
       {reg.refund_owed && (
         <p className="text-sm text-ink-soft">
