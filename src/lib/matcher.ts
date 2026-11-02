@@ -86,15 +86,15 @@ export function matchPayment(payment: IncomingPayment, candidates: Candidate[]):
   const sender = normalizeName(payment.senderName);
   const byName = candidates
     .filter((c) => c.names.some((n) => normalizeName(n) === sender))
-    .flatMap((c) => {
+    .flatMap((c): { c: Candidate; kind: "match" | "group_match" }[] => {
       const amount = payment.amountCents;
       // The full price, or exactly what's left after a partial payment.
       if (c.status === "pending_payment" && (c.owedCents === amount || (!!c.paidCents && c.owedCents - c.paidCents === amount))) {
-        return [{ c, kind: "match" as const }];
+        return [{ c, kind: "match" }];
       }
       // What's left for them plus everything their friends still owe.
       const ownLeft = c.status === "pending_payment" ? Math.max(c.owedCents - (c.paidCents ?? 0), 0) : 0;
-      if (coversFriends(c) && ownLeft + c.coveredDueCents! === amount) return [{ c, kind: "group_match" as const }];
+      if (coversFriends(c) && ownLeft + c.coveredDueCents! === amount) return [{ c, kind: "group_match" }];
       return [];
     });
 

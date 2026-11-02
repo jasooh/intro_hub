@@ -39,6 +39,8 @@ type CandidateRow = {
   status: RegistrationStatus;
   amount_cents: number;
   paid_cents: number;
+  /** The sign-up paying for this one (pay for friends). */
+  covered_by: string | null;
   profile: {
     display_name: string | null;
     full_name: string | null;
@@ -125,7 +127,7 @@ export async function POST(request: Request) {
   const { data: rows, error: candError } = await admin
     .from("registrations")
     .select(
-      "id, ref_code, status, amount_cents, paid_cents, session:sessions!inner(starts_at), profile:profiles(display_name, full_name, first_name, last_name, etransfer_names)",
+      "id, ref_code, status, amount_cents, paid_cents, covered_by, session:sessions!inner(starts_at), profile:profiles(display_name, full_name, first_name, last_name, etransfer_names)",
     )
     .gte("session.starts_at", since);
   if (candError) return NextResponse.json({ error: candError.message }, { status: 500 });
@@ -143,6 +145,18 @@ export async function POST(request: Request) {
       r.profile.first_name && r.profile.last_name ? `${r.profile.first_name} ${r.profile.last_name}` : null,
     ].filter((n): n is string => !!n),
   }));
+  const candidateRows = rows as unknown as CandidateRow[];
+  /** What a payer's friends still owe, from the current candidate state. */
+  const refreshCoveredDue = () => {
+    for (const c of candidates) {
+      c.coveredDueCents = candidateRows
+        .filter((r) => r.covered_by === c.registrationId)
+        .map((r) => candidates.find((f) => f.registrationId === r.id)!)
+        .filter((f) => f.status === "pending_payment")
+        .reduce((sum, f) => sum + Math.max(f.owedCents - (f.paidCents ?? 0), 0), 0);
+    }
+  };
+  refreshCoveredDue();
 
   const messages = new Map(received.map((m) => [m.id, m]));
   let matched = 0;
@@ -162,11 +176,18 @@ export async function POST(request: Request) {
       continue;
     }
 
-    const { data, error } = await admin.rpc("ingest_apply_payment", {
-      p_payment_id: payment.id,
-      p_registration_id: result.registrationId,
-      p_matched_by: result.by,
-    });
+    const { data, error } =
+      result.kind === "group_match"
+        ? await admin.rpc("ingest_apply_group_payment", {
+            p_payment_id: payment.id,
+            p_payer_registration_id: result.registrationId,
+            p_matched_by: result.by,
+          })
+        : await admin.rpc("ingest_apply_payment", {
+            p_payment_id: payment.id,
+            p_registration_id: result.registrationId,
+            p_matched_by: result.by,
+          });
     if (error || data === null) {
       const note = error ? `Error applying payment: ${error.message}` : "Registration was no longer awaiting payment";
       await admin.from("payments").update({ note }).eq("id", payment.id);
@@ -175,11 +196,22 @@ export async function POST(request: Request) {
     matched += 1;
     const applied = parseEvents(data);
     events.push(...applied);
-    // Keep later messages in this batch matching against the up-to-date sign-up.
-    const candidate = candidates.find((c) => c.registrationId === result.registrationId);
-    if (candidate) {
-      candidate.paidCents = (candidate.paidCents ?? 0) + msg.amountCents!;
-      if (applied.some((e) => e.event === "confirmed")) candidate.status = "confirmed";
+    // Keep later messages in this batch matching against the up-to-date sign-ups.
+    if (result.kind === "group_match") {
+      for (const e of applied) {
+        const c = candidates.find((x) => x.registrationId === e.registration_id);
+        if (c && e.event === "confirmed") {
+          c.status = "confirmed";
+          c.paidCents = Math.max(c.paidCents ?? 0, c.owedCents);
+        }
+      }
+      refreshCoveredDue();
+    } else {
+      const candidate = candidates.find((c) => c.registrationId === result.registrationId);
+      if (candidate) {
+        candidate.paidCents = (candidate.paidCents ?? 0) + msg.amountCents!;
+        if (applied.some((e) => e.event === "confirmed")) candidate.status = "confirmed";
+      }
     }
   }
 
