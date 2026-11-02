@@ -144,9 +144,8 @@ async function AdminSession({
     );
     return friends.length ? `Brought ${friends.map(name).join(", ")}` : "Bring a Friend";
   };
-  // Pay for friends: "Alex is covering" / "Paid by Alex" / "Paying for Blake", next to the Bring a Friend note.
-  const noteOf = (r: Row) =>
-    [friendNoteOf(r), coverNote(r, rows, (rid) => nameById.get(rid))].filter(Boolean).join(" · ") || undefined;
+  // Pay for friends: "Alex is covering" / "Paid by Alex" / "Paying for Blake" (its own tag, not a discount).
+  const coverNoteOf = (r: Row) => coverNote(r, rows, (rid) => nameById.get(rid));
   const wantsWith = (regId: string) =>
     teamRequests.filter((t) => t.from === regId).map((t) => nameById.get(t.to) ?? "someone");
   const going = rows
@@ -285,7 +284,7 @@ async function AdminSession({
             <PlayerRow
               key={r.id}
               reg={r}
-              sessionId={id} extras={rowExtras} friendNote={noteOf(r)}
+              sessionId={id} extras={rowExtras} friendNote={friendNoteOf(r)} coverNote={coverNoteOf(r)}
               teamName={r.team_id ? teamNames.get(r.team_id) : null}
               teammates={wantsWith(r.id)}
               rating={ratings[r.profile_id] ?? null}
@@ -377,7 +376,7 @@ async function AdminSession({
               )}
               <ol className="divide-y divide-ink/20">
                 {q.list.map((r, i) => (
-                <PlayerRow key={r.id} reg={r} sessionId={id} extras={rowExtras} friendNote={noteOf(r)} prefix={pad2(i + 1)}>
+                <PlayerRow key={r.id} reg={r} sessionId={id} extras={rowExtras} friendNote={friendNoteOf(r)} coverNote={coverNoteOf(r)} prefix={pad2(i + 1)}>
                   <form action={moveWaitlist.bind(null, r.id, -1, id)}>
                     <SubmitButton size="sm" variant="ghost">↑</SubmitButton>
                   </form>
@@ -420,7 +419,7 @@ async function AdminSession({
           </summary>
           <ul className="mt-3 divide-y divide-ink/20">
             {inactive.map((r) => (
-              <PlayerRow key={r.id} reg={r} sessionId={id} extras={rowExtras} friendNote={noteOf(r)}>
+              <PlayerRow key={r.id} reg={r} sessionId={id} extras={rowExtras} friendNote={friendNoteOf(r)} coverNote={coverNoteOf(r)}>
                 {r.status === "expired" && (
                   <form action={markPaid.bind(null, r.id, id)}>
                     <SubmitButton
@@ -570,6 +569,7 @@ function PlayerRow({
   rating,
   extras,
   friendNote,
+  coverNote: payNote,
   prefix,
   children,
 }: {
@@ -577,6 +577,8 @@ function PlayerRow({
   sessionId: string;
   /** Bring a Friend: who they came with, or who they brought. */
   friendNote?: string;
+  /** Pay for friends: who is paying for them, or whom they pay for. */
+  coverNote?: string;
   teamName?: string | null;
   /** Names this player asked to be teamed with. */
   teammates?: string[];
@@ -684,6 +686,11 @@ function PlayerRow({
           {friendNote && (
             <Mark tone="line" glyph="+">
               {friendNote} · half price
+            </Mark>
+          )}
+          {payNote && (
+            <Mark tone="mat" glyph="$">
+              <span className="[overflow-wrap:anywhere]">{payNote}</span>
             </Mark>
           )}
         </div>
