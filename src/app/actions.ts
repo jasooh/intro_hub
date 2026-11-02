@@ -39,6 +39,8 @@ const ERRORS: Record<string, string> = {
   not_first_timer: "Bring a Friend is for first-time players.",
   buddy_unavailable: "Pick a regular (someone who's played before) who's signed up for this session.",
   friend_rate_unavailable: "This session is free, so there's no Bring a Friend rate.",
+  cover_unavailable: "That sign-up can't be covered right now. Pick again.",
+  too_many_friends: `You can pay for up to ${MAX_TEAMMATES} friends.`,
 };
 
 function friendly(message: string) {
