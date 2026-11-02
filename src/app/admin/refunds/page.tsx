@@ -61,6 +61,17 @@ async function Refunds({ searchParams }: { searchParams: PageProps<"/admin/refun
     .order("cancelled_at", { ascending: false })
     .limit(1000);
 
+  // Pay for friends: the refund goes to whoever paid for the sign-up.
+  const payerIds = [...new Set(((data ?? []) as RefundRowData[]).map((r) => r.covered_by).filter((id): id is string => !!id))];
+  const { data: payers } = payerIds.length
+    ? await supabase.from("registrations").select("id, profile:profiles(display_name, full_name)").in("id", payerIds)
+    : { data: [] };
+  const payerName = new Map(
+    ((payers ?? []) as unknown as { id: string; profile: { display_name: string | null; full_name: string | null } }[]).map((p) => [
+      p.id,
+      p.profile.display_name ?? p.profile.full_name ?? "someone",
+    ]),
+  );
   const rows = ((data ?? []) as RefundRowData[])
     .map((r) => ({ r, status: refundStatus(r), reason: refundReason(r, r.session) }))
     .filter(({ r }) =>
@@ -107,7 +118,7 @@ async function Refunds({ searchParams }: { searchParams: PageProps<"/admin/refun
           ) : (
             <ul className="divide-y divide-ink/25">
               {shown.map((x) => (
-                <RefundRow key={x.r.id} r={x.r} status={x.status} reason={x.reason} />
+                <RefundRow key={x.r.id} r={x.r} status={x.status} reason={x.reason} paidBy={x.r.covered_by ? (payerName.get(x.r.covered_by) ?? null) : null} />
               ))}
             </ul>
           )}

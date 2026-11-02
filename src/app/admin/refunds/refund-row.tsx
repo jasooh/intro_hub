@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { refundPayee } from "@/lib/pay-for-friends";
 import { setRefunded, setRefundWaived } from "@/app/admin/actions";
 import { SubmitButton } from "@/components/submit-button";
 import { Mark } from "@/components/ui";
@@ -12,9 +13,22 @@ export type RefundRowData = Registration & {
 };
 
 /** One refund: who, how much, why, and the next action for its status. */
-export function RefundRow({ r, status, reason }: { r: RefundRowData; status: RefundStatus; reason: RefundReason }) {
-  const name = r.profile.display_name ?? r.profile.full_name ?? r.profile.email;
-  const fullName = [r.profile.first_name, r.profile.last_name].filter(Boolean).join(" ");
+export function RefundRow({
+  r,
+  status,
+  reason,
+  paidBy = null,
+}: {
+  r: RefundRowData;
+  status: RefundStatus;
+  reason: RefundReason;
+  /** Pay for friends: the player who paid for this sign-up gets the refund. */
+  paidBy?: string | null;
+}) {
+  const player = r.profile.display_name ?? r.profile.full_name ?? r.profile.email;
+  const payee = refundPayee(player, paidBy);
+  const name = payee.to;
+  const fullName = paidBy ? "" : [r.profile.first_name, r.profile.last_name].filter(Boolean).join(" ");
   return (
     <li className={`flex flex-wrap items-start justify-between gap-x-6 gap-y-3 py-4 ${status === "waived" ? "opacity-70" : ""}`}>
       <div className="min-w-0 space-y-1">
@@ -24,6 +38,7 @@ export function RefundRow({ r, status, reason }: { r: RefundRowData; status: Ref
           </span>{" "}
           to <b>{name}</b>
           {fullName && fullName !== name && <span className="text-ink-soft"> · {fullName}</span>}
+          {payee.note && <span className="text-ink-soft [overflow-wrap:anywhere]"> · {payee.note}</span>}
         </p>
         {reason !== "deposit_return" && (reason === "overpaid" || r.paid_cents !== r.amount_cents) && (
           <p className="text-sm text-ink-soft">

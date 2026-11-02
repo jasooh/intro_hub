@@ -237,6 +237,35 @@ describe("group payments", () => {
     expect((await reg(regB)).status).toBe("pending_payment");
   });
 
+  it("a cancelled group transfer past the payer's time to pay un-covers the friends", async () => {
+    const { a, regA, regB } = await group();
+    await cover(a, regA, [regB]);
+    await payGroup(regA, 2000);
+    // The payer's time to pay (12 hours from signing up) has passed; the friend's hasn't.
+    await db.query(`update public.registrations set created_at = now() - interval '13 hours' where id = $1`, [regA]);
+    await db.query(`update public.host_activity set created_at = now() - interval '13 hours' where registration_id = $1`, [regA]);
+    await cancelTransfer(2000, "REF-1");
+    expect((await reg(regA)).status).toBe("expired");
+    expect(await reg(regB)).toMatchObject({ status: "pending_payment", covered_by: null });
+  });
+
+  it("a friend who pays for themselves is no longer covered", async () => {
+    const { a, regA, regB, regC } = await group();
+    await cover(a, regA, [regB, regC]);
+    await payGroup(regB, 1000, "REF-B");
+    expect(await reg(regB)).toMatchObject({ status: "confirmed", covered_by: null });
+    const host = await createUser(db, "Host", { admin: true });
+    await asUser(db, host, `select public.admin_mark_paid($1)`, [regC]);
+    expect(await reg(regC)).toMatchObject({ status: "confirmed", covered_by: null });
+  });
+
+  it("a friend paid through the payer's transfer keeps the link", async () => {
+    const { a, regA, regB } = await group();
+    await cover(a, regA, [regB]);
+    await payGroup(regA, 2000);
+    expect(await reg(regB)).toMatchObject({ status: "confirmed", covered_by: regA });
+  });
+
   it("a cancellation without a reference matches the full amount", async () => {
     const { a, regA, regB } = await group();
     await cover(a, regA, [regB]);

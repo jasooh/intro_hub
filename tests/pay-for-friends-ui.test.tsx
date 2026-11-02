@@ -48,6 +48,17 @@ describe("PaymentInstructions, paying for friends", () => {
     expect(out).toContain("VB-GG22");
   });
 
+  it("keeps a part-paid payer's own remainder apart from the friends' total", () => {
+    const out = text(
+      renderToStaticMarkup(
+        <PaymentInstructions registration={reg({ paid_cents: 500 })} covering={[{ name: "Sam", dueCents: 1500 }]} />,
+      ),
+    );
+    expect(out).toContain("We got $5.00 of $15.00");
+    expect(out).toContain("$10.00 left for your spot");
+    expect(out).toContain("Send $25.00");
+  });
+
   it("is unchanged without friends", () => {
     const out = text(renderToStaticMarkup(<PaymentInstructions registration={reg()} />));
     expect(out).toContain("Send $15.00");

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { HOST_GROUPS, needsAttention } from "@/lib/host-pages";
-import { coverNote, nestSplits } from "@/lib/pay-for-friends";
+import { coverNote, nestSplits, refundPayee } from "@/lib/pay-for-friends";
 
 describe("host pages", () => {
   it("list every admin page once", () => {
@@ -44,5 +44,12 @@ describe("pay for friends, host views", () => {
       ["p2", []],
       ["s2", []],
     ]);
+  });
+});
+
+describe("pay for friends, refunds", () => {
+  it("sends a covered friend's refund to the payer", () => {
+    expect(refundPayee("Blake", "Alex")).toEqual({ to: "Alex", note: "paid for Blake" });
+    expect(refundPayee("Blake", null)).toEqual({ to: "Blake", note: null });
   });
 });

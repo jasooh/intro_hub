@@ -23,3 +23,8 @@ export function nestSplits<T extends { id: string; split_from: string | null }>(
     .filter((p) => !p.split_from || !ids.has(p.split_from))
     .map((p) => ({ ...p, splits: payments.filter((s) => s.split_from === p.id) }));
 }
+
+/** Who gets a refund: the payer when someone else paid for this sign-up. */
+export function refundPayee(playerName: string, paidByName: string | null): { to: string; note: string | null } {
+  return paidByName ? { to: paidByName, note: `paid for ${playerName}` } : { to: playerName, note: null };
+}

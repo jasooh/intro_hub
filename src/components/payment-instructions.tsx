@@ -44,8 +44,17 @@ export function PaymentInstructions({
       )}
       {pending && paid > 0 && (
         <p className="border-l-4 border-warn pl-3">
-          We got <b>{formatMoney(paid)}</b> of <b>{formatMoney(registration.amount_cents)}</b>. Send the remaining{" "}
-          <b>{formatMoney(due)}</b> with the same code and your spot is confirmed.
+          We got <b>{formatMoney(paid)}</b> of <b>{formatMoney(registration.amount_cents)}</b>.{" "}
+          {covering.length > 0 ? (
+            <>
+              That&apos;s <b>{formatMoney(ownDue)}</b> left for your spot, included in the total below with your friends&apos;
+              share.
+            </>
+          ) : (
+            <>
+              Send the remaining <b>{formatMoney(due)}</b> with the same code and your spot is confirmed.
+            </>
+          )}
         </p>
       )}
       <ol className="space-y-2 text-ink">
