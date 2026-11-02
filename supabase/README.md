@@ -29,6 +29,7 @@ Open the file listed for the current version; older copies in earlier migrations
 | `_devtools_guard` | `20261023000000_dev_tools.sql` | 1 |
 | `_devtools_log` | `20261023000000_dev_tools.sql` | 1 |
 | `_devtools_table` | `20261023000000_dev_tools.sql` | 1 |
+| `_drop_stale_cover` | `20261203000001_pay_for_friends_fixes.sql` | 1 |
 | `_fill_stats` | `20261113000000_stats.sql` | 1 |
 | `_fit_capacity` | `20261101000000_signup_options.sql` | 1 |
 | `_has_room` | `20261101000000_signup_options.sql` | 1 |
@@ -49,7 +50,7 @@ Open the file listed for the current version; older copies in earlier migrations
 | `_release_regular` | `20261101000000_signup_options.sql` | 2 |
 | `_reprice` | `20261028000000_bring_a_friend_and_deposits.sql` | 1 |
 | `_reset_hold_nudge` | `20261031000000_host_tools.sql` | 1 |
-| `_reverse_payment` | `20261203000000_pay_for_friends.sql` | 2 |
+| `_reverse_payment` | `20261203000001_pay_for_friends_fixes.sql` | 3 |
 | `_set_avatar_url` | `20261127000000_photo_avatars.sql` | 2 |
 | `_signup_price` | `20261101000000_signup_options.sql` | 2 |
 | `_spots_used` | `20261101000000_signup_options.sql` | 2 |
