@@ -207,6 +207,10 @@ export type Registration = {
   team_id: string | null;
   /** A host marked them as not showing up. */
   no_show_at: string | null;
+  /** The sign-up paying for this one (pay for friends). */
+  covered_by: string | null;
+  /** The covered player has seen the "your spot is covered" pop-up. */
+  covered_seen: boolean;
   no_show_by: string | null;
 };
 
@@ -224,6 +228,8 @@ export type Payment = {
   dismissed: boolean;
   /** The sender cancelled it (or it expired) before it was deposited; it no longer counts. */
   reversed_at: string | null;
+  /** The e-Transfer this share was split off (pay for friends). */
+  split_from: string | null;
 };
 
 /** A "your e-Transfer was cancelled / expired" email, and the payment it took back. */

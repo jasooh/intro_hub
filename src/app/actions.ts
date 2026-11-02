@@ -347,6 +347,52 @@ export async function acknowledgeNoShows() {
   revalidatePath("/", "layout");
 }
 
+function friendIds(formData: FormData) {
+  return [...new Set(formData.getAll("friends").map(String).filter(Boolean))].slice(0, MAX_TEAMMATES);
+}
+
+function revalidateCover(sessionId: string) {
+  revalidatePath(`/s/${sessionId}`);
+  revalidatePath("/me/signups");
+  revalidatePath(`/admin/sessions/${sessionId}`);
+}
+
+/** The payer picks whose sign-ups their e-Transfer also pays for. */
+export async function setCoveredSignups(registrationId: string, sessionId: string, formData: FormData) {
+  const path = `/s/${sessionId}`;
+  const me = await requireProfile(path);
+  await playerLimit(me.id, path);
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_covered_signups", {
+    p_registration_id: registrationId,
+    p_targets: friendIds(formData),
+  });
+  if (error) redirect(`${path}?error=${encodeURIComponent(friendly(error.message))}`);
+  revalidateCover(sessionId);
+  await flash("success", "Saved who you're paying for");
+}
+
+/** "I'll pay myself": the covered player leaves the payer's group. */
+export async function declineCover(registrationId: string, sessionId: string) {
+  const path = `/s/${sessionId}`;
+  await requireProfile(path);
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("decline_cover", { p_registration_id: registrationId });
+  if (error) redirect(`${path}?error=${encodeURIComponent(friendly(error.message))}`);
+  revalidateCover(sessionId);
+  revalidatePath("/", "layout");
+  await flash("success", "You'll pay for your own spot");
+}
+
+/** "Got it" on the "your spot is covered" pop-up. */
+export async function acknowledgeCover(registrationId: string) {
+  await requireProfile("/me");
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("acknowledge_cover", { p_registration_id: registrationId });
+  if (error) console.error("Could not save cover acknowledgement", error);
+  revalidatePath("/", "layout");
+}
+
 export type AvatarUploadResult = { seed: string } | { error: string };
 
 /**
