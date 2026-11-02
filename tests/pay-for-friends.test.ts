@@ -277,3 +277,72 @@ describe("group payments", () => {
     expect(c.rows[0].payment_id).toBe(paymentId);
   });
 });
+
+describe("with Bring a Friend", () => {
+  type Priced = { status: string; amount_cents: number; paid_cents: number; refund_owed: boolean; friend_discount: boolean };
+  const priced = async (id: string) =>
+    (
+      await db.query<Priced>(
+        `select status::text, amount_cents, paid_cents, refund_owed, friend_discount from public.registrations where id = $1`,
+        [id],
+      )
+    ).rows[0];
+  const bring = (friend: string, friendReg: string, regularReg: string) =>
+    asUser(db, friend, `select public.set_brought_by($1, $2)`, [friendReg, regularReg]);
+  async function payGroup(payerReg: string, cents: number) {
+    const p = await db.query<{ id: string }>(
+      `insert into public.payments (gmail_message_id, sender_name, amount_cents) values (gen_random_uuid()::text, 'A', $1) returning id`,
+      [cents],
+    );
+    await asService(db, `select public.ingest_apply_group_payment($1, $2, 'ref')`, [p.rows[0].id, payerReg]);
+  }
+  /** A regular (A) and a first-timer (B) in a $15 session. */
+  async function regularAndFirstTimer() {
+    const sid = await createSession(db, { priceCents: 1500 });
+    const a = await createUser(db, "Regular A");
+    await db.query(`update public.profiles set attended_before = true where id = $1`, [a]);
+    const b = await createUser(db, "Friend B");
+    return { sid, a, b, ra: await signUp(a, sid), rb: await signUp(b, sid) };
+  }
+  const half = { status: "confirmed", amount_cents: 750, paid_cents: 750, refund_owed: false, friend_discount: true };
+
+  it("one $15 transfer pays both half prices", async () => {
+    const { sid, a, b, ra, rb } = await regularAndFirstTimer();
+    await bring(b, rb, ra);
+    await cover(a, ra, [rb]);
+    const picker = await asUser<{ owed_cents: number }>(db, a, `select owed_cents from public.payable_signups($1)`, [sid]);
+    expect(picker.rows).toEqual([{ owed_cents: 750 }]);
+    await payGroup(ra, 1500);
+    expect(await priced(ra)).toMatchObject(half);
+    expect(await priced(rb)).toMatchObject(half);
+  });
+
+  it("follows the half price when the friend links after being covered", async () => {
+    const { a, b, ra, rb } = await regularAndFirstTimer();
+    await cover(a, ra, [rb]);
+    await bring(b, rb, ra);
+    await payGroup(ra, 1500);
+    expect(await priced(ra)).toMatchObject(half);
+    expect(await priced(rb)).toMatchObject(half);
+  });
+
+  it("owes the difference back on both sign-ups when they link after paying full price", async () => {
+    const { a, b, ra, rb } = await regularAndFirstTimer();
+    await cover(a, ra, [rb]);
+    await payGroup(ra, 3000);
+    await bring(b, rb, ra);
+    expect(await priced(ra)).toMatchObject({ amount_cents: 750, paid_cents: 1500, refund_owed: true });
+    // The friend's share came from A, so the refunds page sends it to A (refundPayee).
+    expect(await reg(rb)).toMatchObject({ paid_cents: 1500, refund_owed: true, covered_by: ra });
+  });
+
+  it("keeps the regular at half price when the friend cancels after both paid", async () => {
+    const { a, b, ra, rb } = await regularAndFirstTimer();
+    await bring(b, rb, ra);
+    await cover(a, ra, [rb]);
+    await payGroup(ra, 1500);
+    await asUser(db, b, `select public.cancel_registration($1)`, [rb]);
+    expect(await priced(ra)).toMatchObject(half);
+    expect(await reg(rb)).toMatchObject({ status: "cancelled", paid_cents: 750, refund_owed: true, covered_by: ra });
+  });
+});
