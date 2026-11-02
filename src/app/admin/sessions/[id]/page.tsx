@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { coverNote } from "@/lib/pay-for-friends";
 import { OptionMark } from "@/components/option-mark";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -143,6 +144,9 @@ async function AdminSession({
     );
     return friends.length ? `Brought ${friends.map(name).join(", ")}` : "Bring a Friend";
   };
+  // Pay for friends: "Alex is covering" / "Paid by Alex" / "Paying for Blake", next to the Bring a Friend note.
+  const noteOf = (r: Row) =>
+    [friendNoteOf(r), coverNote(r, rows, (rid) => nameById.get(rid))].filter(Boolean).join(" · ") || undefined;
   const wantsWith = (regId: string) =>
     teamRequests.filter((t) => t.from === regId).map((t) => nameById.get(t.to) ?? "someone");
   const going = rows
@@ -281,7 +285,7 @@ async function AdminSession({
             <PlayerRow
               key={r.id}
               reg={r}
-              sessionId={id} extras={rowExtras} friendNote={friendNoteOf(r)}
+              sessionId={id} extras={rowExtras} friendNote={noteOf(r)}
               teamName={r.team_id ? teamNames.get(r.team_id) : null}
               teammates={wantsWith(r.id)}
               rating={ratings[r.profile_id] ?? null}
@@ -373,7 +377,7 @@ async function AdminSession({
               )}
               <ol className="divide-y divide-ink/20">
                 {q.list.map((r, i) => (
-                <PlayerRow key={r.id} reg={r} sessionId={id} extras={rowExtras} friendNote={friendNoteOf(r)} prefix={pad2(i + 1)}>
+                <PlayerRow key={r.id} reg={r} sessionId={id} extras={rowExtras} friendNote={noteOf(r)} prefix={pad2(i + 1)}>
                   <form action={moveWaitlist.bind(null, r.id, -1, id)}>
                     <SubmitButton size="sm" variant="ghost">↑</SubmitButton>
                   </form>
@@ -416,7 +420,7 @@ async function AdminSession({
           </summary>
           <ul className="mt-3 divide-y divide-ink/20">
             {inactive.map((r) => (
-              <PlayerRow key={r.id} reg={r} sessionId={id} extras={rowExtras} friendNote={friendNoteOf(r)}>
+              <PlayerRow key={r.id} reg={r} sessionId={id} extras={rowExtras} friendNote={noteOf(r)}>
                 {r.status === "expired" && (
                   <form action={markPaid.bind(null, r.id, id)}>
                     <SubmitButton

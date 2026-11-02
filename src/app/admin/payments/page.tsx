@@ -6,6 +6,8 @@ import { requireAdmin } from "@/lib/auth";
 import { dismissAlreadyMarkedPaid } from "@/app/admin/actions";
 import { SubmitButton } from "@/components/submit-button";
 import { alreadyMarkedPaid, METHOD_LABELS, type PaymentMethod, paymentMatches, paymentMethod, paymentStatus, type PaymentStatus } from "@/lib/payments";
+import { nestSplits } from "@/lib/pay-for-friends";
+import { formatMoney } from "@/lib/format";
 import { paymentWindowStart } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
 import type { PaymentCancellation } from "@/lib/types";
@@ -103,6 +105,8 @@ async function Payments({ searchParams }: { searchParams: PageProps<"/admin/paym
   const inView = rows.filter((r) => view === "all" || paymentStatus(r.method) === view);
   const methodCount = (m: PaymentMethod | "any") => inView.filter((r) => m === "any" || r.method === m).length;
   const shown = inView.filter((r) => method === "any" || r.method === method);
+  // Pay for friends: shares of one e-Transfer are listed under it.
+  const nested = nestSplits(shown.map((x) => ({ ...x, id: x.p.id, split_from: x.p.split_from })));
   const showChips = view === "matched" || view === "all";
   // E-Transfers for sign-ups a host already marked paid (e.g. after the Gmail script was down).
   const markedPaid = alreadyMarkedPaid((payments ?? []) as Row[]).length;
@@ -167,8 +171,23 @@ async function Payments({ searchParams }: { searchParams: PageProps<"/admin/paym
             </EmptyState>
           ) : (
             <ul className="divide-y divide-ink/25">
-              {shown.map(({ p, method: m }) => (
-                <PaymentRow key={p.id} p={p} method={m} options={assignable} />
+              {nested.map(({ p, method: m, splits }) => (
+                <PaymentRow key={p.id} p={p} method={m} options={assignable}>
+                  {splits.length > 0 && (
+                    <ul className="mt-2 space-y-1 border-l-4 border-mat pl-3 text-sm text-ink-soft">
+                      {splits.map(({ p: share }) => (
+                        <li key={share.id} className="[overflow-wrap:anywhere]">
+                          Paid for{" "}
+                          <b className="text-ink">
+                            {share.registration?.profile.display_name ?? share.registration?.profile.full_name ?? "someone"}
+                          </b>
+                          : <span className="font-score font-black text-ink">{formatMoney(share.amount_cents)}</span>
+                          {share.registration && <> · {share.registration.ref_code}</>}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </PaymentRow>
               ))}
             </ul>
           )}

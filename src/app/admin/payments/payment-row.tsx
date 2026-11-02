@@ -27,7 +27,18 @@ const METHOD_MARK: Record<PaymentMethod, { tone: Tone; glyph: string }> = {
   reversed: { tone: "bad", glyph: "↩" },
 };
 
-export function PaymentRow({ p, method, options }: { p: Row; method: PaymentMethod; options: Option[] }) {
+export function PaymentRow({
+  p,
+  method,
+  options,
+  children,
+}: {
+  p: Row;
+  method: PaymentMethod;
+  options: Option[];
+  /** Extra lines under the row (the shares a group e-Transfer paid for). */
+  children?: React.ReactNode;
+}) {
   const mark = METHOD_MARK[method];
   const r = p.registration;
   const player = r ? (r.profile.display_name ?? r.profile.full_name) : null;
@@ -102,6 +113,7 @@ export function PaymentRow({ p, method, options }: { p: Row; method: PaymentMeth
           <SubmitButton size="sm">Confirm player</SubmitButton>
         </form>
       )}
+      {children}
     </li>
   );
 }
