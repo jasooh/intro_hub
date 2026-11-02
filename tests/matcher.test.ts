@@ -104,3 +104,53 @@ describe("matchPayment", () => {
     expect(matchPayment({ senderName: "x", amountCents: 1000, memo: "VB-FFFF" }, mixed)).toMatchObject({ kind: "match", registrationId: "full" });
   });
 });
+
+describe("group payments", () => {
+  const payer = (over: Partial<Candidate> = {}): Candidate => ({
+    registrationId: "p1",
+    refCode: "VB-GG22",
+    status: "pending_payment",
+    owedCents: 1000,
+    names: ["Alex Kim"],
+    coveredDueCents: 1000,
+    ...over,
+  });
+
+  it("matches the payer's code as a group payment", () => {
+    expect(matchPayment({ senderName: "Alex Kim", amountCents: 2000, memo: "VB-GG22" }, [payer()])).toEqual({
+      kind: "group_match",
+      registrationId: "p1",
+      by: "ref",
+    });
+  });
+
+  it("still matches when the payer has already paid", () => {
+    expect(matchPayment({ senderName: null, amountCents: 1000, memo: "VB-GG22" }, [payer({ status: "confirmed" })])).toEqual({
+      kind: "group_match",
+      registrationId: "p1",
+      by: "ref",
+    });
+    expect(
+      matchPayment({ senderName: null, amountCents: 1000, memo: "VB-GG22" }, [payer({ status: "confirmed", coveredDueCents: 0 })]),
+    ).toMatchObject({ kind: "unmatched" });
+  });
+
+  it("matches the group total by name without a code", () => {
+    expect(matchPayment({ senderName: "alex kim", amountCents: 2000, memo: null }, [payer()])).toEqual({
+      kind: "group_match",
+      registrationId: "p1",
+      by: "name_amount",
+    });
+    expect(
+      matchPayment({ senderName: "Alex Kim", amountCents: 1000, memo: null }, [payer({ status: "confirmed", paidCents: 1000 })]),
+    ).toEqual({ kind: "group_match", registrationId: "p1", by: "name_amount" });
+  });
+
+  it("keeps the payer's own price a plain match", () => {
+    expect(matchPayment({ senderName: "Alex Kim", amountCents: 1000, memo: null }, [payer()])).toEqual({
+      kind: "match",
+      registrationId: "p1",
+      by: "name_amount",
+    });
+  });
+});
