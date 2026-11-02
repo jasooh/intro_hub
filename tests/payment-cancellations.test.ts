@@ -125,6 +125,27 @@ describe("cancelled e-Transfers", () => {
     expect((await reg(b)).status).toBe("pending_payment");
   });
 
+  it("a cancellation from someone else never takes back a payment that isn't theirs", async () => {
+    const sid = await createSession(db);
+    const a = await createUser(db, "A");
+    await asUser(db, a, `select public.register_for_session($1)`, [sid]);
+    await pay((await reg(a)).id); // sent by JANE DOE, $10 today
+    const c = await db.query<{ id: string }>(
+      `insert into public.payment_cancellations (gmail_message_id, sender_name, amount_cents, sent_on, received_at)
+       values ('g-other-sender', 'JORDAN CHUNG', 1000, (now() at time zone 'America/Toronto')::date, now()) returning id`,
+    );
+    const res = await asService<{ events: Event[] }>(db, `select public.ingest_reverse_payment($1, 'America/Toronto') as events`, [
+      c.rows[0].id,
+    ]);
+    expect(res.rows[0].events).toEqual([]);
+    expect((await reg(a)).status).toBe("confirmed");
+    const row = await db.query<{ payment_id: string | null; note: string }>(
+      `select payment_id, note from public.payment_cancellations where id = $1`,
+      [c.rows[0].id],
+    );
+    expect(row.rows[0]).toMatchObject({ payment_id: null, note: expect.stringContaining("No payment found") });
+  });
+
   it("hosts can dismiss one that isn't about volleyball", async () => {
     const host = await createUser(db, "Host", { admin: true });
     const { id } = await cancel(4200); // no payment of that amount
