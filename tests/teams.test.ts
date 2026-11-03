@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { balanceTeams, defaultTeamCount, requestGroups } from "@/lib/teams";
+import { balanceTeams, defaultTeamCount, requestGroups, unmetRequests } from "@/lib/teams";
 import type { SkillLevel } from "@/lib/types";
 
 const player = (id: string, skill: SkillLevel | null) => ({ id, skill });
@@ -116,6 +116,16 @@ describe("balanceTeams with team requests", () => {
       { from: "p0", to: "p3" },
     ]);
     expect(teams.map((t) => t.length)).toEqual([6, 6]);
+  });
+
+  it("never makes a team bigger than 6, splitting a group that can't fit and reporting it", () => {
+    // 12 players, 2 teams, a group of 7 chained together: no team can take 7.
+    const players = roster(12);
+    const requests = [1, 2, 3, 4, 5, 6].map((i) => ({ from: "p0", to: `p${i}` }));
+    const teams = balanceTeams(players, 2, Math.random, requests);
+    expect(teams.map((t) => t.length)).toEqual([6, 6]);
+    const unmet = unmetRequests(teams, requests);
+    expect(unmet).toHaveLength(1);
   });
 
   it("ignores requests for people who aren't playing", () => {

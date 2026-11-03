@@ -15,9 +15,25 @@ export const MAX_TEAMMATES = 5;
 /** "from asked to play with to" (one-way is enough to group them). */
 export type TeamRequest = { from: string; to: string };
 
+/** Most players on one team. A requested group that can't fit anywhere is split rather than making a bigger team. */
+export const TEAM_SIZE = 6;
+
 /** Default team count for a session: one team per 6 drop-in spots, at least 2. */
 export function defaultTeamCount(capacity: number) {
-  return Math.max(2, Math.round(capacity / 6));
+  return Math.max(2, Math.round(capacity / TEAM_SIZE));
+}
+
+/**
+ * Requests that didn't work out: both players are on a team, but not the same one.
+ * Pass the teams as lists of ids (or anything with an `id`).
+ */
+export function unmetRequests(teams: { id: string }[][], requests: TeamRequest[]): TeamRequest[] {
+  const teamOf = new Map(teams.flatMap((t, i) => t.map((p) => [p.id, i] as const)));
+  return requests.filter((r) => {
+    const a = teamOf.get(r.from);
+    const b = teamOf.get(r.to);
+    return a !== undefined && b !== undefined && a !== b;
+  });
 }
 
 const rank = (p: Player) => skillLevel(p.skill, p.rating);
@@ -61,9 +77,11 @@ function bySkill<T extends Player>(players: T[], random: () => number) {
  * order 1,2,3,3,2,1,... so no team keeps getting the first pick.
  *
  * With requests: players who asked to play together are grouped and placed
- * first, each group whole (never split), onto the team with the fewest players
- * (then the lowest skill total). Everyone who didn't ask for teammates is then
- * dealt strongest-first the same way, evening out sizes and skill.
+ * first, each group whole, onto the team with the fewest players (then the
+ * lowest skill total). A group is only split when no team has room for all of
+ * it (teams stop at TEAM_SIZE), so some requests go unmet; see `unmetRequests`.
+ * Everyone who didn't ask for teammates is then dealt strongest-first the same
+ * way, evening out sizes and skill.
  */
 export function balanceTeams<T extends Player>(
   players: T[],
@@ -87,8 +105,7 @@ export function balanceTeams<T extends Player>(
     return teams;
   }
 
-  // Requests come first and are never split: each requested group is placed
-  // whole. Players who didn't ask for anyone are the free pieces that balance
+  // Requests come first: each requested group is placed whole where it fits. Players who didn't ask for anyone are the free pieces that balance
   // sizes and skill around them (and get reshuffled on Re-balance).
   const byId = new Map(players.map((p) => [p.id, p]));
   const grouped = new Set(groupIds.flat());
@@ -101,7 +118,15 @@ export function balanceTeams<T extends Player>(
 
   units
     .sort((a, b) => b.length - a.length || total(b) - total(a))
-    .forEach((unit) => smallestTeam().push(...unit));
+    .forEach((unit) => {
+      // Fill the emptiest team first; whatever doesn't fit spills onto the next emptiest.
+      for (let rest = unit; rest.length > 0; ) {
+        const team = smallestTeam();
+        const room = Math.max(1, TEAM_SIZE - team.length);
+        team.push(...rest.slice(0, room));
+        rest = rest.slice(room);
+      }
+    });
   bySkill(singles, random).forEach((p) => smallestTeam().push(p));
   return teams;
 }

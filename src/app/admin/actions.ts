@@ -17,7 +17,7 @@ import { isEmptyPost, sanitizePostHtml } from "@/lib/rich-text";
 import { roundRobin } from "@/lib/schedule";
 import { blockOffsets, type BlockClocks } from "@/lib/session-times";
 import { sendSessionMessage } from "@/lib/session-messages";
-import { balanceTeams } from "@/lib/teams";
+import { balanceTeams, unmetRequests } from "@/lib/teams";
 import type { RegistrationEvent, SkillLevel } from "@/lib/types";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { expireCounts, expirePosts, expireSession } from "@/lib/public-cache";
@@ -831,7 +831,12 @@ export async function makeTeams(sessionId: string, formData: FormData) {
     if (error) fail(path, error.message);
   }
   revalidateTeams(sessionId);
-  await flash("success", `${teams.length} teams made, balanced by skill`);
+  const unmet = new Set(unmetRequests(groups, requests).map((r) => r.from)).size;
+  await flash(
+    "success",
+    `${teams.length} teams made, balanced by skill` +
+      (unmet > 0 ? `. ${unmet} player${unmet === 1 ? "" : "s"} couldn't get every teammate they asked for` : ""),
+  );
 }
 
 /** A host's 1–5 rating for a player (blank clears it, back to what they picked). Players never see it. */

@@ -1,6 +1,6 @@
 import { GroupTag } from "@/components/team-blocks";
 import { Mark } from "@/components/ui";
-import type { TeamRequest } from "@/lib/teams";
+import { unmetRequests, type TeamRequest } from "@/lib/teams";
 import type { Team } from "@/lib/types";
 
 /** The bits of a drop-in player the summary needs. */
@@ -40,6 +40,14 @@ export function RequestSummary({
           return placed.some((n) => !n) || new Set(placed).size > 1;
         }).length;
 
+  // Who didn't get a teammate they asked for, e.g. when a team had no room left.
+  const unmet = unmetRequests(
+    teams.map((t) => players.filter((p) => p.teamId === t.id)),
+    requests,
+  );
+  const unmetBy = new Map<string, string[]>();
+  for (const r of unmet) unmetBy.set(r.from, [...(unmetBy.get(r.from) ?? []), r.to]);
+
   return (
     // Collapsible like the Cancelled / expired list; open by default.
     <details open aria-label="Team requests" className="group">
@@ -59,6 +67,21 @@ export function RequestSummary({
         <span className="font-bold text-ok">⇄</span> asked for each other ·{" "}
         <span className="font-bold text-mat">→</span> asked to play with
       </p>
+      {unmetBy.size > 0 && (
+        <div role="status" className="mt-3 border-2 border-bad/70 px-3 py-2 text-sm">
+          <p className="font-display font-bold tracking-[0.15em] text-bad uppercase">
+            {unmetBy.size} {unmetBy.size === 1 ? "player" : "players"} not with everyone they asked for
+          </p>
+          <ul className="mt-1 space-y-0.5">
+            {[...unmetBy].map(([id, to]) => (
+              <li key={id} className="[overflow-wrap:anywhere]">
+                <span className="font-bold">{byId.get(id)!.name}</span> ({teamName(byId.get(id)!.teamId)}) asked for{" "}
+                {to.map((t) => `${byId.get(t)!.name} (${teamName(byId.get(t)!.teamId)})`).join(", ")}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <ul className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
         {groups.map((g, i) => {
           const inGroup = new Set(g);
