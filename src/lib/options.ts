@@ -32,18 +32,15 @@ export function optionPrice(
   return discounted ? Math.round(base / 2) : base;
 }
 
-/** Instructional-only places left, or null when there's no limit. */
-function instructionalLeft(session: Pick<Session, "instructional_capacity">, counts?: SessionCounts) {
-  if (session.instructional_capacity == null) return null;
-  return Math.max(session.instructional_capacity - (counts?.instructional ?? 0), 0);
+/** Whether the lesson (Instructional only + Instructional + Drop-in) is at its cap. */
+export function lessonFull(session: Pick<Session, "instructional_capacity">, counts?: SessionCounts) {
+  return session.instructional_capacity != null && (counts?.lesson ?? 0) >= session.instructional_capacity;
 }
 
-/** Whether a new sign-up for this option would go on a waitlist. */
+/** Whether a new sign-up for this option would go on a waitlist (mirrors `_fits` in SQL). */
 export function optionFull(session: Session, option: SignupOption, counts?: SessionCounts) {
-  if (option === "instructional") {
-    const left = instructionalLeft(session, counts);
-    return left != null && (left === 0 || (counts?.instructional_waitlisted ?? 0) > 0);
-  }
-  const taken = (counts?.confirmed ?? 0) + (counts?.holding ?? 0);
-  return taken >= session.capacity || (counts?.waitlisted ?? 0) > 0;
+  const dropInFull = (counts?.confirmed ?? 0) + (counts?.holding ?? 0) >= session.capacity;
+  if (option === "instructional") return lessonFull(session, counts);
+  if (option === "dropin") return dropInFull;
+  return dropInFull || lessonFull(session, counts);
 }

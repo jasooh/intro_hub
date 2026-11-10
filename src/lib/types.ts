@@ -261,6 +261,8 @@ export type SessionCounts = {
   instructional: number;
   instructional_waitlisted: number;
   dropin: number;
+  /** Everyone at the lesson (Instructional only + Instructional + Drop-in): what the lesson cap limits. */
+  lesson: number;
 };
 
 /** Session-level events from run_tick (not tied to one sign-up). */

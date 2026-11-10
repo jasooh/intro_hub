@@ -78,6 +78,7 @@ async function SessionView({
   const holding = sessionCounts?.holding ?? 0;
   const waitlisted = sessionCounts?.waitlisted ?? 0;
   const instructional = sessionCounts?.instructional ?? 0;
+  const lesson = sessionCounts?.lesson ?? 0;
   const cancelled = session.status === "cancelled";
   const times = sessionTimes(session);
   // Only players the system counts as new (same rule as Bring a Friend) get the "what to expect" section.
@@ -183,7 +184,12 @@ async function SessionView({
               <span className="text-mat">
                 {" "}
                 · +{instructional} instructional only
-                {session.instructional_capacity != null && ` (of ${session.instructional_capacity})`}
+              </span>
+            )}
+            {session.instructional_capacity != null && (
+              <span className="text-mat">
+                {" "}
+                · {lesson} of {session.instructional_capacity} lesson places
               </span>
             )}
           </p>
@@ -597,9 +603,7 @@ async function AttendeeList({ session }: { session: Session }) {
   );
   const instructionalSheet = (instructionalOnly.length > 0 || waitingInstructional.length > 0) && (
     <Sheet
-      label={`Instructional only · ${instructionalOnly.length}${
-        session.instructional_capacity != null ? `/${session.instructional_capacity}` : ""
-      }`}
+      label={`Instructional only · ${instructionalOnly.length}`}
     >
       <ul className="divide-y divide-ink/20">
         {instructionalOnly.map((a) => (

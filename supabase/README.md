@@ -21,7 +21,7 @@ Open the file listed for the current version; older copies in earlier migrations
 | Function | Latest version in | Times defined |
 |---|---|---|
 | `_apply_payment` | `20261026000000_partial_payments.sql` | 2 |
-| `_bump_overflow` | `20261104000000_capacity_overflow.sql` | 1 |
+| `_bump_overflow` | `20261210000000_lesson_cap_counts_full.sql` | 2 |
 | `_bump_schedule_revision` | `20261118000000_audit_fixes.sql` | 1 |
 | `_claim_regular` | `20261101000000_signup_options.sql` | 1 |
 | `_clean_message` | `20261128000000_messages.sql` | 1 |
@@ -32,8 +32,9 @@ Open the file listed for the current version; older copies in earlier migrations
 | `_drop_stale_cover` | `20261203000001_pay_for_friends_fixes.sql` | 1 |
 | `_fill_stats` | `20261113000000_stats.sql` | 1 |
 | `_fit_capacity` | `20261101000000_signup_options.sql` | 1 |
-| `_has_room` | `20261101000000_signup_options.sql` | 1 |
-| `_instructional_used` | `20261101000000_signup_options.sql` | 1 |
+| `_fits` | `20261210000000_lesson_cap_counts_full.sql` | 1 |
+| `_has_room` | `20261210000000_lesson_cap_counts_full.sql` | 2 |
+| `_instructional_used` | `20261210000000_lesson_cap_counts_full.sql` | 2 |
 | `_is_first_timer` | `20261028000000_bring_a_friend_and_deposits.sql` | 1 |
 | `_limit_identity_changes` | `20261126000000_identity_change_limit.sql` | 1 |
 | `_lock_attended_before` | `20261029000000_attended_before_locked.sql` | 1 |
@@ -43,7 +44,7 @@ Open the file listed for the current version; older copies in earlier migrations
 | `_option_offered` | `20261101000000_signup_options.sql` | 1 |
 | `_owe_late_deposit` | `20261111000000_deposit_late_payments.sql` | 1 |
 | `_profile_complete` | `20261119000000_soft_profile_extras.sql` | 3 |
-| `_promote` | `20261101000000_signup_options.sql` | 4 |
+| `_promote` | `20261210000000_lesson_cap_counts_full.sql` | 5 |
 | `_received_cents` | `20261203000000_pay_for_friends.sql` | 1 |
 | `_refunded_cents` | `20261113000000_stats.sql` | 1 |
 | `_release_covered` | `20261203000000_pay_for_friends.sql` | 1 |
@@ -78,7 +79,7 @@ Open the file listed for the current version; older copies in earlier migrations
 | `admin_stats` | `20261113000000_stats.sql` | 4 |
 | `bump_roster_version` | `20261012000000_init.sql` | 1 |
 | `cancel_registration` | `20261130000000_no_cancel_after_session.sql` | 5 |
-| `change_registration_option` | `20261101000000_signup_options.sql` | 4 |
+| `change_registration_option` | `20261210000000_lesson_cap_counts_full.sql` | 5 |
 | `clear_team_on_instructional` | `20261015000000_teams.sql` | 1 |
 | `create_sessions_from_templates` | `20261130000003_template_hosts.sql` | 5 |
 | `decline_cover` | `20261203000000_pay_for_friends.sql` | 1 |
@@ -97,7 +98,7 @@ Open the file listed for the current version; older copies in earlier migrations
 | `gen_ref_code` | `20261012000000_init.sql` | 1 |
 | `get_post_authors` | `20261127000000_photo_avatars.sql` | 1 |
 | `get_session_attendees` | `20261101000000_signup_options.sql` | 4 |
-| `get_session_counts` | `20261101000000_signup_options.sql` | 3 |
+| `get_session_counts` | `20261210000000_lesson_cap_counts_full.sql` | 4 |
 | `get_session_hosts` | `20261129000000_session_hosts.sql` | 1 |
 | `handle_new_user` | `20261012000000_init.sql` | 1 |
 | `host_start_threads` | `20261128000000_messages.sql` | 1 |

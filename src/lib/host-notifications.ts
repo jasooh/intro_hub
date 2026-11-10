@@ -107,11 +107,12 @@ async function countsFor(admin: Admin, sessionIds: string[]) {
   return new Map(((data ?? []) as SessionCounts[]).map((c) => [c.session_id, c]));
 }
 
-/** "16/18 drop-in · 2 instructional · 3 waiting" */
+/** "16/18 drop-in · 2 instructional · 12/12 lesson · 3 waiting" */
 function statusLine(s: Pick<Session, "capacity" | "instructional_capacity">, c?: SessionCounts) {
   const taken = (c?.confirmed ?? 0) + (c?.holding ?? 0);
   const parts = [`${taken}/${s.capacity} drop-in`];
-  if (c?.instructional) parts.push(`${c.instructional}${s.instructional_capacity ? `/${s.instructional_capacity}` : ""} instructional`);
+  if (c?.instructional) parts.push(`${c.instructional} instructional`);
+  if (s.instructional_capacity) parts.push(`${c?.lesson ?? 0}/${s.instructional_capacity} lesson`);
   const waiting = (c?.waitlisted ?? 0) + (c?.instructional_waitlisted ?? 0);
   if (waiting) parts.push(`${waiting} waiting`);
   return parts.join(" · ");

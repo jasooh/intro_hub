@@ -56,7 +56,7 @@ export function TemplateRow({ t, today }: { t: SessionTemplate; today: string })
           {t.instructional_price_cents != null && (
             <Mark tone="mat" glyph="◇">
               {formatMoney(t.instructional_price_cents)} instructional only
-              {t.instructional_capacity != null && ` · ${t.instructional_capacity} spots`}
+              {t.instructional_capacity != null && ` · ${t.instructional_capacity} lesson spots`}
             </Mark>
           )}
           {t.dropin_price_cents != null && (

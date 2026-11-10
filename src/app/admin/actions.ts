@@ -642,7 +642,7 @@ const TEMPLATE_FIELD_LABELS: Record<string, string> = {
   cancel_cutoff_hours: "Refund cutoff",
   instructional_price: "Instructional-only price",
   dropin_price: "Drop-in only price",
-  instructional_capacity: "Instructional spots",
+  instructional_capacity: "Lesson spots",
   starts_on: "Starts on",
 };
 

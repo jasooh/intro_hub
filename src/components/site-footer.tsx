@@ -29,6 +29,9 @@ export function SiteFooter() {
             <Link href="/sessions" className={linkClass}>
               Sessions
             </Link>
+            <Link href="/faq" className={linkClass}>
+              FAQ
+            </Link>
           </Stack>
 
           <Stack title="Keep in touch">

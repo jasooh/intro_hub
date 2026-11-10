@@ -193,9 +193,9 @@ async function AdminSession({
   };
   const offered = offeredOptions(session);
   const addFull = {
-    full: dropIn.length >= session.capacity,
+    full: dropIn.length >= session.capacity || (session.instructional_capacity != null && lessonCount >= session.instructional_capacity),
     dropin: dropIn.length >= session.capacity,
-    instructional: session.instructional_capacity != null && instructionalCount >= session.instructional_capacity,
+    instructional: session.instructional_capacity != null && lessonCount >= session.instructional_capacity,
   };
   const addPrices = Object.fromEntries(offered.map((o) => [o, formatMoney(optionPrice(session, o))])) as Record<
     SignupOption,
@@ -250,11 +250,11 @@ async function AdminSession({
         </ScoreboardRow>
         <SpotDots capacity={session.capacity} confirmed={confirmedCount} holding={holdingCount} />
         {(dropIn.length > session.capacity ||
-          (session.instructional_capacity != null && instructionalCount > session.instructional_capacity)) && (
+          (session.instructional_capacity != null && lessonCount > session.instructional_capacity)) && (
           <p className="border-l-4 border-warn py-1 pl-3 text-sm">
             <b>Over the limit.</b> Lowering a limit moves the newest unpaid sign-ups to the waitlist, but paid players
             are never bumped: {dropIn.length}/{session.capacity} drop-in
-            {session.instructional_capacity != null && `, ${instructionalCount}/${session.instructional_capacity} instructional`}.
+            {session.instructional_capacity != null && `, ${lessonCount}/${session.instructional_capacity} lesson`}.
             Remove someone by hand, or raise the limit.
           </p>
         )}

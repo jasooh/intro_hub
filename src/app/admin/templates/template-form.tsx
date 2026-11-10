@@ -119,7 +119,7 @@ export function TemplateForm({
               className={inputClass}
             />
           </Field>
-          <Field label="Instructional spots" hint="Blank = no limit. Past it, a separate waitlist.">
+          <Field label="Lesson spots" hint="Everyone at the lesson, both options. Blank = no limit. Past it, they wait.">
             <input
               type="number"
               name="instructional_capacity"
