@@ -173,12 +173,15 @@ export function SpotDots({
   confirmed,
   holding,
   size = "md",
+  noun = "Drop-in spots",
   className,
 }: {
   capacity: number;
   confirmed: number;
   holding: number;
   size?: "sm" | "md";
+  /** What the dots count, for the hover title. */
+  noun?: string;
   className?: string;
 }) {
   if (capacity > 40) {
@@ -197,7 +200,7 @@ export function SpotDots({
       className={cn("flex flex-wrap", size === "sm" ? "gap-1" : "gap-1.5", className)}
       role="img"
       aria-label={`${confirmed} confirmed, ${holding} holding, ${Math.max(capacity - confirmed - holding, 0)} open of ${capacity}`}
-      title={`Drop-in spots: ${confirmed} paid, ${holding} holding, ${Math.max(capacity - confirmed - holding, 0)} open`}
+      title={`${noun}: ${confirmed} paid, ${holding} holding, ${Math.max(capacity - confirmed - holding, 0)} open`}
     >
       {Array.from({ length: capacity }, (_, i) => {
         const kind = i < confirmed ? "full" : i < confirmed + holding ? "half" : "open";

@@ -186,13 +186,21 @@ async function SessionView({
                 · +{instructional} instructional only
               </span>
             )}
-            {session.instructional_capacity != null && (
-              <span className="text-mat">
-                {" "}
-                · {lesson} of {session.instructional_capacity} lesson places
-              </span>
-            )}
           </p>
+          {session.instructional_capacity != null && (
+            <>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-2">
+                <span className="font-display text-sm font-bold tracking-[0.2em] text-mat uppercase">
+                  Lesson places
+                </span>
+                <SpotDots capacity={session.instructional_capacity} confirmed={lesson} holding={0} noun="Lesson places" />
+              </div>
+              <p className="text-sm text-ink-soft">
+                <b className="text-ink">{Math.max(session.instructional_capacity - lesson, 0)} open</b> · {lesson} of{" "}
+                {session.instructional_capacity} taken
+              </p>
+            </>
+          )}
         </div>
       )}
 
