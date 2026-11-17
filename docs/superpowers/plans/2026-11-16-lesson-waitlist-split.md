@@ -49,7 +49,7 @@
 - Test: `tests/signup-options.test.ts`
 
 **Interfaces:**
-- Produces: `public._dropin_fits(s public.sessions, p_exclude uuid) returns boolean`; `public._lesson_fits(s public.sessions, p_exclude uuid) returns boolean`; `public._instructional_used(p_session_id uuid, p_exclude uuid default null) returns int` (signature change — drop and recreate); `registrations.lesson_queued_at timestamptz`. Tasks 2–6 all call `_dropin_fits`/`_lesson_fits`/`_instructional_used`.
+- Produces: `public._dropin_fits(s public.sessions, p_exclude uuid) returns boolean`; `public._lesson_fits(s public.sessions, p_exclude uuid) returns boolean`; `public._instructional_used(p_session_id uuid, p_exclude uuid default null) returns int` (signature change — drop and recreate); `registrations.lesson_queued_at timestamptz`; `get_session_counts`'s `lesson` column now excludes partial `full` rows (Task 5 adds the separate `instructional_waitlisted` fix on top of this). Tasks 2–6 all call `_dropin_fits`/`_lesson_fits`/`_instructional_used`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -88,8 +88,8 @@ it("a Full sign-up stays fully atomic when the session has no drop-in price", as
 ```
 
 Update the existing assertions that this task's behavior change breaks:
-- `"waitlists past the cap and promotes in order when a place frees up"` (currently expects `c`'s status `"waitlisted"` right after sign-up): change to `expect(await reg(c, sid)).toMatchObject({ status: "pending_payment" }); expect((await reg(c, sid)).lesson_queued_at).not.toBeNull();` (capacity is 10 in this test, well above 1, so `dropin_price_cents` must be set via `setSession` for the partial grant to apply — add `dropin_price_cents = 800` to that test's `setSession` call).
-- `"counts Instructional + Drop-in toward the cap; Drop-in only stays out of it"` (currently expects `d`'s status `"waitlisted"`): this test already sets `dropin_price_cents = 800`. Change to `expect(await reg(d, sid)).toMatchObject({ status: "pending_payment", option: "full" }); expect((await reg(d, sid)).lesson_queued_at).not.toBeNull();` — the `counts` assertion two lines later (`{ lesson: 2, instructional: 1, dropin: 1 }`) is unaffected and stays as-is.
+- `"waitlists past the cap and promotes in order when a place frees up"` (currently expects `c`'s status `"waitlisted"` **twice** — once right after the three sign-ups, and again after `a`'s cancellation promotes `b`): change **both** occurrences to `expect(await reg(c, sid)).toMatchObject({ status: "pending_payment" }); expect((await reg(c, sid)).lesson_queued_at).not.toBeNull();` — `c` never changes state in this test; it's partially granted from the start and stays that way throughout, since the freed lesson place goes to `b` (waiting longer), not `c`. (Capacity is 10 in this test, well above 1, so `dropin_price_cents` must be set via `setSession` for the partial grant to apply — add `dropin_price_cents = 800` to that test's `setSession` call.) The rest of the test (the cancellation promoting `b`, not `c`) is unaffected and needs no change — at this point in the sequence `_promote` is still today's single loop, which only ever scans `status = 'waitlisted'` rows, and `c` is no longer one of those, so it's correctly out of contention without needing Task 3's rewrite yet.
+- `"counts Instructional + Drop-in toward the cap; Drop-in only stays out of it"` (currently expects `d`'s status `"waitlisted"`): this test already sets `dropin_price_cents = 800`. Change to `expect(await reg(d, sid)).toMatchObject({ status: "pending_payment", option: "full" }); expect((await reg(d, sid)).lesson_queued_at).not.toBeNull();` — the `counts` assertion two lines later (`{ lesson: 2, instructional: 1, dropin: 1 }`) keeps the same expected numbers, but only holds true once Step 3 below also fixes `get_session_counts`'s `lesson` column (see note there) — without that fix, `d`'s partial grant would inflate `lesson` to 3. Don't skip that part of Step 3 on the theory that `get_session_counts` is "Task 5's job" — the `instructional_waitlisted` addition is Task 5's; this `lesson`-column fix has to land here, in the same task that first makes a `pending_payment`/`confirmed` `full` row possible without a lesson place.
 
 - [ ] **Step 2: Run tests to verify the new ones fail and the two updated ones fail against current behavior**
 
@@ -125,6 +125,8 @@ New predicates (signatures only — bodies are one `select`, direct translations
 
 `_fits` (current body in `20261210000000_lesson_cap_counts_full.sql:23-36`) gets `create or replace`d to call through these two instead of duplicating the counts inline: `select (p_option = 'instructional' or public._dropin_fits(s, p_exclude)) and (p_option = 'dropin' or public._lesson_fits(s, p_exclude))`. (`_has_room` is unchanged by this step — Task 2 replaces its one remaining caller.)
 
+Also `create or replace` `get_session_counts` (current body: `supabase/migrations/20261210000000_lesson_cap_counts_full.sql:238-256`, same signature — a plain `create or replace` is enough, no `drop function` needed since no column is added or retyped here) with one change: the `lesson` column's filter gains `and r.lesson_queued_at is null`, so a partial `full` row (which holds a drop-in spot, not a lesson place) stops being counted as occupying one. This has to happen in this task, not later: this task is what first makes a `pending_payment`/`confirmed` `full` row without a lesson place possible at all, and Step 1's own test (the updated `"counts Instructional + Drop-in..."` test) depends on it. Task 5 does its own later `create or replace` of this same function, restating this filter unchanged and adding the separate `instructional_waitlisted` fix.
+
 - [ ] **Step 4: Rewrite `register_for_session`'s grant decision for `p_option = 'full'`**
 
 Current body: `supabase/migrations/20261101000000_signup_options.sql:258-352`, patched by `20261118000000_audit_fixes.sql`. In the new migration, patch it in place the same way (`pg_get_functiondef` + `replace` + `execute`, matching the style at `20261118000000_audit_fixes.sql:60-76` and `20261118000000_audit_fixes.sql:124-141`) to replace the existing block:
@@ -147,9 +149,9 @@ with logic that branches on `p_option`:
 
 Set `lesson_queued_at = v_lesson_queued_at` in the `insert` a few lines below (currently `20261101000000_signup_options.sql:323-339`).
 
-- [ ] **Step 5: Extend `reg()` in `tests/db-harness.ts` to select `lesson_queued_at`**
+- [ ] **Step 5: Extend `reg()` in `tests/db-harness.ts` to select `lesson_queued_at` and `queued_at`**
 
-Add `lesson_queued_at` to its column list and return type (`Date | null`).
+Add both to its column list and return type (`Date | null` each) — `queued_at` isn't selected today and Task 2's carry-forward test needs to read it directly.
 
 - [ ] **Step 6: Run tests to verify they pass**
 
@@ -191,24 +193,26 @@ it("switching Drop-in to Instructional + Drop-in when the lesson is full keeps t
 });
 ```
 
-Add a new test for the carry-forward case (switching from a waitlisted `instructional` row, which already has a `queued_at`, into `full`):
+Add a new test for the carry-forward case itself (switching from a waitlisted `instructional` row, which already has a `queued_at`, into `full`) — scoped to what Task 2 alone can prove, without relying on `_promote`'s merged-queue ordering, which doesn't exist until Task 3:
 
 ```ts
-it("switching a waitlisted Instructional sign-up to Full keeps its place in the lesson queue", async () => {
+it("switching a waitlisted Instructional sign-up to Full carries its lesson-queue place forward, not now()", async () => {
   const sid = await createSession(db, { capacity: 10, instructionalPriceCents: 1000 });
   await setSession(sid, `instructional_capacity = 1, dropin_price_cents = 800`);
-  const [a, b, c] = await users(3);
+  const [a, b] = await users(2);
   await signUp(a, sid, "instructional"); // takes the lesson place
-  await signUp(b, sid, "instructional"); // waitlisted first
-  await signUp(c, sid, "instructional"); // waitlisted second
+  await signUp(b, sid, "instructional"); // waitlisted
+  const beforeQueuedAt = (await reg(b, sid)).queued_at;
   await asUser(db, b, `select public.change_registration_option($1, 'full')`, [(await reg(b, sid)).id]);
-  expect(await reg(b, sid)).toMatchObject({ status: "pending_payment", option: "full" });
-
-  await asUser(db, a, `select public.cancel_registration($1)`, [(await reg(a, sid)).id]);
-  expect((await reg(b, sid)).lesson_queued_at).toBeNull(); // b, not c, gets the freed lesson place: b was waiting first
-  expect((await reg(c, sid)).status).toBe("waitlisted");
+  const after = await reg(b, sid);
+  expect(after).toMatchObject({ status: "pending_payment", option: "full" });
+  expect(after.lesson_queued_at?.getTime()).toBe(beforeQueuedAt?.getTime());
 });
 ```
+
+(This needs `queued_at` added to `reg()`'s select list too — see Task 1 Step 5, extend it there alongside `lesson_queued_at` rather than adding a second helper change here.)
+
+Don't test the "who gets the freed lesson place after this switch" fairness question here — that needs `_promote`'s merged-queue ordering, which Task 3 adds; a premature version of that test here would run against the *old* single-loop `_promote` (which only scans `status = 'waitlisted'` rows, so it would never even see `b` once `b` is `pending_payment`) and assert the wrong winner. Task 3 adds that test once the mechanism it depends on exists.
 
 - [ ] **Step 2: Run tests to verify they fail**
 
@@ -298,9 +302,28 @@ it("the lesson pass only considers Full rows that already hold their drop-in spo
 });
 ```
 
+Add the fairness test deferred from Task 2 (it needs this task's merged-queue ordering in `_promote`'s lesson pass to be meaningful — see the note in Task 2's test section for why it couldn't live there):
+
+```ts
+it("a freed lesson place respects a partial grant's original wait, from before it switched into Full", async () => {
+  const sid = await createSession(db, { capacity: 10, instructionalPriceCents: 1000 });
+  await setSession(sid, `instructional_capacity = 1, dropin_price_cents = 800`);
+  const [a, b, c] = await users(3);
+  await signUp(a, sid, "instructional"); // takes the lesson place
+  await signUp(b, sid, "instructional"); // waitlisted first
+  await signUp(c, sid, "instructional"); // waitlisted second
+  await asUser(db, b, `select public.change_registration_option($1, 'full')`, [(await reg(b, sid)).id]);
+
+  await asUser(db, a, `select public.cancel_registration($1)`, [(await reg(a, sid)).id]);
+  expect(await reg(b, sid)).toMatchObject({ status: "pending_payment", option: "full" });
+  expect((await reg(b, sid)).lesson_queued_at).toBeNull(); // b, not c, gets the freed lesson place: b was waiting first
+  expect((await reg(c, sid)).status).toBe("waitlisted");
+});
+```
+
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `npx vitest run tests/signup-options.test.ts -t "freed drop-in spot\|lesson pass only"`
+Run: `npx vitest run tests/signup-options.test.ts -t "freed drop-in spot\|lesson pass only\|respects a partial grant"`
 Expected: FAIL.
 
 - [ ] **Step 3: Rewrite `_promote` as two passes**
@@ -335,7 +358,9 @@ git commit -m "feat: promote drop-in and lesson queues independently"
 **Interfaces:**
 - Consumes: `_instructional_used` from Task 1.
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Write the failing tests**
+
+Add both inside the existing `describe("lowering a limit", ...)` block (`tests/signup-options.test.ts`) — it already has the `promote()` helper these call, in scope by closure; don't redefine it.
 
 ```ts
 it("lowering the lesson cap demotes an unpaid Full row to drop-in-only, waiting on the lesson", async () => {
@@ -368,7 +393,7 @@ it("never claws back a lesson place from a paid Full row", async () => {
 });
 ```
 
-(`admin_promote` is the SQL function the existing `"lowering a limit"` describe block's `promote()` helper calls — confirm its name via `grep admin_promote supabase/migrations/*.sql` if it differs from `_bump_overflow` directly; the existing tests in that `describe` block already exercise this call path.)
+(`admin_promote` is confirmed as the existing `"lowering a limit"` describe block's `promote()` helper target — reuse that helper, don't redefine it.)
 
 - [ ] **Step 2: Run test to verify it fails**
 
@@ -442,7 +467,7 @@ Expected: FAIL.
 
 - [ ] **Step 3: Update `get_session_counts`**
 
-Current body: `supabase/migrations/20261210000000_lesson_cap_counts_full.sql:237-256` (already a `drop function` + `create function` pair for a signature change — same pattern applies here since the body changes but not the signature, so a plain `create or replace` is enough this time). Change the `instructional_waitlisted` column expression from `count(...) filter (where r.option = 'instructional' and r.status = 'waitlisted')` to also include `r.lesson_queued_at is not null and r.option = 'full'` (i.e. `where (r.option = 'instructional' and r.status = 'waitlisted') or (r.option = 'full' and r.lesson_queued_at is not null)`). `lesson` (people actually *at* the lesson) is unaffected — it already filters on `status in ('pending_payment','confirmed')` without excluding partial rows, which is now wrong (a partial row holds a drop-in spot, not a lesson place) — add `and r.lesson_queued_at is null` to that column's filter too.
+Current body: by this point, Task 1's own `create or replace` (not the original `20261210000000_lesson_cap_counts_full.sql:237-256`) — build on that version, which already excludes `lesson_queued_at is not null` rows from the `lesson` column; restate that filter unchanged. Change the `instructional_waitlisted` column expression from `count(...) filter (where r.option = 'instructional' and r.status = 'waitlisted')` to also include `r.lesson_queued_at is not null and r.option = 'full'` (i.e. `where (r.option = 'instructional' and r.status = 'waitlisted') or (r.option = 'full' and r.lesson_queued_at is not null)`). Don't touch `lesson` here — Task 1 already fixed it; this step only adds the `instructional_waitlisted` change.
 
 - [ ] **Step 4: Update `get_session_attendees`'s `waitlist_position`**
 
