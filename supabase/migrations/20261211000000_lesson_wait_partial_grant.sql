@@ -261,17 +261,28 @@ end $$;
 --   * plain `instructional` waiters,
 --   * partial-grant `full` rows (already holding their drop-in spot,
 --     waiting on the lesson), and
---   * on an atomic session only (`dropin_price_cents is null`, so `dropin`
---     isn't even an offered option -- see `_option_offered` -- and can't
---     have a longer-waiting member of its own to jump), a still-waitlisted
---     `full` row whose drop-in side also currently fits: both resources
---     just freed together, so this is a full grant, not a partial one.
+--   * on an atomic session only (`dropin_price_cents is null`), a still-
+--     waitlisted `full` row whose drop-in side also currently fits AND
+--     which is the longest-waiting drop-in-resource seeker on the session
+--     (no other waitlisted `dropin`/`full` row has an earlier `queued_at`):
+--     both resources just freed together, so this is a full grant, not a
+--     partial one.
 -- Ordered by whichever clock each one actually uses: `lesson_queued_at` for
 -- a `full` row that already has one, `queued_at` otherwise. Without that
 -- atomic-only branch, a still-waitlisted atomic `full` row would be
 -- invisible to this pass -- it's never granted a partial, drop-in-first
 -- grant on an atomic session -- and a newer `instructional` waiter could
 -- unfairly jump it for the lesson once both resources freed at once.
+--
+-- The longest-waiting-seeker check on that atomic-only branch isn't
+-- optional: `dropin_price_cents is null` only means `dropin` isn't offered
+-- going forward (`_option_offered`) -- it's not retroactive. A host can
+-- null out `dropin_price_cents` on a session that already has a `dropin`
+-- row waitlisted on it; that row doesn't get cancelled or converted. Were
+-- it not for this check, a newer atomic `full` waiter could jump that
+-- stale `dropin` row for the drop-in resource by going through the lesson
+-- pass before the drop-in pass (which otherwise enforces this fairly on
+-- its own) ever gets a turn.
 --
 -- The drop-in pass promotes on drop-in room alone, longest-waiting drop-in
 -- waiter first, regardless of whether they're also stuck on the lesson -- a
@@ -313,7 +324,13 @@ begin
        and ((w.option = 'full' and w.status in ('pending_payment', 'confirmed') and w.lesson_queued_at is not null)
             or (w.option = 'instructional' and w.status = 'waitlisted')
             or (w.option = 'full' and w.status = 'waitlisted' and s.dropin_price_cents is null
-                and public._dropin_fits(s, w.id)))
+                and public._dropin_fits(s, w.id)
+                and not exists (
+                  select 1 from public.registrations o
+                   where o.session_id = s.id and o.status = 'waitlisted'
+                     and o.option in ('dropin', 'full') and o.id <> w.id
+                     and (o.queued_at, o.created_at) < (w.queued_at, w.created_at)
+                )))
        and public._lesson_fits(s, w.id)
      order by coalesce(w.lesson_queued_at, w.queued_at)
      limit 1
