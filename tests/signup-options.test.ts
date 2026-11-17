@@ -396,6 +396,20 @@ describe("instructional limit", () => {
     const counts = await db.query(`select * from public.get_session_counts(array[$1::uuid])`, [sid]);
     expect(counts.rows[0]).toMatchObject({ instructional_waitlisted: 0 });
   });
+
+  it("refunds the instructional portion if the lesson place never opens up", async () => {
+    const sid = await createSession(db, { capacity: 10, priceCents: 1500, instructionalPriceCents: 1000 });
+    await setSession(sid, `instructional_capacity = 1, dropin_price_cents = 800`);
+    const host = await createUser(db, "Host", { admin: true });
+    const [a, c] = await users(2);
+    await signUp(a, sid, "instructional");
+    await signUp(c, sid, "full");
+    await asUser(db, host, `select public.admin_mark_paid($1)`, [(await reg(c, sid)).id]);
+    await db.query(`update public.sessions set ends_at = now() - interval '1 hour' where id = $1`, [sid]);
+
+    await asService(db, `select public.run_tick()`);
+    expect(await reg(c, sid)).toMatchObject({ status: "confirmed", amount_cents: 800, refund_owed: true });
+  });
 });
 
 describe("admin_add_player", () => {

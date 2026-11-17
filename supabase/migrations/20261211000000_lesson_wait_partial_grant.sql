@@ -644,3 +644,48 @@ begin
   return public._promote(s.id)
       || case when r.brought_by is not null then public._release_regular(r.brought_by) else '[]'::jsonb end;
 end $$;
+
+-------------------------------------------------------------------------------
+-- run_tick: an expiring hold on a partial-grant Full row must clear its
+-- lesson wait too (same phantom-entry reasoning as cancel_registration
+-- above), and a Full sign-up still waiting on a lesson place once its
+-- session is over gets the instructional portion of what it paid refunded
+-- -- it only ever used the drop-in spot. (Patched in place.)
+-------------------------------------------------------------------------------
+do $$
+declare
+  v_def text := pg_get_functiondef('public.run_tick()'::regprocedure);
+  v_find_expire text := '         set status = ''expired'', hold_expires_at = null, refund_owed = (paid_cents > 0)';
+  v_find_anchor text := '  -- 5. Payment reminders:';
+  v_new text;
+begin
+  if (length(v_def) - length(replace(v_def, v_find_expire, ''))) / length(v_find_expire) <> 1 then
+    raise exception 'run_tick: hold-expiry update not found exactly once';
+  end if;
+  if (length(v_def) - length(replace(v_def, v_find_anchor, ''))) / length(v_find_anchor) <> 1 then
+    raise exception 'run_tick: step 5 anchor not found exactly once';
+  end if;
+
+  v_new := replace(v_def,
+    v_find_expire,
+    '         set status = ''expired'', hold_expires_at = null, lesson_queued_at = null, refund_owed = (paid_cents > 0)');
+
+  v_new := replace(v_new, v_find_anchor,
+    '  -- 5a. Full sign-ups still waiting on a lesson place once the session is
+  --     over: refund the instructional portion -- they only used the
+  --     drop-in spot. Naturally idempotent: clearing lesson_queued_at here
+  --     means a second run finds no matching rows.
+  update public.registrations reg
+     set amount_cents = s.dropin_price_cents,
+         refund_owed = (reg.paid_cents > s.dropin_price_cents),
+         lesson_queued_at = null
+    from public.sessions s
+   where reg.session_id = s.id
+     and s.ends_at < v_now
+     and reg.lesson_queued_at is not null
+     and reg.status = ''confirmed'';
+
+' || v_find_anchor);
+
+  execute v_new;
+end $$;

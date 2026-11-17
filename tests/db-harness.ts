@@ -126,8 +126,9 @@ export async function reg(db: Db, userId: string, sessionId: string) {
     hold_expires_at: Date | null;
     lesson_queued_at: Date | null;
     queued_at: Date | null;
+    refund_owed: boolean;
   }>(
-    `select id, status::text, option, amount_cents, friend_discount, hold_expires_at, lesson_queued_at, queued_at
+    `select id, status::text, option, amount_cents, friend_discount, hold_expires_at, lesson_queued_at, queued_at, refund_owed
        from public.registrations
       where profile_id = $1 and session_id = $2 order by created_at desc limit 1`,
     [userId, sessionId],
