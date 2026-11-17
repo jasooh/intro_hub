@@ -37,10 +37,30 @@ export function lessonFull(session: Pick<Session, "instructional_capacity">, cou
   return session.instructional_capacity != null && (counts?.lesson ?? 0) >= session.instructional_capacity;
 }
 
-/** Whether a new sign-up for this option would go on a waitlist (mirrors `_fits` in SQL). */
-export function optionFull(session: Session, option: SignupOption, counts?: SessionCounts) {
+/**
+ * Whether a new sign-up for this option would go on a waitlist (mirrors `_fits` in SQL).
+ * For `full`, a session that prices drop-in standalone can land on a third
+ * outcome, `"partial"`: the drop-in spot is open but the lesson isn't, so the
+ * sign-up takes the spot now and waits on the lesson place in the background
+ * (mirrors `register_for_session`/`_promote`'s split grant). A session with
+ * no standalone drop-in price has no partial state to land in, so a full
+ * lesson still means `"full"`, same as today.
+ */
+export function optionFull(
+  session: Session,
+  option: SignupOption,
+  counts?: SessionCounts,
+): boolean | "full" | "partial" | "ok" {
   const dropInFull = (counts?.confirmed ?? 0) + (counts?.holding ?? 0) >= session.capacity;
   if (option === "instructional") return lessonFull(session, counts);
   if (option === "dropin") return dropInFull;
-  return dropInFull || lessonFull(session, counts);
+  if (dropInFull) return "full";
+  if (lessonFull(session, counts)) return session.dropin_price_cents != null ? "partial" : "full";
+  return "ok";
+}
+
+/** Strict "would get no spot/place at all" check, for callers that need a boolean (e.g. the waitlist button/copy). A partial grant still gets the drop-in spot, so it isn't blocked. */
+export function optionBlocked(session: Session, option: SignupOption, counts?: SessionCounts) {
+  const result = optionFull(session, option, counts);
+  return result === true || result === "full";
 }

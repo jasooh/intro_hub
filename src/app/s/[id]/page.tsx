@@ -33,7 +33,7 @@ import {
 import { getProfile } from "@/lib/auth";
 import { ProfileExtrasNotice } from "@/components/profile-extras-notice";
 import { formatDateTime, formatMoney, pad2, sessionTimes } from "@/lib/format";
-import { offeredOptions, optionFull, optionPrice, usesSpot } from "@/lib/options";
+import { offeredOptions, optionBlocked, optionFull, optionPrice, usesSpot } from "@/lib/options";
 import { Countdown } from "@/components/countdown";
 import { getMaintenance } from "@/lib/maintenance";
 import { OPTION_LABELS } from "@/lib/profile";
@@ -231,7 +231,7 @@ async function SessionView({
               </Link>
             </div>
             <div className="mt-5">
-              <HowItWorks session={session} price={optionPrice(session, "full")} waitlist={optionFull(session, "full", sessionCounts)} />
+              <HowItWorks session={session} price={optionPrice(session, "full")} waitlist={optionBlocked(session, "full", sessionCounts)} />
             </div>
           </Sheet>
         )}
@@ -272,11 +272,17 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
   // What each option costs this player (deposit sessions: the deposit for everyone).
   const priceOf = (option: SignupOption, discounted = false) => optionPrice(session, option, discounted);
   const fullFor = (option: SignupOption) => optionFull(session, option, counts);
+  const isBlocked = (option: SignupOption) => optionBlocked(session, option, counts);
+  const fullDetail = fullFor("full");
   const optionDetail: Record<SignupOption, (string | null)[]> = {
     full: [
       times.full,
       times.instructional && times.dropin ? "lesson first, then games" : "lesson and games",
-      fullFor("full") ? "joins the waitlist" : null,
+      fullDetail === "full"
+        ? "joins the waitlist"
+        : fullDetail === "partial"
+          ? "takes a drop-in spot now; lesson place pending"
+          : null,
     ],
     dropin: [times.dropin ?? times.full, "games only, no lesson", fullFor("dropin") ? "joins the waitlist" : null],
     instructional: [
@@ -370,8 +376,8 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
           </Field>
 
           <div className="space-y-4">
-            <SubmitButton>{offered.every(fullFor) ? "Join waitlist" : "Sign up"}</SubmitButton>
-            <HowItWorks session={session} price={priceOf(offered[0])} waitlist={offered.every(fullFor)} />
+            <SubmitButton>{offered.every(isBlocked) ? "Join waitlist" : "Sign up"}</SubmitButton>
+            <HowItWorks session={session} price={priceOf(offered[0])} waitlist={offered.every(isBlocked)} />
           </div>
         </form>
         </div>
@@ -406,6 +412,13 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
       }
     >
       <div className="space-y-5">
+        {reg.option === "full" &&
+          reg.lesson_queued_at != null &&
+          (reg.status === "pending_payment" || reg.status === "confirmed") && (
+            <p className="text-lg text-mat">
+              You have your drop-in spot. We&apos;ll email you once a lesson place opens up.
+            </p>
+          )}
         {(reg.status === "pending_payment" || (reg.status === "confirmed" && !started && covering.length > 0)) && (
           <PaymentInstructions registration={reg} deposit={deposit != null} covering={coveringFriends} coveredBy={coveredBy} />
         )}

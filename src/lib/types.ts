@@ -212,6 +212,8 @@ export type Registration = {
   /** The covered player has seen the "your spot is covered" pop-up. */
   covered_seen: boolean;
   no_show_by: string | null;
+  /** Non-null means this Full sign-up holds (or is waiting for) its drop-in spot but is still waiting on the lesson. */
+  lesson_queued_at: string | null;
 };
 
 export type Payment = {
