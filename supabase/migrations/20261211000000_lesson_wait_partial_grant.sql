@@ -72,8 +72,12 @@ language sql stable security definer set search_path = '' as $$
          (count(r.id) filter (where r.option = 'instructional' and r.status in ('pending_payment', 'confirmed')))::int,
          -- The lesson queue is instructional-only waiters AND a Full row
          -- that holds its drop-in spot but is still waiting on the lesson.
+         -- The status check on the Full side matters: without it, a
+         -- cancelled/expired row that somehow still carries a stale
+         -- lesson_queued_at would inflate this count forever.
          (count(r.id) filter (where (r.option = 'instructional' and r.status = 'waitlisted')
-                                 or (r.option = 'full' and r.lesson_queued_at is not null)))::int,
+                                 or (r.option = 'full' and r.lesson_queued_at is not null
+                                     and r.status in ('pending_payment', 'confirmed', 'waitlisted'))))::int,
          (count(r.id) filter (where r.option = 'dropin' and r.status in ('pending_payment', 'confirmed')))::int,
          (count(r.id) filter (where r.option in ('full', 'instructional') and r.status in ('pending_payment', 'confirmed')
                                  and r.lesson_queued_at is null))::int
@@ -594,4 +598,49 @@ begin
      where r.session_id = p_session_id
        and r.status in ('pending_payment', 'confirmed', 'waitlisted')
      order by r.status, coalesce(r.confirmed_at, r.queued_at, r.created_at);
+end $$;
+
+-------------------------------------------------------------------------------
+-- Cancelling a Full row that still carries a lesson wait (partial grant or
+-- fully waitlisted) must drop it out of the lesson queue too -- otherwise it
+-- leaves a phantom lesson_queued_at entry other waiters queue behind, and
+-- inflates get_session_counts.instructional_waitlisted forever.
+-------------------------------------------------------------------------------
+create or replace function public.cancel_registration(p_registration_id uuid) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  r public.registrations;
+  s public.sessions;
+begin
+  select * into r from public.registrations where id = p_registration_id;
+  if not found then
+    raise exception 'registration_not_found';
+  end if;
+  if r.profile_id is distinct from auth.uid() and not public.is_admin() then
+    raise exception 'forbidden';
+  end if;
+
+  select * into s from public.sessions where id = r.session_id for update;
+  select * into r from public.registrations where id = p_registration_id for update;
+
+  if r.status not in ('pending_payment', 'confirmed', 'waitlisted') then
+    return '[]'::jsonb;
+  end if;
+  if now() >= s.ends_at and not public.is_admin() then
+    raise exception 'session_over';
+  end if;
+
+  update public.registrations
+     set status = 'cancelled',
+         cancelled_at = now(),
+         queued_at = null,
+         hold_expires_at = null,
+         lesson_queued_at = null,
+         refund_owed = (r.paid_cents > 0 and (now() < s.cancel_cutoff or public.is_admin()))
+   where id = r.id;
+
+  -- A friend who cancels takes the regular's discount with them (unless another
+  -- friend still came with the regular, or the regular has already paid).
+  return public._promote(s.id)
+      || case when r.brought_by is not null then public._release_regular(r.brought_by) else '[]'::jsonb end;
 end $$;

@@ -384,6 +384,18 @@ describe("instructional limit", () => {
     expect(byId((await reg(b, sid)).id)).toBe(1);
     expect(byId((await reg(c, sid)).id)).toBe(2);
   });
+
+  it("cancelling a partial-grant Full row frees the drop-in spot and drops out of the lesson queue", async () => {
+    const sid = await createSession(db, { capacity: 10, instructionalPriceCents: 1000 });
+    await setSession(sid, `instructional_capacity = 1, dropin_price_cents = 800`);
+    const [a, c] = await users(2);
+    await signUp(a, sid, "instructional"); // takes the one lesson place
+    await signUp(c, sid, "full"); // partial grant: holds drop-in, waits on the lesson
+    await asUser(db, c, `select public.cancel_registration($1)`, [(await reg(c, sid)).id]);
+    expect((await reg(c, sid)).lesson_queued_at).toBeNull();
+    const counts = await db.query(`select * from public.get_session_counts(array[$1::uuid])`, [sid]);
+    expect(counts.rows[0]).toMatchObject({ instructional_waitlisted: 0 });
+  });
 });
 
 describe("admin_add_player", () => {
