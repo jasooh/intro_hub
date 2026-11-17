@@ -460,3 +460,86 @@ begin
 
   return v_events;
 end $$;
+
+-------------------------------------------------------------------------------
+-- Lowering the lesson cap only claws back the lesson place from an unpaid
+-- Full row, never the drop-in spot: it keeps the drop-in spot and just goes
+-- back to waiting on the lesson, same as any other partial grant. (Only when
+-- the session offers a standalone drop-in price -- otherwise there's no
+-- partial state to demote into, same reasoning as every other partial-grant
+-- guard in this migration.) A plain Instructional row has no drop-in spot to
+-- keep, so it's still demoted fully waitlisted, same as today; so is a Full
+-- row on a session with no drop-in price.
+-------------------------------------------------------------------------------
+create or replace function public._bump_overflow(p_session_id uuid) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  s public.sessions;
+  v public.registrations;
+  v_first timestamptz;
+  v_events jsonb := '[]';
+  v_lesson boolean;
+  v_options text[];
+begin
+  select * into s from public.sessions where id = p_session_id;
+  if not found then
+    return v_events;
+  end if;
+
+  foreach v_lesson in array array[false, true] loop
+    v_options := case when v_lesson then array['full', 'instructional'] else array['full', 'dropin'] end;
+    loop
+      if v_lesson then
+        exit when s.instructional_capacity is null
+              or public._instructional_used(s.id) <= s.instructional_capacity;
+      else
+        exit when public._spots_used(s.id) <= s.capacity;
+      end if;
+
+      -- Who goes: unpaid before part-paid, people who signed up themselves
+      -- before ones a host added (no hold), newest first. An already-partial
+      -- Full row (lesson_queued_at already set) doesn't hold a lesson place
+      -- to give up, so it's not a lesson-pass candidate here -- picking it
+      -- again would reset its wait clock for no capacity gain, and silently
+      -- skip past the row that's actually still holding the lesson place.
+      select * into v
+        from public.registrations
+       where session_id = s.id and status = 'pending_payment'
+         and option = any (v_options)
+         and (not v_lesson or lesson_queued_at is null)
+       order by (paid_cents > 0), (hold_expires_at is null), created_at desc
+       limit 1
+       for update;
+      exit when not found;
+
+      if v_lesson and v.option = 'full' and s.dropin_price_cents is not null then
+        -- Partial demotion: keeps the drop-in spot (status, hold_expires_at,
+        -- queued_at all untouched), just starts waiting on the lesson. The
+        -- selection guard above means this row's lesson_queued_at is always
+        -- null here, so this is genuinely a fresh wait, not a reset. It still
+        -- holds its spot, so the referring regular's friend rate (if any)
+        -- isn't released -- that's only for a row that's actually losing its
+        -- spot, in the branch below.
+        update public.registrations set lesson_queued_at = now() where id = v.id;
+        v_events := v_events || jsonb_build_object('event', 'waitlisted', 'registration_id', v.id);
+      else
+        select min(queued_at) into v_first
+          from public.registrations
+         where session_id = s.id and status = 'waitlisted'
+           and option = any (v_options);
+
+        update public.registrations
+           set status = 'waitlisted',
+               hold_expires_at = null,
+               queued_at = coalesce(v_first - interval '1 second', now())
+         where id = v.id;
+        v_events := v_events || jsonb_build_object('event', 'waitlisted', 'registration_id', v.id);
+        if v.brought_by is not null then
+          v_events := v_events || public._release_regular(v.brought_by);
+        end if;
+      end if;
+    end loop;
+  end loop;
+
+  return v_events;
+end $$;

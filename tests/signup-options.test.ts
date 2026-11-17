@@ -553,6 +553,37 @@ describe("lowering a limit", () => {
     expect((await reg(a, sid)).status).toBe("confirmed");
     expect((await reg(b, sid)).status).toBe("confirmed");
   });
+
+  it("lowering the lesson cap demotes an unpaid Full row to drop-in-only, waiting on the lesson", async () => {
+    const sid = await createSession(db, { capacity: 10, instructionalPriceCents: 1000 });
+    const host = await createUser(db, "Host", { admin: true });
+    await setSession(sid, `dropin_price_cents = 800`);
+    const [a, b] = await users(2);
+    await signUp(a, sid, "instructional");
+    await signUp(b, sid, "full");
+    await db.query(`update public.sessions set instructional_capacity = 1 where id = $1`, [sid]);
+
+    const res = await asUser<{ events: Event[] }>(db, host, `select public.admin_promote($1) as events`, [sid]);
+    expect(await reg(b, sid)).toMatchObject({ status: "pending_payment", option: "full" }); // keeps the drop-in spot
+    expect((await reg(b, sid)).lesson_queued_at).not.toBeNull(); // but loses the lesson place
+    // One clean demotion event, not a waitlist-then-repromote double-fire for the same player.
+    expect(res.rows[0].events).toEqual([{ event: "waitlisted", registration_id: (await reg(b, sid)).id }]);
+  });
+
+  it("never claws back a lesson place from a paid Full row", async () => {
+    const sid = await createSession(db, { capacity: 10, instructionalPriceCents: 1000 });
+    const host = await createUser(db, "Host", { admin: true });
+    await setSession(sid, `dropin_price_cents = 800`);
+    const [a, b] = await users(2);
+    await signUp(a, sid, "instructional");
+    await signUp(b, sid, "full");
+    await asUser(db, host, `select public.admin_mark_paid($1)`, [(await reg(b, sid)).id]);
+    await db.query(`update public.sessions set instructional_capacity = 1 where id = $1`, [sid]);
+
+    await asUser(db, host, `select public.admin_promote($1)`, [sid]);
+    expect(await reg(b, sid)).toMatchObject({ status: "confirmed", option: "full" });
+    expect((await reg(b, sid)).lesson_queued_at).toBeNull();
+  });
 });
 
 describe("guests", () => {
