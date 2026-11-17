@@ -171,6 +171,28 @@ describe("instructional limit", () => {
     expect(after.lesson_queued_at?.getTime()).toBe(beforeQueuedAt?.getTime());
   });
 
+  it("switching to Full on a session with no drop-in price fully waitlists without stamping lesson_queued_at", async () => {
+    const sid = await createSession(db, { capacity: 5, instructionalPriceCents: 1000 });
+    await setSession(sid, `instructional_capacity = 1`); // no dropin_price_cents: atomic, no partial-grant path
+    const [a, b] = await users(2);
+    await signUp(a, sid, "instructional"); // fills the lesson
+    await signUp(b, sid, "instructional"); // waitlisted behind the lesson cap
+    await asUser(db, b, `select public.change_registration_option($1, 'full')`, [(await reg(b, sid)).id]);
+    expect(await reg(b, sid)).toMatchObject({ status: "waitlisted", option: "full" });
+    expect((await reg(b, sid)).lesson_queued_at).toBeNull();
+  });
+
+  it("switching into Instructional only never sets lesson_queued_at, even when the lesson is full", async () => {
+    const sid = await createSession(db, { capacity: 5, instructionalPriceCents: 1000 });
+    await setSession(sid, `instructional_capacity = 1, dropin_price_cents = 800`);
+    const [a, b] = await users(2);
+    await signUp(a, sid, "instructional"); // fills the lesson
+    await signUp(b, sid, "dropin");
+    await asUser(db, b, `select public.change_registration_option($1, 'instructional')`, [(await reg(b, sid)).id]);
+    expect(await reg(b, sid)).toMatchObject({ status: "waitlisted", option: "instructional" });
+    expect((await reg(b, sid)).lesson_queued_at).toBeNull();
+  });
+
   it("waitlist positions count within each queue", async () => {
     const sid = await createSession(db, { capacity: 1, instructionalPriceCents: 1000 });
     await setSession(sid, `instructional_capacity = 1`);
