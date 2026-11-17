@@ -21,7 +21,7 @@ Open the file listed for the current version; older copies in earlier migrations
 | Function | Latest version in | Times defined |
 |---|---|---|
 | `_apply_payment` | `20261026000000_partial_payments.sql` | 2 |
-| `_bump_overflow` | `20261210000000_lesson_cap_counts_full.sql` | 2 |
+| `_bump_overflow` | `20261211000000_lesson_wait_partial_grant.sql` | 3 |
 | `_bump_schedule_revision` | `20261118000000_audit_fixes.sql` | 1 |
 | `_claim_regular` | `20261101000000_signup_options.sql` | 1 |
 | `_clean_message` | `20261128000000_messages.sql` | 1 |
@@ -80,7 +80,7 @@ Open the file listed for the current version; older copies in earlier migrations
 | `admin_set_session_hosts` | `20261129000000_session_hosts.sql` | 1 |
 | `admin_stats` | `20261113000000_stats.sql` | 4 |
 | `bump_roster_version` | `20261012000000_init.sql` | 1 |
-| `cancel_registration` | `20261130000000_no_cancel_after_session.sql` | 5 |
+| `cancel_registration` | `20261211000000_lesson_wait_partial_grant.sql` | 6 |
 | `change_registration_option` | `20261211000000_lesson_wait_partial_grant.sql` | 6 |
 | `clear_team_on_instructional` | `20261015000000_teams.sql` | 1 |
 | `create_sessions_from_templates` | `20261130000003_template_hosts.sql` | 5 |
@@ -99,7 +99,7 @@ Open the file listed for the current version; older copies in earlier migrations
 | `devtools_update_row` | `20261023000000_dev_tools.sql` | 1 |
 | `gen_ref_code` | `20261012000000_init.sql` | 1 |
 | `get_post_authors` | `20261127000000_photo_avatars.sql` | 1 |
-| `get_session_attendees` | `20261101000000_signup_options.sql` | 4 |
+| `get_session_attendees` | `20261211000000_lesson_wait_partial_grant.sql` | 5 |
 | `get_session_counts` | `20261211000000_lesson_wait_partial_grant.sql` | 5 |
 | `get_session_hosts` | `20261129000000_session_hosts.sql` | 1 |
 | `handle_new_user` | `20261012000000_init.sql` | 1 |
