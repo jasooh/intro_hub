@@ -315,6 +315,11 @@ export function buildEmail(kind: RegistrationEvent["event"], ctx: EmailContext):
           </Layout>
         ),
       };
+    // sendForEvent bails out before calling buildEmail for this one (no
+    // template yet, and reusing "confirmed" would collide with its dedupe
+    // key) -- this case only satisfies the exhaustive switch below.
+    case "lesson_confirmed":
+      return { subject: "", element: null };
     case "partial_payment":
       return {
         subject: `Almost there: ${ctx.remaining} left for ${ctx.sessionTitle} (${ctx.when})`,

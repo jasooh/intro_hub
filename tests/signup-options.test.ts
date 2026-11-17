@@ -165,6 +165,35 @@ describe("instructional limit", () => {
     expect((await reg(c, sid)).status).toBe("waitlisted");
   });
 
+  it("a Full waiter doesn't jump a longer-waiting Instructional waiter for the lesson just because both resources freed at once", async () => {
+    const sid = await createSession(db, { capacity: 1, instructionalPriceCents: 1000 });
+    await setSession(sid, `instructional_capacity = 1, dropin_price_cents = 800`);
+    const [a, b, c] = await users(3);
+    await signUp(a, sid, "full"); // holds both the drop-in spot and the lesson place
+    await signUp(b, sid, "instructional"); // waitlisted first, for the lesson only
+    await signUp(c, sid, "full"); // waitlisted later, blocked on both
+
+    await asUser(db, a, `select public.cancel_registration($1)`, [(await reg(a, sid)).id]);
+    expect((await reg(b, sid)).status).toBe("pending_payment"); // b: longest-waiting for the lesson, gets the place
+    // c still gets the now-free drop-in spot (longest-waiting drop-in waiter, with no one else in that queue),
+    // but only a partial grant: the lesson already went to b.
+    expect(await reg(c, sid)).toMatchObject({ status: "pending_payment", option: "full" });
+    expect((await reg(c, sid)).lesson_queued_at).not.toBeNull();
+  });
+
+  it("on an atomic session (no drop-in price), a Full waiter doesn't jump a longer-waiting Instructional waiter for the lesson either", async () => {
+    const sid = await createSession(db, { capacity: 1, instructionalPriceCents: 1000 });
+    await setSession(sid, `instructional_capacity = 1`); // no dropin_price_cents: fully atomic
+    const [a, b, c] = await users(3);
+    await signUp(a, sid, "full");
+    await signUp(b, sid, "instructional"); // waitlisted first, for the lesson only
+    await signUp(c, sid, "full"); // waitlisted later, blocked on both
+
+    await asUser(db, a, `select public.cancel_registration($1)`, [(await reg(a, sid)).id]);
+    expect((await reg(b, sid)).status).toBe("pending_payment"); // b gets the lesson place
+    expect((await reg(c, sid)).status).toBe("waitlisted"); // no partial grant possible here: c stays fully waitlisted
+  });
+
   it("keeps the queues apart: a free drop-in spot doesn't promote an instructional waitlist", async () => {
     const sid = await createSession(db, { capacity: 1, instructionalPriceCents: 1000 });
     await setSession(sid, `instructional_capacity = 1`);

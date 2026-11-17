@@ -293,7 +293,12 @@ export type RegistrationEvent = {
     | "payment_reversed"
     | "spot_released"
     | "session_cancelled"
-    | "session_changed";
+    | "session_changed"
+    /** A Full row's lesson place opened up (it already held its drop-in spot,
+     * and was already confirmed/paid for that). Distinct from "confirmed" so
+     * it doesn't collide with that event's email dedupe key; no email
+     * template for it yet -- `dispatchEvents` no-ops on it for now. */
+    | "lesson_confirmed";
   registration_id: string;
   /** partial_payment: the payment that arrived; payment_reversed / spot_released: the one cancelled (each gets its own email). */
   payment_id?: string;
