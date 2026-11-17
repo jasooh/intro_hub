@@ -632,6 +632,11 @@ function PlayerRow({
         </p>
         <div className="mt-1 flex min-w-0 flex-wrap gap-x-3 gap-y-1 sm:gap-x-4">
           <OptionMark option={reg.option} />
+          {reg.option === "full" && reg.lesson_queued_at != null && (
+            <Mark tone="mat" glyph="○">
+              Instructional · waiting
+            </Mark>
+          )}
           {reg.profile.guest && (
             <Mark tone="muted" glyph="○">
               Guest · added by host
