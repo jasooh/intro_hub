@@ -285,6 +285,23 @@ it("a freed drop-in spot goes to the longest-waiting drop-in waiter, even if the
 });
 ```
 
+(This test also doubles as the regression test for a window the task-reviewer flagged on Task 1's diff: before this task's `_promote` rewrite exists, a later-arriving sign-up could jump an earlier fully-waitlisted `full` row for a freed drop-in spot, since `register_for_session`'s new predicates drop `_has_room`'s old anti-jump guard and nothing yet replaces it. This test proves that window is closed once this task's dropin-FIFO pass lands — no separate test needed for it.)
+
+Add a test for a fully-waitlisted `full` row promoted into a **true full grant** (both resources free at the same moment) — the task-reviewer flagged that Task 1's diff alone leaves a stale `lesson_queued_at` in exactly this case, since the pre-Task-3 `_promote` never clears it, which is a real (if intentional, plan-sequenced) overbooking window this task's rewrite is what actually closes:
+
+```ts
+it("promoting a fully-waitlisted Full row into a full grant clears its lesson clock", async () => {
+  const sid = await createSession(db, { capacity: 1, instructionalPriceCents: 1000 });
+  await setSession(sid, `instructional_capacity = 1, dropin_price_cents = 800`);
+  const [a, c] = await users(2);
+  await signUp(a, sid, "full"); // holds both the drop-in spot and the lesson place
+  await signUp(c, sid, "full"); // fully waitlisted: blocked on both
+  await asUser(db, a, `select public.cancel_registration($1)`, [(await reg(a, sid)).id]);
+  expect(await reg(c, sid)).toMatchObject({ status: "pending_payment", option: "full" });
+  expect((await reg(c, sid)).lesson_queued_at).toBeNull(); // both resources freed together: a full grant, not partial
+});
+```
+
 Add a test for the lesson pass correctly skipping a `full` row that doesn't yet hold its drop-in spot (Review Focus item: no double-promotion):
 
 ```ts
@@ -402,7 +419,7 @@ Expected: FAIL.
 
 - [ ] **Step 3: Extend `_bump_overflow`'s lesson pass to allow a partial demotion**
 
-Current body: `supabase/migrations/20261210000000_lesson_cap_counts_full.sql:104-158`. `create or replace` it. The existing structure already loops twice (`foreach v_lesson in array[false, true]`) and, for the lesson pass (`v_lesson = true`), picks the newest unpaid `pending_payment` row with `option = any (array['full','instructional'])`, ordered to send the right one back. Keep that selection unchanged; change what happens to the chosen row when it's `full` **and `s.dropin_price_cents is not null`**: instead of always setting `status = 'waitlisted'`, set `lesson_queued_at = now()` and leave `status`/drop-in fields untouched (the row keeps its drop-in spot). A `full` row on a session with no drop-in price (`dropin_price_cents is null`) still becomes fully `waitlisted` exactly as today — same reasoning as the `dropin_price_cents` guard in Task 1's `register_for_session` fix and Task 3's Pass 1 (see Task 1's implementation report): that session type has no partial state to demote into at all. An `instructional` row (which has no drop-in spot to keep, regardless of `dropin_price_cents`) also still becomes fully `waitlisted` as today. Emit the same `'waitlisted'` event either way (today's event shape doesn't distinguish full-vs-partial waitlisting elsewhere either, e.g. Task 1's sign-up path reuses `'waitlisted'` for a fully-blocked `full` row) — reusing it here for a demotion-into-partial-state keeps one event name per transition type, simplest for the email template to key off of; if that reads wrong once written, a distinct event name is a one-line change, not a design question.
+Current body: `supabase/migrations/20261210000000_lesson_cap_counts_full.sql:104-158`. `create or replace` it. The existing structure already loops twice (`foreach v_lesson in array[false, true]`) and, for the lesson pass (`v_lesson = true`), picks the newest unpaid `pending_payment` row with `option = any (array['full','instructional'])`, ordered to send the right one back. **Add `and lesson_queued_at is null` to that selection** — an already-partial `full` row (one that's already lost its lesson place to an earlier demotion or never had one from a partial grant) doesn't hold a lesson place to give up, so picking it again would reset its wait clock to `now()` for nothing (violating the Global Constraint that `lesson_queued_at` never resets) without actually freeing any lesson capacity, silently skipping past the real holder the exit condition is waiting to find. Keep everything else about the selection unchanged; change what happens to the chosen row when it's `full` **and `s.dropin_price_cents is not null`**: instead of always setting `status = 'waitlisted'`, set `lesson_queued_at = now()` and leave `status`/drop-in fields untouched (the row keeps its drop-in spot). A `full` row on a session with no drop-in price (`dropin_price_cents is null`) still becomes fully `waitlisted` exactly as today — same reasoning as the `dropin_price_cents` guard in Task 1's `register_for_session` fix and Task 3's Pass 1 (see Task 1's implementation report): that session type has no partial state to demote into at all. An `instructional` row (which has no drop-in spot to keep, regardless of `dropin_price_cents`) also still becomes fully `waitlisted` as today. Emit the same `'waitlisted'` event either way (today's event shape doesn't distinguish full-vs-partial waitlisting elsewhere either, e.g. Task 1's sign-up path reuses `'waitlisted'` for a fully-blocked `full` row) — reusing it here for a demotion-into-partial-state keeps one event name per transition type, simplest for the email template to key off of; if that reads wrong once written, a distinct event name is a one-line change, not a design question.
 
 - [ ] **Step 4: Run tests to verify they pass**
 
