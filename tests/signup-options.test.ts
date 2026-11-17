@@ -234,6 +234,17 @@ describe("instructional limit", () => {
     expect((await reg(b, sid)).lesson_queued_at).toBeNull();
   });
 
+  it("switching to Full when the lesson has room but drop-in doesn't still tracks the lesson wait", async () => {
+    const sid = await createSession(db, { capacity: 1, instructionalPriceCents: 1000 });
+    await setSession(sid, `instructional_capacity = 5, dropin_price_cents = 800`);
+    const [a, b] = await users(2);
+    await signUp(a, sid, "dropin"); // takes the only drop-in spot
+    await signUp(b, sid, "instructional"); // the lesson has plenty of room
+    await asUser(db, b, `select public.change_registration_option($1, 'full')`, [(await reg(b, sid)).id]);
+    expect(await reg(b, sid)).toMatchObject({ status: "waitlisted", option: "full" });
+    expect((await reg(b, sid)).lesson_queued_at).not.toBeNull();
+  });
+
   it("waitlist positions count within each queue", async () => {
     const sid = await createSession(db, { capacity: 1, instructionalPriceCents: 1000 });
     await setSession(sid, `instructional_capacity = 1`);

@@ -202,8 +202,8 @@ begin
 
   v_lesson_queued_at := case
     when p_option <> 'full' then null
-    when v_lesson_ok then null
     when s.dropin_price_cents is null then null
+    when v_dropin_ok and v_lesson_ok then null
     else coalesce(r.lesson_queued_at,
       case when r.option = 'instructional' and r.status = 'waitlisted' then r.queued_at else now() end)
   end;
