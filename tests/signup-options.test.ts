@@ -147,14 +147,28 @@ describe("instructional limit", () => {
     expect((await reg(c, sid)).status).toBe("pending_payment");
   });
 
-  it("switching to Instructional + Drop-in when the lesson is full joins the waitlist", async () => {
+  it("switching Drop-in to Instructional + Drop-in when the lesson is full keeps the drop-in spot and waits on the lesson", async () => {
     const sid = await createSession(db, { capacity: 5, instructionalPriceCents: 1000 });
     await setSession(sid, `instructional_capacity = 1, dropin_price_cents = 800`);
     const [a, b] = await users(2);
     await signUp(a, sid, "instructional");
     await signUp(b, sid, "dropin");
     await asUser(db, b, `select public.change_registration_option($1, 'full')`, [(await reg(b, sid)).id]);
-    expect((await reg(b, sid)).status).toBe("waitlisted");
+    expect(await reg(b, sid)).toMatchObject({ status: "pending_payment", option: "full" });
+    expect((await reg(b, sid)).lesson_queued_at).not.toBeNull();
+  });
+
+  it("switching a waitlisted Instructional sign-up to Full carries its lesson-queue place forward, not now()", async () => {
+    const sid = await createSession(db, { capacity: 10, instructionalPriceCents: 1000 });
+    await setSession(sid, `instructional_capacity = 1, dropin_price_cents = 800`);
+    const [a, b] = await users(2);
+    await signUp(a, sid, "instructional"); // takes the lesson place
+    await signUp(b, sid, "instructional"); // waitlisted
+    const beforeQueuedAt = (await reg(b, sid)).queued_at;
+    await asUser(db, b, `select public.change_registration_option($1, 'full')`, [(await reg(b, sid)).id]);
+    const after = await reg(b, sid);
+    expect(after).toMatchObject({ status: "pending_payment", option: "full" });
+    expect(after.lesson_queued_at?.getTime()).toBe(beforeQueuedAt?.getTime());
   });
 
   it("waitlist positions count within each queue", async () => {

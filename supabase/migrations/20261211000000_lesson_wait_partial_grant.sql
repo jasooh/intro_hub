@@ -154,3 +154,100 @@ begin');
 
   execute v_new;
 end $$;
+
+-------------------------------------------------------------------------------
+-- Switching option: the same independent drop-in/lesson split as the sign-up
+-- path above, parameterized by the row being switched instead of a fresh
+-- insert.
+-------------------------------------------------------------------------------
+create or replace function public.change_registration_option(p_registration_id uuid, p_option text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  r public.registrations;
+  s public.sessions;
+  v_events jsonb := '[]';
+  v_amount int;
+  v_dropin_ok boolean;
+  v_lesson_ok boolean;
+  v_lesson_queued_at timestamptz;
+begin
+  if p_option not in ('full', 'instructional', 'dropin') then
+    raise exception 'invalid_option';
+  end if;
+  select * into r from public.registrations where id = p_registration_id;
+  if not found then
+    raise exception 'registration_not_found';
+  end if;
+  if r.profile_id is distinct from auth.uid() then
+    raise exception 'forbidden';
+  end if;
+
+  select * into s from public.sessions where id = r.session_id for update;
+  select * into r from public.registrations where id = p_registration_id for update;
+
+  if r.status not in ('pending_payment', 'waitlisted') then
+    raise exception 'option_locked';
+  end if;
+  if r.option = p_option then
+    return v_events;
+  end if;
+  if not public._option_offered(s, p_option) then
+    raise exception 'option_unavailable';
+  end if;
+
+  v_amount := public._signup_price(s, p_option, r.friend_discount);
+
+  v_dropin_ok := public._dropin_fits(s, r.id);
+  v_lesson_ok := public._lesson_fits(s, r.id);
+
+  if p_option = 'dropin' or v_lesson_ok then
+    v_lesson_queued_at := null;
+  else
+    v_lesson_queued_at := coalesce(r.lesson_queued_at,
+      case when r.option = 'instructional' and r.status = 'waitlisted' then r.queued_at else now() end);
+  end if;
+
+  if (p_option in ('dropin', 'instructional') and public._fits(s, p_option, r.id))
+     or (p_option = 'full' and v_dropin_ok and (v_lesson_ok or s.dropin_price_cents is not null)) then
+    update public.registrations
+       set option = p_option,
+           amount_cents = v_amount,
+           status = 'pending_payment',
+           queued_at = null,
+           hold_expires_at = case when r.status = 'pending_payment' and r.hold_expires_at is not null
+                                  then r.hold_expires_at
+                                  else least(now() + make_interval(hours => s.hold_hours), s.starts_at) end,
+           lesson_queued_at = v_lesson_queued_at
+     where id = r.id;
+    if r.status = 'waitlisted' then
+      v_events := v_events || jsonb_build_object('event', 'signed_up', 'registration_id', r.id);
+    end if;
+  elsif r.status = 'waitlisted' then
+    update public.registrations
+       set option = p_option, amount_cents = v_amount, lesson_queued_at = v_lesson_queued_at
+     where id = r.id;
+  else
+    update public.registrations
+       set option = p_option,
+           amount_cents = v_amount,
+           status = 'waitlisted',
+           queued_at = now(),
+           hold_expires_at = null,
+           lesson_queued_at = v_lesson_queued_at
+     where id = r.id;
+    v_events := v_events || jsonb_build_object('event', 'waitlisted', 'registration_id', r.id);
+  end if;
+
+  -- Already paid enough for the new option (e.g. part-paid, then a cheaper one),
+  -- or has credit from an earlier sign-up: confirmed.
+  select * into r from public.registrations where id = r.id;
+  if r.status = 'pending_payment' then
+    if r.paid_cents > 0 and r.paid_cents >= r.amount_cents then
+      v_events := v_events || public._reprice(r.id);
+    elsif public._use_rejoin_credit(r.id) then
+      v_events := v_events || jsonb_build_object('event', 'confirmed', 'registration_id', r.id);
+    end if;
+  end if;
+  -- A spot (or lesson place) may have freed up with the option they left.
+  return v_events || public._promote(s.id);
+end $$;

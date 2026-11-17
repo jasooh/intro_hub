@@ -81,7 +81,7 @@ Open the file listed for the current version; older copies in earlier migrations
 | `admin_stats` | `20261113000000_stats.sql` | 4 |
 | `bump_roster_version` | `20261012000000_init.sql` | 1 |
 | `cancel_registration` | `20261130000000_no_cancel_after_session.sql` | 5 |
-| `change_registration_option` | `20261210000000_lesson_cap_counts_full.sql` | 5 |
+| `change_registration_option` | `20261211000000_lesson_wait_partial_grant.sql` | 6 |
 | `clear_team_on_instructional` | `20261015000000_teams.sql` | 1 |
 | `create_sessions_from_templates` | `20261130000003_template_hosts.sql` | 5 |
 | `decline_cover` | `20261203000000_pay_for_friends.sql` | 1 |
