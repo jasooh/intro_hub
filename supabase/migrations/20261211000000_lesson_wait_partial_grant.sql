@@ -72,12 +72,15 @@ language sql stable security definer set search_path = '' as $$
          (count(r.id) filter (where r.option = 'instructional' and r.status in ('pending_payment', 'confirmed')))::int,
          -- The lesson queue is instructional-only waiters AND a Full row
          -- that holds its drop-in spot but is still waiting on the lesson.
-         -- The status check on the Full side matters: without it, a
-         -- cancelled/expired row that somehow still carries a stale
+         -- Excludes a fully-waitlisted Full row: it's already counted in
+         -- `waitlisted` above (the drop-in-side bucket matters more for a
+         -- row that holds nothing yet), so counting it here too would
+         -- double-count it. The remaining status check matters too: without
+         -- it, a cancelled/expired row that somehow still carries a stale
          -- lesson_queued_at would inflate this count forever.
          (count(r.id) filter (where (r.option = 'instructional' and r.status = 'waitlisted')
                                  or (r.option = 'full' and r.lesson_queued_at is not null
-                                     and r.status in ('pending_payment', 'confirmed', 'waitlisted'))))::int,
+                                     and r.status in ('pending_payment', 'confirmed'))))::int,
          (count(r.id) filter (where r.option = 'dropin' and r.status in ('pending_payment', 'confirmed')))::int,
          (count(r.id) filter (where r.option in ('full', 'instructional') and r.status in ('pending_payment', 'confirmed')
                                  and r.lesson_queued_at is null))::int
@@ -339,7 +342,7 @@ begin
                      and (o.queued_at, o.created_at) < (w.queued_at, w.created_at)
                 )))
        and public._lesson_fits(s, w.id)
-     order by coalesce(w.lesson_queued_at, w.queued_at)
+     order by coalesce(w.lesson_queued_at, w.queued_at), w.created_at
      limit 1
      for update;
     exit when not found;
@@ -526,9 +529,11 @@ begin
         -- null here, so this is genuinely a fresh wait, not a reset. It still
         -- holds its spot, so the referring regular's friend rate (if any)
         -- isn't released -- that's only for a row that's actually losing its
-        -- spot, in the branch below.
+        -- spot, in the branch below. Its own event is 'lesson_bumped', not
+        -- 'waitlisted' -- the player still has a spot and still owes
+        -- whatever they owed, so "don't send money yet" would be wrong.
         update public.registrations set lesson_queued_at = now() where id = v.id;
-        v_events := v_events || jsonb_build_object('event', 'waitlisted', 'registration_id', v.id);
+        v_events := v_events || jsonb_build_object('event', 'lesson_bumped', 'registration_id', v.id);
       else
         select min(queued_at) into v_first
           from public.registrations
@@ -583,11 +588,16 @@ begin
            case when r.status = 'waitlisted' and r.option <> 'instructional'
                 then (row_number() over (partition by r.status, r.option = 'instructional'
                                          order by r.queued_at, r.created_at))::int
+                -- A fully-waitlisted Full row is excluded here (it already
+                -- matched the branch above, whose drop-in-side position
+                -- matters more) -- otherwise it would consume a slot in this
+                -- partition's row_number() without its value ever being
+                -- shown, leaving a gap in the numbering (e.g. 1, 3 with no 2).
                 when (r.option = 'instructional' and r.status = 'waitlisted')
-                     or (r.option = 'full' and r.lesson_queued_at is not null)
+                     or (r.option = 'full' and r.lesson_queued_at is not null and r.status <> 'waitlisted')
                 then (row_number() over (
                         partition by ((r.option = 'instructional' and r.status = 'waitlisted')
-                                       or (r.option = 'full' and r.lesson_queued_at is not null))
+                                       or (r.option = 'full' and r.lesson_queued_at is not null and r.status <> 'waitlisted'))
                         order by coalesce(r.lesson_queued_at, r.queued_at)
                       ))::int
            end,
@@ -679,15 +689,34 @@ begin
   v_new := replace(v_new, v_find_anchor,
     '  -- 5a. Full sign-ups still waiting on a lesson place once the session is
   --     over: refund the instructional portion -- they only used the
-  --     drop-in spot. Naturally idempotent: clearing lesson_queued_at here
-  --     means a second run finds no matching rows.
+  --     drop-in spot. Priced via _signup_price so Bring-a-Friend and
+  --     deposit sessions compute the right amount; refund_owed only ever
+  --     grows (never undoes step 4''s deposit refund). Guarded on
+  --     dropin_price_cents is not null -- a host can clear it after the
+  --     fact, and there''s no way to price a refund once they have.
+  --     Naturally idempotent: clearing lesson_queued_at here means a
+  --     second run finds no matching rows.
   update public.registrations reg
-     set amount_cents = s.dropin_price_cents,
-         refund_owed = (reg.paid_cents > s.dropin_price_cents),
+     set amount_cents = public._signup_price(s, ''dropin'', reg.friend_discount),
+         refund_owed = reg.refund_owed
+           or (reg.paid_cents > public._signup_price(s, ''dropin'', reg.friend_discount)),
          lesson_queued_at = null
     from public.sessions s
    where reg.session_id = s.id
      and s.ends_at < v_now
+     and s.dropin_price_cents is not null
+     and reg.lesson_queued_at is not null
+     and reg.status = ''confirmed'';
+
+  -- A session can lose its drop-in price after a partial grant was made (a
+  -- host edit). There''s no way to price a refund then, but the lesson wait
+  -- still needs clearing so it doesn''t linger on the row forever.
+  update public.registrations reg
+     set lesson_queued_at = null
+    from public.sessions s
+   where reg.session_id = s.id
+     and s.ends_at < v_now
+     and s.dropin_price_cents is null
      and reg.lesson_queued_at is not null
      and reg.status = ''confirmed'';
 

@@ -24,6 +24,8 @@ const kinds: RegistrationEvent["event"][] = [
   "waitlisted",
   "promoted",
   "confirmed",
+  "lesson_confirmed",
+  "lesson_bumped",
   "partial_payment",
   "expired",
   "reminder",
@@ -56,6 +58,15 @@ describe("email templates", () => {
     expect(withReason).toContain("Gym double-booked, sorry!");
     const without = await render(buildEmail("session_cancelled", ctx).element, { plainText: true });
     expect(without).not.toContain("Message from the host");
+  });
+
+  it("mentions the pending lesson place only when lessonPending is set", async () => {
+    for (const kind of ["signed_up", "confirmed"] as const) {
+      const withPending = await render(buildEmail(kind, { ...ctx, lessonPending: true }).element, { plainText: true });
+      expect(withPending).toContain("lesson is full right now");
+      const without = await render(buildEmail(kind, ctx).element, { plainText: true });
+      expect(without).not.toContain("lesson is full right now");
+    }
   });
 });
 

@@ -410,6 +410,97 @@ describe("instructional limit", () => {
     await asService(db, `select public.run_tick()`);
     expect(await reg(c, sid)).toMatchObject({ status: "confirmed", amount_cents: 800, refund_owed: true });
   });
+
+  it("refunds the friend-discounted drop-in price for a half-price partial grant", async () => {
+    const sid = await createSession(db, { capacity: 10, priceCents: 1500, instructionalPriceCents: 1000 });
+    await setSession(sid, `instructional_capacity = 1, dropin_price_cents = 800`);
+    const [a, c] = await users(2);
+    await signUp(a, sid, "instructional");
+    await signUp(c, sid, "full");
+    // Isolates the refund math from the full Bring a Friend flow: a friend-discounted
+    // partial grant, paid in full at half price.
+    await db.query(`update public.registrations set friend_discount = true, status = 'confirmed', paid_cents = 750 where id = $1`, [
+      (await reg(c, sid)).id,
+    ]);
+    await db.query(`update public.sessions set ends_at = now() - interval '1 hour' where id = $1`, [sid]);
+
+    await asService(db, `select public.run_tick()`);
+    // Half of 800, not full price: paid 750 is now more than owed, so a refund is owed.
+    expect(await reg(c, sid)).toMatchObject({ amount_cents: 400, refund_owed: true });
+  });
+
+  it("never cancels a deposit session's deposit refund", async () => {
+    const sid = await createSession(db, { capacity: 10, instructionalPriceCents: 1000 });
+    await setSession(sid, `instructional_capacity = 1, dropin_price_cents = 800, deposit_cents = 500`);
+    const host = await createUser(db, "Host", { admin: true });
+    const [a, c] = await users(2);
+    await signUp(a, sid, "instructional");
+    await signUp(c, sid, "full");
+    await asUser(db, host, `select public.admin_mark_paid($1)`, [(await reg(c, sid)).id]);
+    await db.query(`update public.sessions set ends_at = now() - interval '1 hour' where id = $1`, [sid]);
+
+    await asService(db, `select public.run_tick()`);
+    // Step 4 (deposit release) already flagged this refund_owed; the lesson-wait
+    // refund step must never un-flag it.
+    expect((await reg(c, sid)).refund_owed).toBe(true);
+  });
+
+  it("clears the lesson wait without crashing run_tick if the session lost its drop-in price", async () => {
+    const sid = await createSession(db, { capacity: 10, instructionalPriceCents: 1000 });
+    await setSession(sid, `instructional_capacity = 1, dropin_price_cents = 800`);
+    const host = await createUser(db, "Host", { admin: true });
+    const [a, c] = await users(2);
+    await signUp(a, sid, "instructional");
+    await signUp(c, sid, "full"); // partial grant, still waiting on the lesson
+    await asUser(db, host, `select public.admin_mark_paid($1)`, [(await reg(c, sid)).id]);
+    // A host clears the standalone drop-in price after the partial grant was made.
+    await setSession(sid, `dropin_price_cents = null`);
+    await db.query(`update public.sessions set ends_at = now() - interval '1 hour' where id = $1`, [sid]);
+
+    await expect(asService(db, `select public.run_tick()`)).resolves.not.toThrow();
+    expect((await reg(c, sid)).lesson_queued_at).toBeNull();
+    // Can't price a refund without a drop-in price, so the amount is left alone.
+    expect((await reg(c, sid)).amount_cents).toBe(1000);
+  });
+
+  it("a fully-waitlisted Full row isn't double-counted in the lesson queue", async () => {
+    const sid = await createSession(db, { capacity: 1, instructionalPriceCents: 1000 });
+    await setSession(sid, `instructional_capacity = 1, dropin_price_cents = 800`);
+    const [a, d, b, c] = await users(4);
+    await signUp(a, sid, "dropin"); // takes the one drop-in spot
+    await signUp(d, sid, "instructional"); // takes the one lesson place
+    await signUp(b, sid, "instructional"); // waitlisted: the lesson place is taken
+    await signUp(c, sid, "full"); // fully waitlisted: blocked on both
+    const counts = await db.query(`select * from public.get_session_counts(array[$1::uuid])`, [sid]);
+    // c is already counted in `waitlisted` (the drop-in-side bucket); it must not
+    // also inflate `instructional_waitlisted` -- only b (plain instructional) does.
+    expect(counts.rows[0]).toMatchObject({ waitlisted: 1, instructional_waitlisted: 1 });
+
+    const rows = await asUser<{ registration_id: string; waitlist_position: number | null }>(
+      db,
+      a,
+      `select registration_id, waitlist_position from public.get_session_attendees($1)`,
+      [sid],
+    );
+    const byId = (id: string) => rows.rows.find((r) => r.registration_id === id)?.waitlist_position;
+    // b (plain instructional-waitlisted) is the only member of the merged lesson
+    // queue; its position must not have a gap from c's own (unshown) slot.
+    expect(byId((await reg(b, sid)).id)).toBe(1);
+  });
+
+  it("a session with no lesson cap at all never sets lesson_queued_at", async () => {
+    const sid = await createSession(db, { capacity: 10, instructionalPriceCents: 1000 });
+    await setSession(sid, `dropin_price_cents = 800`); // instructional_capacity stays null: no lesson cap
+    const [a, c] = await users(2);
+    await signUp(a, sid, "instructional");
+    await signUp(c, sid, "full");
+    expect(await reg(a, sid)).toMatchObject({ status: "pending_payment" });
+    expect((await reg(a, sid)).lesson_queued_at).toBeNull();
+    expect(await reg(c, sid)).toMatchObject({ status: "pending_payment", option: "full" });
+    expect((await reg(c, sid)).lesson_queued_at).toBeNull();
+    const counts = await db.query(`select * from public.get_session_counts(array[$1::uuid])`, [sid]);
+    expect(counts.rows[0]).toMatchObject({ lesson: 2, instructional_waitlisted: 0 });
+  });
 });
 
 describe("admin_add_player", () => {
@@ -621,7 +712,9 @@ describe("lowering a limit", () => {
     expect(await reg(b, sid)).toMatchObject({ status: "pending_payment", option: "full" }); // keeps the drop-in spot
     expect((await reg(b, sid)).lesson_queued_at).not.toBeNull(); // but loses the lesson place
     // One clean demotion event, not a waitlist-then-repromote double-fire for the same player.
-    expect(res.rows[0].events).toEqual([{ event: "waitlisted", registration_id: (await reg(b, sid)).id }]);
+    // Its own event kind: the player keeps their spot and still owes payment, so
+    // "waitlisted" (whose email says "don't send money yet") would be wrong.
+    expect(res.rows[0].events).toEqual([{ event: "lesson_bumped", registration_id: (await reg(b, sid)).id }]);
   });
 
   it("never claws back a lesson place from a paid Full row", async () => {

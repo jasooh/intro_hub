@@ -28,6 +28,8 @@ export type EmailContext = {
   unsubscribeUrl?: string;
   /** session_changed: the time and place before the host changed them. */
   previous?: { when: string; location: string };
+  /** This Full sign-up holds (or is waiting for) its drop-in spot but is still waiting on a lesson place. */
+  lessonPending?: boolean;
 };
 
 // The site's "gym-floor scoreboard" look, in email-safe inline styles. Web fonts
@@ -263,6 +265,12 @@ export function buildEmail(kind: RegistrationEvent["event"], ctx: EmailContext):
             <Title>You&apos;ve got a spot</Title>
             {hi}
             <Text style={s.text}>We&apos;re holding a spot for you. It&apos;s confirmed once your payment arrives.</Text>
+            {ctx.lessonPending && (
+              <Text style={s.text}>
+                The lesson is full right now, so you&apos;re playing drop-in games for now. We&apos;ll email you if a
+                lesson place opens up -- no extra charge either way.
+              </Text>
+            )}
             <PaymentBox ctx={ctx} />
             {viewButton}
             <CalendarLinks ctx={ctx} />
@@ -310,16 +318,49 @@ export function buildEmail(kind: RegistrationEvent["event"], ctx: EmailContext):
             <Text style={s.text}>
               Payment received. See you at <b>{ctx.location}</b> on <b>{ctx.when}</b>.
             </Text>
+            {ctx.lessonPending && (
+              <Text style={s.text}>
+                The lesson is full right now, so you&apos;re playing drop-in games for now. We&apos;ll email you if a
+                lesson place opens up -- no extra charge either way.
+              </Text>
+            )}
             {viewButton}
             <CalendarLinks ctx={ctx} />
           </Layout>
         ),
       };
-    // sendForEvent bails out before calling buildEmail for this one (no
-    // template yet, and reusing "confirmed" would collide with its dedupe
-    // key) -- this case only satisfies the exhaustive switch below.
     case "lesson_confirmed":
-      return { subject: "", element: null };
+      return {
+        subject: `Lesson place confirmed: ${ctx.sessionTitle} (${ctx.when})`,
+        element: (
+          <Layout preview="A lesson place opened up -- no extra charge" ctx={ctx}>
+            <Title>Your lesson place opened up</Title>
+            {hi}
+            <Text style={s.text}>
+              You&apos;re confirmed for the lesson too now, at no extra charge. See you at <b>{ctx.location}</b> on{" "}
+              <b>{ctx.when}</b>.
+            </Text>
+            {viewButton}
+            <CalendarLinks ctx={ctx} />
+          </Layout>
+        ),
+      };
+    case "lesson_bumped":
+      return {
+        subject: `Lesson place released: ${ctx.sessionTitle} (${ctx.when})`,
+        element: (
+          <Layout preview="You keep your drop-in spot -- the lesson place went back to the waitlist" ctx={ctx}>
+            <Title>You keep your spot</Title>
+            {hi}
+            <Text style={s.text}>
+              The lesson filled up, so we gave your lesson place to someone who&apos;d been waiting longer. You still
+              keep your drop-in spot{ctx.holdUntil ? <> -- pay by <b>{ctx.holdUntil}</b> to lock it in</> : null}.
+              We&apos;ll email you if a lesson place opens back up.
+            </Text>
+            {viewButton}
+          </Layout>
+        ),
+      };
     case "partial_payment":
       return {
         subject: `Almost there: ${ctx.remaining} left for ${ctx.sessionTitle} (${ctx.when})`,

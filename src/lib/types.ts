@@ -298,9 +298,13 @@ export type RegistrationEvent = {
     | "session_changed"
     /** A Full row's lesson place opened up (it already held its drop-in spot,
      * and was already confirmed/paid for that). Distinct from "confirmed" so
-     * it doesn't collide with that event's email dedupe key; no email
-     * template for it yet -- `dispatchEvents` no-ops on it for now. */
-    | "lesson_confirmed";
+     * it doesn't collide with that event's email dedupe key. */
+    | "lesson_confirmed"
+    /** A Full row's lesson place was handed back to someone who'd waited
+     * longer for it (lowering the lesson cap). It keeps its drop-in spot
+     * (and still owes whatever it owed) -- distinct from "waitlisted" so it
+     * doesn't tell a player who still has a spot "don't send money yet." */
+    | "lesson_bumped";
   registration_id: string;
   /** partial_payment: the payment that arrived; payment_reversed / spot_released: the one cancelled (each gets its own email). */
   payment_id?: string;
