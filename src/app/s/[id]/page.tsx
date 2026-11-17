@@ -306,7 +306,7 @@ async function MySpot({ session, profile, counts }: { session: Session; profile:
         </Sheet>
       );
     }
-    const full = spotsLeft(session, counts) === 0 || (counts?.waitlisted ?? 0) > 0;
+    const full = spotsLeft(session, counts) === 0;
     const maintenance = await getMaintenance();
     // Maintenance mode: the form is blacked out and can't be used (hosts can still sign up).
     const locked = maintenance.on && profile.role !== "admin";
