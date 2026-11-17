@@ -109,19 +109,60 @@ describe("instructional limit", () => {
     expect((await reg(c, sid)).status).toBe("waitlisted");
   });
 
-  it("a waiter stuck on the lesson cap doesn't block a drop-in only waiter from a free drop-in spot", async () => {
+  it("a freed drop-in spot goes to the longest-waiting drop-in waiter, even if they're still stuck on the lesson", async () => {
     const sid = await createSession(db, { capacity: 1, instructionalPriceCents: 1000 });
     await setSession(sid, `instructional_capacity = 1, dropin_price_cents = 800`);
     const [a, b, c, d] = await users(4);
     await signUp(a, sid, "dropin");
     await signUp(b, sid, "instructional");
-    await signUp(c, sid, "full"); // behind on both
+    await signUp(c, sid, "full"); // behind on both, but asks before d
     await signUp(d, sid, "dropin");
     expect((await reg(c, sid)).status).toBe("waitlisted");
     expect((await reg(d, sid)).status).toBe("waitlisted");
+
     await asUser(db, a, `select public.cancel_registration($1)`, [(await reg(a, sid)).id]);
-    expect((await reg(c, sid)).status).toBe("waitlisted"); // lesson still full
-    expect((await reg(d, sid)).status).toBe("pending_payment");
+    expect(await reg(c, sid)).toMatchObject({ status: "pending_payment", option: "full" }); // c, not d: waited longer for drop-in
+    expect((await reg(c, sid)).lesson_queued_at).not.toBeNull(); // still stuck on the lesson
+    expect((await reg(d, sid)).status).toBe("waitlisted");
+  });
+
+  it("promoting a fully-waitlisted Full row into a full grant clears its lesson clock", async () => {
+    const sid = await createSession(db, { capacity: 1, instructionalPriceCents: 1000 });
+    await setSession(sid, `instructional_capacity = 1, dropin_price_cents = 800`);
+    const [a, c] = await users(2);
+    await signUp(a, sid, "full"); // holds both the drop-in spot and the lesson place
+    await signUp(c, sid, "full"); // fully waitlisted: blocked on both
+    await asUser(db, a, `select public.cancel_registration($1)`, [(await reg(a, sid)).id]);
+    expect(await reg(c, sid)).toMatchObject({ status: "pending_payment", option: "full" });
+    expect((await reg(c, sid)).lesson_queued_at).toBeNull(); // both resources freed together: a full grant, not partial
+  });
+
+  it("the lesson pass only considers Full rows that already hold their drop-in spot", async () => {
+    const sid = await createSession(db, { capacity: 1, instructionalPriceCents: 1000 });
+    await setSession(sid, `instructional_capacity = 1, dropin_price_cents = 800`);
+    const [a, b, c] = await users(3);
+    await signUp(a, sid, "dropin"); // holds the one drop-in spot
+    await signUp(b, sid, "instructional"); // holds the one lesson place
+    await signUp(c, sid, "full"); // fully waitlisted: blocked on both
+    const res = await asUser<{ events: Event[] }>(db, b, `select public.cancel_registration($1) as events`, [(await reg(b, sid)).id]);
+    // b's cancellation frees the lesson place only (b never held a drop-in spot); c still can't use it without a drop-in spot too.
+    expect(res.rows[0].events).toEqual([]);
+    expect((await reg(c, sid)).status).toBe("waitlisted");
+  });
+
+  it("a freed lesson place respects a partial grant's original wait, from before it switched into Full", async () => {
+    const sid = await createSession(db, { capacity: 10, instructionalPriceCents: 1000 });
+    await setSession(sid, `instructional_capacity = 1, dropin_price_cents = 800`);
+    const [a, b, c] = await users(3);
+    await signUp(a, sid, "instructional"); // takes the lesson place
+    await signUp(b, sid, "instructional"); // waitlisted first
+    await signUp(c, sid, "instructional"); // waitlisted second
+    await asUser(db, b, `select public.change_registration_option($1, 'full')`, [(await reg(b, sid)).id]);
+
+    await asUser(db, a, `select public.cancel_registration($1)`, [(await reg(a, sid)).id]);
+    expect(await reg(b, sid)).toMatchObject({ status: "pending_payment", option: "full" });
+    expect((await reg(b, sid)).lesson_queued_at).toBeNull(); // b, not c, gets the freed lesson place: b was waiting first
+    expect((await reg(c, sid)).status).toBe("waitlisted");
   });
 
   it("keeps the queues apart: a free drop-in spot doesn't promote an instructional waitlist", async () => {

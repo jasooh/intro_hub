@@ -252,3 +252,140 @@ begin
   -- A spot (or lesson place) may have freed up with the option they left.
   return v_events || public._promote(s.id);
 end $$;
+
+-------------------------------------------------------------------------------
+-- Promotion: the drop-in and lesson resources now fill independently, in two
+-- separate FIFO passes, instead of one atomic loop.
+--
+-- Pass 1 promotes on drop-in room alone, longest-waiting drop-in waiter
+-- first, regardless of whether they're also stuck on the lesson -- a `full`
+-- row stuck on the lesson must not be skipped in favor of a newer `dropin`
+-- waiter. On a session with no standalone drop-in price, a `full` row stays
+-- fully atomic (same as `register_for_session`'s "otherwise" branch), so it's
+-- only a Pass 1 candidate once both resources fit.
+--
+-- Pass 2 promotes on lesson room alone, from a merged queue of plain
+-- `instructional` waiters and partial-grant `full` rows (already holding
+-- their drop-in spot, waiting on the lesson), ordered by whichever clock
+-- each one actually uses: `lesson_queued_at` for a `full` row, `queued_at`
+-- for an `instructional` waiter.
+-------------------------------------------------------------------------------
+create or replace function public._promote(p_session_id uuid) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  s public.sessions;
+  v_next public.registrations;
+  v_events jsonb := '[]';
+begin
+  select * into s from public.sessions where id = p_session_id for update;
+  if not found or s.status <> 'scheduled' or now() >= s.starts_at then
+    return v_events;
+  end if;
+
+  -- Pass 1: drop-in room, longest-waiting drop-in (or full) waiter first.
+  loop
+    select w.* into v_next
+      from public.registrations w
+     where w.session_id = s.id and w.status = 'waitlisted'
+       and w.option in ('full', 'dropin')
+       and public._dropin_fits(s, w.id)
+       and (w.option = 'dropin' or s.dropin_price_cents is not null or public._lesson_fits(s, w.id))
+     order by w.queued_at, w.created_at
+     limit 1
+     for update;
+    exit when not found;
+
+    if v_next.option = 'full' and not public._lesson_fits(s, v_next.id) then
+      -- Partial grant: the drop-in spot is free, the lesson isn't. Leave
+      -- lesson_queued_at as-is -- it already carries this row's original
+      -- lesson wait.
+      if v_next.amount_cents = 0 then
+        update public.registrations
+           set status = 'confirmed', confirmed_at = now(), queued_at = null
+         where id = v_next.id;
+        v_events := v_events || jsonb_build_object('event', 'confirmed', 'registration_id', v_next.id);
+      else
+        update public.registrations
+           set status = 'pending_payment',
+               queued_at = null,
+               hold_expires_at = least(now() + make_interval(hours => s.hold_hours), s.starts_at)
+         where id = v_next.id;
+        v_events := v_events || jsonb_build_object(
+          'event',
+          case when public._use_rejoin_credit(v_next.id) then 'confirmed' else 'promoted' end,
+          'registration_id',
+          v_next.id
+        );
+      end if;
+    else
+      -- Full grant: both resources fit (atomic `full`, or a `dropin` row).
+      if v_next.amount_cents = 0 then
+        update public.registrations
+           set status = 'confirmed', confirmed_at = now(), queued_at = null, lesson_queued_at = null
+         where id = v_next.id;
+        v_events := v_events || jsonb_build_object('event', 'confirmed', 'registration_id', v_next.id);
+      else
+        update public.registrations
+           set status = 'pending_payment',
+               queued_at = null,
+               hold_expires_at = least(now() + make_interval(hours => s.hold_hours), s.starts_at),
+               lesson_queued_at = null
+         where id = v_next.id;
+        v_events := v_events || jsonb_build_object(
+          'event',
+          case when public._use_rejoin_credit(v_next.id) then 'confirmed' else 'promoted' end,
+          'registration_id',
+          v_next.id
+        );
+      end if;
+    end if;
+    -- A friend who just got a spot brings the regular's discount with them.
+    if v_next.brought_by is not null then
+      v_events := v_events || public._claim_regular(v_next.brought_by);
+    end if;
+  end loop;
+
+  -- Pass 2: lesson room, from the merged instructional + partial-grant-full
+  -- queue, ordered by whichever clock each row actually uses.
+  loop
+    select w.* into v_next
+      from public.registrations w
+     where w.session_id = s.id
+       and ((w.option = 'full' and w.status in ('pending_payment', 'confirmed') and w.lesson_queued_at is not null)
+            or (w.option = 'instructional' and w.status = 'waitlisted'))
+       and public._lesson_fits(s, w.id)
+     order by coalesce(w.lesson_queued_at, w.queued_at)
+     limit 1
+     for update;
+    exit when not found;
+
+    if v_next.option = 'full' then
+      -- Already holds its drop-in spot; the lesson place just opened up.
+      update public.registrations set lesson_queued_at = null where id = v_next.id;
+      v_events := v_events || jsonb_build_object('event', 'confirmed', 'registration_id', v_next.id);
+    elsif v_next.amount_cents = 0 then
+      update public.registrations
+         set status = 'confirmed', confirmed_at = now(), queued_at = null
+       where id = v_next.id;
+      v_events := v_events || jsonb_build_object('event', 'confirmed', 'registration_id', v_next.id);
+    else
+      update public.registrations
+         set status = 'pending_payment',
+             queued_at = null,
+             hold_expires_at = least(now() + make_interval(hours => s.hold_hours), s.starts_at)
+       where id = v_next.id;
+      v_events := v_events || jsonb_build_object(
+        'event',
+        case when public._use_rejoin_credit(v_next.id) then 'confirmed' else 'promoted' end,
+        'registration_id',
+        v_next.id
+      );
+    end if;
+    -- A friend who just got a spot brings the regular's discount with them.
+    if v_next.brought_by is not null then
+      v_events := v_events || public._claim_regular(v_next.brought_by);
+    end if;
+  end loop;
+
+  return v_events;
+end $$;

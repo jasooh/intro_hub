@@ -46,7 +46,7 @@ Open the file listed for the current version; older copies in earlier migrations
 | `_option_offered` | `20261101000000_signup_options.sql` | 1 |
 | `_owe_late_deposit` | `20261111000000_deposit_late_payments.sql` | 1 |
 | `_profile_complete` | `20261119000000_soft_profile_extras.sql` | 3 |
-| `_promote` | `20261210000000_lesson_cap_counts_full.sql` | 5 |
+| `_promote` | `20261211000000_lesson_wait_partial_grant.sql` | 6 |
 | `_received_cents` | `20261203000000_pay_for_friends.sql` | 1 |
 | `_refunded_cents` | `20261113000000_stats.sql` | 1 |
 | `_release_covered` | `20261203000000_pay_for_friends.sql` | 1 |
