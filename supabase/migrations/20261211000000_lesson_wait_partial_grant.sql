@@ -656,14 +656,20 @@ do $$
 declare
   v_def text := pg_get_functiondef('public.run_tick()'::regprocedure);
   v_find_expire text := '         set status = ''expired'', hold_expires_at = null, refund_owed = (paid_cents > 0)';
-  v_find_anchor text := '  -- 5. Payment reminders:';
+  -- Anchors on the hold-reminder loop's own update, not a step-number
+  -- comment: the comments in the repo's reconstructed function text aren't
+  -- reliably present on a live database (verified they're missing on dev),
+  -- so this patch can't depend on them.
+  v_find_anchor text := '  for r in
+    update public.registrations reg
+       set hold_nudged_at = v_now';
   v_new text;
 begin
   if (length(v_def) - length(replace(v_def, v_find_expire, ''))) / length(v_find_expire) <> 1 then
     raise exception 'run_tick: hold-expiry update not found exactly once';
   end if;
   if (length(v_def) - length(replace(v_def, v_find_anchor, ''))) / length(v_find_anchor) <> 1 then
-    raise exception 'run_tick: step 5 anchor not found exactly once';
+    raise exception 'run_tick: hold-reminder anchor not found exactly once';
   end if;
 
   v_new := replace(v_def,
