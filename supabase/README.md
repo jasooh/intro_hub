@@ -50,7 +50,7 @@ Open the file listed for the current version; older copies in earlier migrations
 | `_received_cents` | `20261203000000_pay_for_friends.sql` | 1 |
 | `_refunded_cents` | `20261113000000_stats.sql` | 1 |
 | `_release_covered` | `20261203000000_pay_for_friends.sql` | 1 |
-| `_release_regular` | `20261101000000_signup_options.sql` | 2 |
+| `_release_regular` | `20261211000001_release_regular_already_paid_full.sql` | 3 |
 | `_reprice` | `20261028000000_bring_a_friend_and_deposits.sql` | 1 |
 | `_reset_hold_nudge` | `20261031000000_host_tools.sql` | 1 |
 | `_reverse_payment` | `20261203000001_pay_for_friends_fixes.sql` | 3 |

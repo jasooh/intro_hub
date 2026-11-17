@@ -1282,6 +1282,19 @@ describe("bring a friend", () => {
     expect(await row(r)).toMatchObject({ status: "confirmed", amount_cents: 750 });
   });
 
+  it("a regular who already paid full loses the discount and the refund flag when the friend cancels", async () => {
+    const sid = await createSession(db, { priceCents: 1500 });
+    const [regular, friend] = [await createUser(db, "Regular"), await createUser(db, "Friend")];
+    const r = await signUp(regular, sid);
+    await pay(r, 1500);
+    const f = await signUp(friend, sid);
+    await link(friend, f, r);
+    expect(await row(r)).toMatchObject({ status: "confirmed", amount_cents: 750, friend_discount: true, refund_owed: true });
+
+    await asUser(db, friend, `select public.cancel_registration($1)`, [f]);
+    expect(await row(r)).toMatchObject({ status: "confirmed", amount_cents: 1500, friend_discount: false, refund_owed: false });
+  });
+
   it("a host can remove the discount", async () => {
     const sid = await createSession(db, { priceCents: 1500 });
     const host = await createUser(db, "Host", { admin: true });
