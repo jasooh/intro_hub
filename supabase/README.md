@@ -30,12 +30,14 @@ Open the file listed for the current version; older copies in earlier migrations
 | `_devtools_log` | `20261023000000_dev_tools.sql` | 1 |
 | `_devtools_table` | `20261023000000_dev_tools.sql` | 1 |
 | `_drop_stale_cover` | `20261203000001_pay_for_friends_fixes.sql` | 1 |
+| `_dropin_fits` | `20261211000000_lesson_wait_partial_grant.sql` | 1 |
 | `_fill_stats` | `20261113000000_stats.sql` | 1 |
 | `_fit_capacity` | `20261101000000_signup_options.sql` | 1 |
-| `_fits` | `20261210000000_lesson_cap_counts_full.sql` | 1 |
+| `_fits` | `20261211000000_lesson_wait_partial_grant.sql` | 2 |
 | `_has_room` | `20261210000000_lesson_cap_counts_full.sql` | 2 |
-| `_instructional_used` | `20261210000000_lesson_cap_counts_full.sql` | 2 |
+| `_instructional_used` | `20261211000000_lesson_wait_partial_grant.sql` | 3 |
 | `_is_first_timer` | `20261028000000_bring_a_friend_and_deposits.sql` | 1 |
+| `_lesson_fits` | `20261211000000_lesson_wait_partial_grant.sql` | 1 |
 | `_limit_identity_changes` | `20261126000000_identity_change_limit.sql` | 1 |
 | `_lock_attended_before` | `20261029000000_attended_before_locked.sql` | 1 |
 | `_log_registration_activity` | `20261106000000_host_notifications.sql` | 1 |
@@ -98,7 +100,7 @@ Open the file listed for the current version; older copies in earlier migrations
 | `gen_ref_code` | `20261012000000_init.sql` | 1 |
 | `get_post_authors` | `20261127000000_photo_avatars.sql` | 1 |
 | `get_session_attendees` | `20261101000000_signup_options.sql` | 4 |
-| `get_session_counts` | `20261210000000_lesson_cap_counts_full.sql` | 4 |
+| `get_session_counts` | `20261211000000_lesson_wait_partial_grant.sql` | 5 |
 | `get_session_hosts` | `20261129000000_session_hosts.sql` | 1 |
 | `handle_new_user` | `20261012000000_init.sql` | 1 |
 | `host_start_threads` | `20261128000000_messages.sql` | 1 |

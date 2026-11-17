@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { asService, asUser, createDb, createSession, createUser, type Db, type Event } from "./db-harness";
+import { asService, asUser, createDb, createSession, createUser, reg as regRow, type Db, type Event } from "./db-harness";
 
 let db: Db;
 
@@ -16,12 +16,7 @@ async function signUp(userId: string, sessionId: string, option = "full") {
 }
 
 async function reg(userId: string, sessionId: string) {
-  const res = await db.query<{ id: string; status: string; option: string; amount_cents: number; friend_discount: boolean; hold_expires_at: Date | null }>(
-    `select id, status::text, option, amount_cents, friend_discount, hold_expires_at from public.registrations
-      where profile_id = $1 and session_id = $2 order by created_at desc limit 1`,
-    [userId, sessionId],
-  );
-  return res.rows[0];
+  return regRow(db, userId, sessionId);
 }
 
 const setSession = (sid: string, sql: string, params: unknown[] = []) =>
@@ -67,19 +62,21 @@ describe("drop-in only", () => {
 describe("instructional limit", () => {
   it("waitlists past the cap and promotes in order when a place frees up", async () => {
     const sid = await createSession(db, { capacity: 10, instructionalPriceCents: 1000 });
-    await setSession(sid, `instructional_capacity = 1`);
+    await setSession(sid, `instructional_capacity = 1, dropin_price_cents = 800`);
     const [a, b, c] = await users(3);
     await signUp(a, sid, "instructional");
     await signUp(b, sid, "instructional");
     await signUp(c, sid, "full"); // the lesson is full, and Instructional + Drop-in includes it
     expect((await reg(a, sid)).status).toBe("pending_payment");
     expect((await reg(b, sid)).status).toBe("waitlisted");
-    expect((await reg(c, sid)).status).toBe("waitlisted");
+    expect(await reg(c, sid)).toMatchObject({ status: "pending_payment" });
+    expect((await reg(c, sid)).lesson_queued_at).not.toBeNull();
 
     const res = await asUser<{ events: Event[] }>(db, a, `select public.cancel_registration($1) as events`, [(await reg(a, sid)).id]);
     expect(res.rows[0].events).toEqual([{ event: "promoted", registration_id: (await reg(b, sid)).id }]);
     expect((await reg(b, sid)).status).toBe("pending_payment");
-    expect((await reg(c, sid)).status).toBe("waitlisted");
+    expect(await reg(c, sid)).toMatchObject({ status: "pending_payment" });
+    expect((await reg(c, sid)).lesson_queued_at).not.toBeNull();
   });
 
   it("counts Instructional + Drop-in toward the cap; Drop-in only stays out of it", async () => {
@@ -92,7 +89,8 @@ describe("instructional limit", () => {
     await signUp(d, sid, "full");
     await signUp(e, sid, "dropin");
     expect((await reg(c, sid)).status).toBe("waitlisted");
-    expect((await reg(d, sid)).status).toBe("waitlisted");
+    expect(await reg(d, sid)).toMatchObject({ status: "pending_payment", option: "full" });
+    expect((await reg(d, sid)).lesson_queued_at).not.toBeNull();
     expect((await reg(e, sid)).status).toBe("pending_payment");
 
     const counts = await db.query(`select * from public.get_session_counts(array[$1::uuid])`, [sid]);
@@ -178,6 +176,36 @@ describe("instructional limit", () => {
       ["instructional", 1],
       ["instructional", 2],
     ]);
+  });
+
+  it("a Full sign-up takes the open drop-in spot when only the lesson is full", async () => {
+    const sid = await createSession(db, { capacity: 10, instructionalPriceCents: 1000 });
+    await setSession(sid, `instructional_capacity = 1, dropin_price_cents = 800`);
+    const [a, c] = await users(2);
+    await signUp(a, sid, "instructional"); // takes the one lesson place
+    await signUp(c, sid, "full");
+    expect(await reg(c, sid)).toMatchObject({ status: "pending_payment", option: "full" });
+    expect((await reg(c, sid)).lesson_queued_at).not.toBeNull();
+  });
+
+  it("a Full sign-up stays fully waitlisted when drop-in itself is also full", async () => {
+    const sid = await createSession(db, { capacity: 1, instructionalPriceCents: 1000 });
+    await setSession(sid, `instructional_capacity = 1, dropin_price_cents = 800`);
+    const [a, b, c] = await users(3);
+    await signUp(a, sid, "dropin");
+    await signUp(b, sid, "instructional");
+    await signUp(c, sid, "full");
+    expect(await reg(c, sid)).toMatchObject({ status: "waitlisted" });
+    expect((await reg(c, sid)).lesson_queued_at).not.toBeNull();
+  });
+
+  it("a Full sign-up stays fully atomic when the session has no drop-in price", async () => {
+    const sid = await createSession(db, { capacity: 10, instructionalPriceCents: 1000 });
+    await setSession(sid, `instructional_capacity = 1`); // dropin_price_cents stays null
+    const [a, c] = await users(2);
+    await signUp(a, sid, "instructional");
+    await signUp(c, sid, "full");
+    expect((await reg(c, sid)).status).toBe("waitlisted"); // no partial grant possible: can't price a refund
   });
 });
 

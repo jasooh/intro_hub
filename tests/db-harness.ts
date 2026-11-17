@@ -114,3 +114,23 @@ export async function createSession(
 }
 
 export type Event = { event: string; registration_id: string };
+
+/** The latest registration for a player in a session (for assertions). */
+export async function reg(db: Db, userId: string, sessionId: string) {
+  const res = await db.query<{
+    id: string;
+    status: string;
+    option: string;
+    amount_cents: number;
+    friend_discount: boolean;
+    hold_expires_at: Date | null;
+    lesson_queued_at: Date | null;
+    queued_at: Date | null;
+  }>(
+    `select id, status::text, option, amount_cents, friend_discount, hold_expires_at, lesson_queued_at, queued_at
+       from public.registrations
+      where profile_id = $1 and session_id = $2 order by created_at desc limit 1`,
+    [userId, sessionId],
+  );
+  return res.rows[0];
+}
