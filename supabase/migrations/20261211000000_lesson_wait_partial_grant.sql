@@ -70,7 +70,10 @@ language sql stable security definer set search_path = '' as $$
          (count(r.id) filter (where r.option in ('full', 'dropin') and r.status = 'pending_payment'))::int,
          (count(r.id) filter (where r.option in ('full', 'dropin') and r.status = 'waitlisted'))::int,
          (count(r.id) filter (where r.option = 'instructional' and r.status in ('pending_payment', 'confirmed')))::int,
-         (count(r.id) filter (where r.option = 'instructional' and r.status = 'waitlisted'))::int,
+         -- The lesson queue is instructional-only waiters AND a Full row
+         -- that holds its drop-in spot but is still waiting on the lesson.
+         (count(r.id) filter (where (r.option = 'instructional' and r.status = 'waitlisted')
+                                 or (r.option = 'full' and r.lesson_queued_at is not null)))::int,
          (count(r.id) filter (where r.option = 'dropin' and r.status in ('pending_payment', 'confirmed')))::int,
          (count(r.id) filter (where r.option in ('full', 'instructional') and r.status in ('pending_payment', 'confirmed')
                                  and r.lesson_queued_at is null))::int
@@ -542,4 +545,53 @@ begin
   end loop;
 
   return v_events;
+end $$;
+
+-------------------------------------------------------------------------------
+-- The host roster's waitlist position now also covers the merged lesson
+-- queue: a plain Instructional waiter and a Full row that holds its
+-- drop-in spot but is still waiting on the lesson share one numbering
+-- sequence, ordered the same way _promote's lesson pass picks the next one.
+-------------------------------------------------------------------------------
+create or replace function public.get_session_attendees(p_session_id uuid)
+returns table (
+  registration_id uuid,
+  display_name text,
+  avatar_url text,
+  status public.registration_status,
+  option text,
+  team_id uuid,
+  waitlist_position int,
+  is_me boolean
+)
+language plpgsql stable security definer set search_path = '' as $$
+begin
+  if auth.uid() is null then
+    return;
+  end if;
+  return query
+    select r.id,
+           coalesce(p.display_name, p.full_name, 'Player'),
+           p.avatar_url,
+           r.status,
+           r.option,
+           case when s.teams_published_at is not null then r.team_id end,
+           case when r.status = 'waitlisted' and r.option <> 'instructional'
+                then (row_number() over (partition by r.status, r.option = 'instructional'
+                                         order by r.queued_at, r.created_at))::int
+                when (r.option = 'instructional' and r.status = 'waitlisted')
+                     or (r.option = 'full' and r.lesson_queued_at is not null)
+                then (row_number() over (
+                        partition by ((r.option = 'instructional' and r.status = 'waitlisted')
+                                       or (r.option = 'full' and r.lesson_queued_at is not null))
+                        order by coalesce(r.lesson_queued_at, r.queued_at)
+                      ))::int
+           end,
+           r.profile_id = auth.uid()
+      from public.registrations r
+      join public.profiles p on p.id = r.profile_id
+      join public.sessions s on s.id = r.session_id
+     where r.session_id = p_session_id
+       and r.status in ('pending_payment', 'confirmed', 'waitlisted')
+     order by r.status, coalesce(r.confirmed_at, r.queued_at, r.created_at);
 end $$;

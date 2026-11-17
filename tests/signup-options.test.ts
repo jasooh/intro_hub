@@ -356,6 +356,34 @@ describe("instructional limit", () => {
     await signUp(c, sid, "full");
     expect((await reg(c, sid)).status).toBe("waitlisted"); // no partial grant possible: can't price a refund
   });
+
+  it("instructional_waitlisted counts a partially-granted Full row too", async () => {
+    const sid = await createSession(db, { capacity: 10, instructionalPriceCents: 1000 });
+    await setSession(sid, `instructional_capacity = 1, dropin_price_cents = 800`);
+    const [a, c] = await users(2);
+    await signUp(a, sid, "instructional");
+    await signUp(c, sid, "full");
+    const counts = await db.query(`select * from public.get_session_counts(array[$1::uuid])`, [sid]);
+    expect(counts.rows[0]).toMatchObject({ lesson: 1, instructional_waitlisted: 1 });
+  });
+
+  it("waitlist position covers the merged lesson queue", async () => {
+    const sid = await createSession(db, { capacity: 10, instructionalPriceCents: 1000 });
+    await setSession(sid, `instructional_capacity = 1, dropin_price_cents = 800`);
+    const [a, b, c] = await users(3);
+    await signUp(a, sid, "instructional");
+    await signUp(b, sid, "full"); // partial grant, waits on lesson, asks before c
+    await signUp(c, sid, "instructional"); // fully waitlisted
+    const rows = await asUser<{ registration_id: string; waitlist_position: number | null }>(
+      db,
+      a,
+      `select registration_id, waitlist_position from public.get_session_attendees($1)`,
+      [sid],
+    );
+    const byId = (id: string) => rows.rows.find((r) => r.registration_id === id)?.waitlist_position;
+    expect(byId((await reg(b, sid)).id)).toBe(1);
+    expect(byId((await reg(c, sid)).id)).toBe(2);
+  });
 });
 
 describe("admin_add_player", () => {
