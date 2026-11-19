@@ -691,6 +691,23 @@ describe("team requests", () => {
     await expect(setRequests(c, rcInstr, [ra])).rejects.toThrow(/teammate_unavailable/);
   });
 
+  it("lets a Drop-in only sign-up be requested, and request teammates itself", async () => {
+    const sid = await createSession(db, { capacity: 10, instructionalPriceCents: 500 });
+    await db.query(`update public.sessions set dropin_price_cents = 800 where id = $1`, [sid]);
+    const [a, b, c] = await Promise.all(["A", "B", "C"].map((n) => createUser(db, n)));
+    const ra = await signUp(a, sid, "full");
+    const rb = await signUp(b, sid, "dropin");
+    const rc = await signUp(c, sid, "dropin");
+
+    // A Full sign-up can request a Drop-in only teammate.
+    await setRequests(a, ra, [rb]);
+    expect(await requestsOf(ra)).toEqual([rb]);
+
+    // A Drop-in only sign-up can request teammates itself, Full or Drop-in only.
+    await setRequests(b, rb, [ra, rc]);
+    expect(await requestsOf(rb)).toEqual([ra, rc].sort());
+  });
+
   it("players only see their own requests; hosts see all; rows go when a sign-up is deleted", async () => {
     const sid = await createSession(db);
     const [a, b] = await Promise.all(["A", "B"].map((n) => createUser(db, n)));

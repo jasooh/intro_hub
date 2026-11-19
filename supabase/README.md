@@ -118,6 +118,6 @@ Open the file listed for the current version; older copies in earlier migrations
 | `run_tick` | `20261113000000_stats.sql` | 7 |
 | `set_brought_by` | `20261101000000_signup_options.sql` | 2 |
 | `set_covered_signups` | `20261203000000_pay_for_friends.sql` | 1 |
-| `set_team_requests` | `20261022000000_team_requests.sql` | 1 |
+| `set_team_requests` | `20261212000000_team_requests_dropin.sql` | 2 |
 | `touch_registration` | `20261012000000_init.sql` | 1 |
 | `unread_message_count` | `20261128000000_messages.sql` | 1 |

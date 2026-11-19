@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { asService, asUser, createDb, createSession, createUser, reg as regRow, type Db, type Event } from "./db-harness";
+import { usesLessonPlace } from "@/lib/options";
 
 let db: Db;
 
@@ -23,6 +24,23 @@ const setSession = (sid: string, sql: string, params: unknown[] = []) =>
   db.query(`update public.sessions set ${sql} where id = $1`, [sid, ...params]);
 
 const users = (n: number, prefix = "P") => Promise.all(Array.from({ length: n }, (_, i) => createUser(db, `${prefix}${i + 1}`)));
+
+// A pure-function unit test, not a DB one -- mirrors _instructional_used in SQL for the admin
+// roster's lesson count (src/app/admin/sessions/[id]/page.tsx).
+describe("usesLessonPlace", () => {
+  it("holds a lesson place for a plain Instructional sign-up, and for a Full sign-up with both resources", () => {
+    expect(usesLessonPlace({ option: "instructional", lesson_queued_at: null })).toBe(true);
+    expect(usesLessonPlace({ option: "full", lesson_queued_at: null })).toBe(true);
+  });
+
+  it("does not hold a lesson place for a Full sign-up still waiting on one (a partial grant)", () => {
+    expect(usesLessonPlace({ option: "full", lesson_queued_at: "2026-01-01T00:00:00Z" })).toBe(false);
+  });
+
+  it("never holds a lesson place for Drop-in only", () => {
+    expect(usesLessonPlace({ option: "dropin", lesson_queued_at: null })).toBe(false);
+  });
+});
 
 describe("drop-in only", () => {
   it("has its own price, uses a drop-in spot, and waits when drop-in is full", async () => {
