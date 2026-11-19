@@ -45,7 +45,7 @@ import { DateBlock } from "@/components/session-card";
 import { MarkReturning } from "@/components/mark-returning";
 import { PlayerDetails } from "@/components/player-details";
 import type { Match, Payment, Profile, Registration, Session, SignupOption, Team } from "@/lib/types";
-import { offeredOptions, optionPrice, usesSpot } from "@/lib/options";
+import { offeredOptions, optionPrice, usesLessonPlace, usesSpot } from "@/lib/options";
 import { AUDIENCE_LABELS, AUDIENCES, audienceOf, type Audience } from "@/lib/audiences";
 import { SessionForm } from "../session-form";
 import { AddPlayerForm, type AddablePlayer } from "./add-player-form";
@@ -171,8 +171,9 @@ async function AdminSession({
   const confirmedCount = dropIn.filter((r) => r.status === "confirmed").length;
   const holdingCount = dropIn.length - confirmedCount;
   const instructionalCount = going.length - dropIn.length;
-  // Everyone at the lesson: Instructional + Drop-in and Instructional only (not Drop-in only).
-  const lessonCount = going.filter((r) => r.option !== "dropin").length;
+  // Everyone at the lesson: Instructional + Drop-in and Instructional only, minus a Full row
+  // that's holding its drop-in spot but still waiting on a lesson place.
+  const lessonCount = going.filter(usesLessonPlace).length;
   const cancelled = session.status === "cancelled";
   const started = new Date(session.starts_at) <= new Date();
   const unpaidCount = going.filter((r) => r.status === "pending_payment").length;

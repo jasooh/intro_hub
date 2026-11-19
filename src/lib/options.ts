@@ -8,6 +8,16 @@ export function usesSpot(option: SignupOption) {
   return option !== "instructional";
 }
 
+/**
+ * Whether this sign-up holds a lesson place right now (mirrors `_instructional_used` in SQL):
+ * everyone at the lesson except a Full row still waiting on its place (`lesson_queued_at` set --
+ * it holds its drop-in spot but hasn't got a lesson place yet). An Instructional only row never
+ * carries `lesson_queued_at` while pending/confirmed, so one check covers both options.
+ */
+export function usesLessonPlace(reg: { option: SignupOption; lesson_queued_at: string | null }) {
+  return reg.option !== "dropin" && reg.lesson_queued_at == null;
+}
+
 /** In the order players see them. */
 export function offeredOptions(session: Pick<Session, "instructional_price_cents" | "dropin_price_cents">): SignupOption[] {
   return [
